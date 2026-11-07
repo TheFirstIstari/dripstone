@@ -6,3 +6,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+/.env
+/_build/
+/deps/
+/cover/
