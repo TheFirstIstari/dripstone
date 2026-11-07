@@ -1,0 +1,6 @@
+[
+  {"id": "x1", "text": "Shipping a new coordination tracker today https://example.com/ship", "urls": ["https://example.com/ship"], "created_at": "2026-10-01T10:00:00Z"},
+  {"id": "x2", "text": "Second update, same link https://example.com/ship", "urls": ["https://example.com/ship"], "created_at": "2026-10-01T11:00:00Z"},
+  {"id": "x3", "text": "Just thinking out loud, no links here", "urls": [], "created_at": "2026-10-01T12:00:00Z"},
+  {"id": "x4", "text": "Promo blast https://example.com/deal https://example.com/deal2", "urls": ["https://example.com/deal", "https://example.com/deal2"], "created_at": "2026-10-01T13:00:00Z"}
+]
