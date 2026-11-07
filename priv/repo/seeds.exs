@@ -2,8 +2,9 @@
 #
 #     mix run priv/repo/seeds.exs
 #
-# Registration is closed (no public sign-up): analysts are seeded here and
-# confirmed so they can log in immediately. Re-runs never reset passwords.
+# Registration is closed (no public sign-up): analysts are seeded here with NO
+# password (password login impossible) and must use magic-link login for first
+# access, then set a password via /users/settings. Re-runs never touch passwords.
 
 alias Dripstone.Accounts
 alias Dripstone.Accounts.User
@@ -29,17 +30,12 @@ for email <- emails do
         Repo.get!(User, user.id)
     end
 
-  user =
-    if is_nil(user.hashed_password) do
-      {:ok, {user, _}} =
-        Accounts.update_user_password(user, %{password: "change-me-after-login!"})
-
-      user
-    else
-      user
-    end
-
   if is_nil(user.confirmed_at) do
     user |> User.confirm_changeset() |> Repo.update!()
   end
+
+  Mix.shell().info("""
+  Seeded analyst #{email} with no password. \
+  Log in via the magic-link form on /users/log-in, then set a password in settings.
+  """)
 end
