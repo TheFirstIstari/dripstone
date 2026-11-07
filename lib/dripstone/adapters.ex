@@ -14,6 +14,21 @@ defmodule Dripstone.Adapters do
     stub_reddit: Dripstone.Adapters.StubReddit
   }
 
+  @doc """
+  Reads a stub fixture file. Defaults under the project cwd; `:fixture_path`
+  overrides for tests.
+  """
+  @spec read_fixture([String.t()], keyword()) ::
+          {:ok, binary()} | {:error, {:fixture_unreadable, term()}}
+  def read_fixture(segments, opts) when is_list(segments) and is_list(opts) do
+    path = Keyword.get(opts, :fixture_path, Path.join([File.cwd!() | segments]))
+
+    case File.read(path) do
+      {:ok, _} = ok -> ok
+      {:error, reason} -> {:error, {:fixture_unreadable, reason}}
+    end
+  end
+
   def all, do: @registry
 
   def get(name) when is_atom(name), do: Map.get(@registry, name)

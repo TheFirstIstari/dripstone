@@ -7,20 +7,11 @@ defmodule Dripstone.Adapters.StubReddit do
 
   @impl true
   def fetch_posts(handle, opts \\ []) when is_binary(handle) do
-    with {:ok, raw} <- read_fixture(opts),
+    with {:ok, raw} <- Dripstone.Adapters.read_fixture(@fixture, opts),
          {:ok, items} <- Jason.decode(raw) do
       {:ok, Enum.map(items, &normalize(&1, handle))}
     else
       {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp read_fixture(opts) do
-    path = Keyword.get(opts, :fixture_path, Path.join([File.cwd!() | @fixture]))
-
-    case File.read(path) do
-      {:ok, _} = ok -> ok
-      {:error, reason} -> {:error, {:fixture_unreadable, reason}}
     end
   end
 
