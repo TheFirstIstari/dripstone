@@ -9,6 +9,7 @@ defmodule DripstoneWeb.Nav do
     * `{:alert_raised, alert}`: recount open alerts; toast if severity is High
     * `{:alert_updated, alert}`: recount open alerts
     * `{:network_updated, id}`: nothing for the nav
+    * `{:account_updated, id}`: nothing for the nav
 
   After that, the message is passed to the LiveView's optional
   `handle_tracker_event(message, socket) :: socket` callback, so a screen that wants
@@ -61,6 +62,7 @@ defmodule DripstoneWeb.Nav do
     do: socket |> recount() |> forward(message)
 
   defp handle_info({:network_updated, _id} = message, socket), do: forward(socket, message)
+  defp handle_info({:account_updated, _id} = message, socket), do: forward(socket, message)
   defp handle_info(_message, socket), do: {:cont, socket}
 
   defp handle_event("global_search", params, socket) do

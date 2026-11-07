@@ -24,15 +24,19 @@ defmodule Dripstone.Workers.AssessWorkerTest do
     :ok
   end
 
-  test "runs the stub adapter and scorer, then records the result" do
+  test "runs the stub adapter and scorer, then reports an account finding" do
     assert :ok = perform_job(AssessWorker, %{"adapter" => "stub_x", "handle" => "alice"})
 
-    assert_receive {:alert_raised, alert}
-    assert alert.trigger_id == "scorer_assessment"
-    assert "source: heuristics_only" in Enum.map(alert.evidence, & &1.explanation)
+    [account] = Map.values(SampleStore.get_state().accounts)
+    assert %{feed_id: "x", handle: "alice"} = account
+    assert_receive {:account_updated, id}
+    assert id == account.id
 
-    assert [%{feed_id: "x", handle: "alice", assessment: %{source: :heuristics_only}}] =
-             Map.values(SampleStore.get_state().accounts)
+    # Heuristics only (no key): no answers, no model, and account findings raise no alert.
+    assert account.assessment.answers == nil
+    assert account.assessment.model == nil
+    assert SampleStore.get_state().posts[account.id] != []
+    refute_received {:alert_raised, _}
   end
 
   test "reddit handles land on the Reddit feed" do

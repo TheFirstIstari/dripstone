@@ -660,15 +660,19 @@ defmodule DripstoneWeb.TrackerComponents do
 
   @doc "Legend label for a link kind."
   def link_kind_label(:shared_link), do: "Shared link"
+  def link_kind_label(:repost_ring), do: "Repost ring"
+  def link_kind_label(:timing_sync), do: "Timing sync"
+  def link_kind_label(:audience_overlap), do: "Audience overlap"
   def link_kind_label(:near_duplicate), do: "Near-duplicate content"
-  def link_kind_label(:synced_posting), do: "Synchronized posting"
   def link_kind_label(:created_together), do: "Created together"
   def link_kind_label(other), do: other |> to_string() |> String.replace("_", " ")
 
   @doc "CSS-variable slug for a link kind, e.g. `shared-link`."
-  def kind_slug(kind)
-      when kind in [:shared_link, :near_duplicate, :synced_posting, :created_together],
-      do: kind |> Atom.to_string() |> String.replace("_", "-")
+  def kind_slug(kind) when is_atom(kind) do
+    if kind in Link.kinds(),
+      do: kind |> Atom.to_string() |> String.replace("_", "-"),
+      else: "shared-link"
+  end
 
   def kind_slug(_kind), do: "shared-link"
 

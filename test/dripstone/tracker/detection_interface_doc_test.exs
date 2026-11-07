@@ -1,28 +1,39 @@
 defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
-  # Reports the examples from openspec/docs/DETECTION_INTERFACE.md through the shared store,
-  # so the doc can't drift from the code. Uses the app-wide store: not async.
+  # Reports the examples from openspec/docs/DETECTION_INTERFACE.md through the shared
+  # store, so the doc can't drift from the code. Uses the app-wide store: not async.
   use ExUnit.Case, async: false
 
   alias Dripstone.Alerts
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{SampleStore, State}
+  alias Dripstone.Tracker.{Account, Network, SampleStore, State}
 
-  @doc_path Path.expand(
-              "../../../openspec/docs/DETECTION_INTERFACE.md",
-              __DIR__
-            )
+  @doc_path Path.expand("../../../openspec/docs/DETECTION_INTERFACE.md", __DIR__)
   @external_resource @doc_path
 
+  # The app the examples run against, as the doc describes it: one known network,
+  # net-example, with four members on X.
   setup do
     previous = SampleStore.get_state()
-    # The doc examples run against an empty app; acc-0001..acc-0006 are the
-    # members those examples report, so seed them as tracked accounts first.
-    accounts =
-      for id <- ~w(acc-0001 acc-0002 acc-0003 acc-0004 acc-0005 acc-0006),
-          into: %{},
-          do: {id, %Dripstone.Tracker.Account{id: id, feed_id: "x", handle: id}}
 
-    :ok = SampleStore.put_state(%State{accounts: accounts})
+    members =
+      for n <- 1..4, do: %Account{id: "acc-net-#{n}", feed_id: "x", handle: "net_member_#{n}"}
+
+    network = %Network{
+      id: "net-example",
+      name: "Example network",
+      member_ids: Enum.map(members, & &1.id),
+      platforms: ["x"],
+      main_domain: "deals-a.example",
+      confidence: 80,
+      assessment: %{trajectory: "fading"}
+    }
+
+    :ok =
+      SampleStore.put_state(%State{
+        accounts: Map.new(members, &{&1.id, &1}),
+        networks: %{"net-example" => network}
+      })
+
     on_exit(fn -> SampleStore.put_state(previous) end)
     :ok
   end
@@ -33,43 +44,51 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
     |> Enum.map(fn [json] -> Jason.decode!(json) end)
   end
 
-  test "the doc has one example per initial trigger type" do
-    triggers = Enum.map(examples(), & &1["trigger"])
-
-    # scorer_assessment is raised by Tracker.record_assessment/1 (interim), not
-    # reported as a finding, so the doc describes it without a finding example.
-    expected =
-      for %{id: id} <- Alerts.trigger_types(), id != "scorer_assessment", do: id
-
-    assert Enum.sort(triggers) == Enum.sort(expected)
+  test "the doc shows every finding kind" do
+    assert examples() |> Enum.map(& &1["kind"]) |> Enum.uniq() |> Enum.sort() ==
+             ~w(account group trend)
   end
 
-  test "every example is accepted by report_finding/1, in order" do
+  test "every example is accepted in order, and together they raise every trigger type" do
     results =
       for example <- examples() do
         assert {:ok, result} = Tracker.report_finding(example),
-               "example for #{example["trigger"]} was rejected"
+               "the #{example["kind"]} example at #{example["observed_at"]} was rejected"
 
         result
       end
 
-    assert Enum.all?(results, &(&1.action == :created))
+    raised = for %{alerts: alerts} <- results, %{alert: alert} <- alerts, do: alert.trigger_id
+    assert Enum.sort(raised) == Alerts.trigger_types() |> Enum.map(& &1.id) |> Enum.sort()
+
+    [account | _] = results
+    assert account.alerts == []
 
     state = SampleStore.get_state()
     network = state.networks["net-example"]
     assert length(network.member_ids) == 6
     assert network.main_domain == "deals-b.example"
-    assert network.confidence == 91
-    assert map_size(state.alerts) == 4
+    assert network.assessment.trajectory == "stable"
+
+    # just_a_person answered 0.12 on its member question, so the new network has three.
+    new_network = Enum.find(Map.values(state.networks), &(&1.id != "net-example"))
+    assert length(new_network.member_ids) == 3
   end
 
   test "the documented rejection example matches the real errors" do
-    [first | _] = examples()
+    [_account, group | _] = examples()
 
-    assert {:error, errors} =
-             Tracker.report_finding(%{first | "trigger" => "does-not-exist", "evidence" => []})
+    bad = %{
+      group
+      | "accounts" => Enum.take(group["accounts"], 1),
+        "answers" => %{"coordinated" => %{"type" => "noul", "noul" => 1.4}}
+    }
 
-    assert errors.trigger == ["unknown trigger \"does-not-exist\""]
-    assert errors.evidence == ["must contain at least one item"]
+    assert {:error, errors} = Tracker.report_finding(bad)
+
+    assert errors == %{
+             accounts: ["a group needs at least two different accounts"],
+             answers: ["coordinated: noul must be a number from 0 to 1"]
+           }
   end
 end

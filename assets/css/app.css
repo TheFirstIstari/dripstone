@@ -79,8 +79,10 @@
 */
 :root {
   --color-link-shared-link: oklch(58% 0.11 192);
+  --color-link-repost-ring: oklch(55% 0.17 25);
+  --color-link-audience-overlap: oklch(58% 0.13 140);
   --color-link-near-duplicate: oklch(56% 0.16 295);
-  --color-link-synced-posting: oklch(64% 0.15 62);
+  --color-link-timing-sync: oklch(64% 0.15 62);
   --color-link-created-together: oklch(60% 0.17 350);
 }
 
@@ -122,8 +124,10 @@
   --color-status-down: oklch(70% 0.18 25);
 
   --color-link-shared-link: oklch(74% 0.11 190);
+  --color-link-repost-ring: oklch(72% 0.15 25);
+  --color-link-audience-overlap: oklch(76% 0.12 140);
   --color-link-near-duplicate: oklch(72% 0.15 295);
-  --color-link-synced-posting: oklch(80% 0.14 72);
+  --color-link-timing-sync: oklch(80% 0.14 72);
   --color-link-created-together: oklch(74% 0.15 350);
 
   --shadow-card: 0 1px 2px oklch(0% 0 0 / 0.4);

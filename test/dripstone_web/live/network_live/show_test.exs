@@ -122,7 +122,7 @@ defmodule DripstoneWeb.NetworkLive.ShowTest do
     {:ok, view, _html} = live(conn, "/networks/net-c0421")
 
     {:ok, _} =
-      Tracker.report_finding(%{
+      SampleStore.apply_finding(%{
         trigger: "promotion_shift",
         severity: "high",
         title: "Shift",

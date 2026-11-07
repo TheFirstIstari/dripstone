@@ -39,7 +39,7 @@ defmodule DripstoneWeb.NetworkLive.GraphViewTest do
     assert count(view, "#network-graph line") == length(graph.edges)
     assert count(view, "#network-graph g[id^=network-graph-node-]") == length(graph.nodes)
 
-    for kind <- ~w(shared_link near_duplicate synced_posting created_together) do
+    for kind <- Dripstone.Tracker.Link.kinds() do
       assert has_element?(view, "#toggle-#{kind}[aria-pressed=true]")
     end
   end
@@ -56,7 +56,7 @@ defmodule DripstoneWeb.NetworkLive.GraphViewTest do
     assert count(view, "#network-graph line[data-kind=shared_link]") == 0
     assert count(view, "#network-graph line") == length(graph.edges) - shared
 
-    for kind <- ~w(shared_link near_duplicate synced_posting created_together) do
+    for kind <- Dripstone.Tracker.Link.kinds() do
       view |> element("#toggle-#{kind}") |> render_click()
     end
 

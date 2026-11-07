@@ -12,7 +12,7 @@ defmodule Dripstone.Tracker.SampleStore do
   use GenServer
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{Assessments, Graph, Intake, SampleLoader, State}
+  alias Dripstone.Tracker.{Graph, Intake, Report, Rules, SampleLoader, State}
 
   @doc false
   def start_link(opts \\ []) do
@@ -31,18 +31,31 @@ defmodule Dripstone.Tracker.SampleStore do
   @spec change((State.t() -> term()), GenServer.server()) :: {:ok, term()} | {:error, term()}
   def change(fun, server \\ __MODULE__), do: GenServer.call(server, {:change, fun})
 
-  @doc "Reports a finding through the intake. See `Dripstone.Tracker.report_finding/1`."
-  def report_finding(attrs, server \\ __MODULE__),
-    do: intake(&Intake.run(&1, attrs, DateTime.utc_now()), server)
-
-  @doc "Records a scorer assessment. See `Dripstone.Tracker.record_assessment/1`."
-  def record_assessment(attrs, server \\ __MODULE__),
-    do: intake(&Assessments.record(&1, attrs, DateTime.utc_now()), server)
-
-  defp intake(run, server) do
+  @doc """
+  Reports an account, group or trend finding: validates it (`Report`), applies the
+  rules (`Rules`) and runs the resulting internal findings through the intake, all in
+  one change. See `Dripstone.Tracker.report_finding/1`.
+  """
+  def report_finding(attrs, server \\ __MODULE__) do
     change(
       fn state ->
-        with {:ok, result, new_state} <- run.(state) do
+        with {:ok, report} <- Report.cast(attrs, state),
+             {:ok, result, new_state} <- Rules.run(state, report, DateTime.utc_now()) do
+          {:ok, result, new_state, report_messages(result)}
+        end
+      end,
+      server
+    )
+  end
+
+  @doc false
+  # Runs one *internal* finding (`Dripstone.Tracker.Finding`) straight through the
+  # intake. Detection never calls this; it exists for tests that need a specific
+  # alert, and mirrors how the sample data is replayed.
+  def apply_finding(attrs, server \\ __MODULE__) do
+    change(
+      fn state ->
+        with {:ok, result, new_state} <- Intake.run(state, attrs, DateTime.utc_now()) do
           {:ok, result, new_state, messages(result)}
         end
       end,
@@ -113,6 +126,15 @@ defmodule Dripstone.Tracker.SampleStore do
   def handle_call(:get_state, _from, state), do: {:reply, state, state}
   def handle_call({:put_state, new_state}, _from, _state), do: {:reply, :ok, new_state}
   def handle_call(:reset, _from, _state), do: {:reply, :ok, SampleLoader.load()}
+
+  defp report_messages(result) do
+    alerts =
+      Enum.flat_map(result.alerts, &messages(Map.put(&1, :network_id, &1.alert.network_id)))
+
+    networks = if result.network_id, do: [{:network_updated, result.network_id}], else: []
+    accounts = Enum.map(result.account_ids, &{:account_updated, &1})
+    Enum.uniq(alerts ++ networks ++ accounts)
+  end
 
   defp messages(%{action: :ignored}), do: []
 

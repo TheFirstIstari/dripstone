@@ -6,6 +6,8 @@ defmodule Dripstone.Tracker.Network do
   is non-nil only once an analyst has renamed it (which protects the name from
   detection updates). `removed_account_ids` lists members an analyst removed, which
   later findings must not re-add. A network merged into another has `retired_into`.
+  `assessment` is the latest decision-model assessment from group and trend findings
+  (coordination, relation, trajectory), or `nil` if never assessed.
   """
 
   alias Dripstone.Tracker.Evidence
@@ -21,6 +23,7 @@ defmodule Dripstone.Tracker.Network do
     :last_activity_at,
     :retired_into,
     :inserted_at,
+    :assessment,
     status: :suspected,
     confidence: 0,
     member_ids: [],
@@ -51,6 +54,7 @@ defmodule Dripstone.Tracker.Network do
           removed_account_ids: [String.t()],
           related_ids: [String.t()],
           retired_into: String.t() | nil,
-          inserted_at: DateTime.t() | nil
+          inserted_at: DateTime.t() | nil,
+          assessment: map() | nil
         }
 end

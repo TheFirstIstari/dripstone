@@ -7,7 +7,7 @@ defmodule Dripstone.Tracker.Simulator do
   `first_assess` ms) it queues a `Dripstone.Workers.AssessWorker` job for one of a
   few stub handles. The job runs the real pipeline: stub adapter → `Scorer.assess`
   (which calls the AI if `OPENCODE_API_KEY` is set, otherwise heuristics only) →
-  `Tracker.record_assessment/1`.
+  `Tracker.report_finding/1` (an account finding).
 
   It also stands in for ingestion: every `interval` ms it marks the Healthy sample
   feeds as having just received an item, so they don't go quiet (and turn

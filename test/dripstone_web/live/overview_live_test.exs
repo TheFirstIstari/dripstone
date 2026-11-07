@@ -69,7 +69,7 @@ defmodule DripstoneWeb.OverviewLiveTest do
       {:ok, view, _html} = live(conn, "/")
 
       {:ok, %{alert: alert}} =
-        Tracker.report_finding(%{
+        SampleStore.apply_finding(%{
           trigger: "promotion_shift",
           severity: "high",
           title: "Live shift",

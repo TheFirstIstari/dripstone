@@ -13,6 +13,7 @@ defmodule Dripstone.Tracker do
     * `{:alert_raised, alert}`: a new alert
     * `{:alert_updated, alert}`: an existing alert changed
     * `{:network_updated, network_id}`: a network changed
+    * `{:account_updated, account_id}`: an account changed (from a finding)
   """
 
   alias Dripstone.Tracker.{Curation, Decisions, Queries, SampleStore}
@@ -24,20 +25,16 @@ defmodule Dripstone.Tracker do
   ## Detection
 
   @doc """
-  Reports a finding from detection. See `openspec/docs/DETECTION_INTERFACE.md` for the
-  fields and results.
+  Reports a finding from detection: an account, group or trend finding carrying
+  heuristics and the decision model's answers. See
+  `openspec/docs/DETECTION_INTERFACE.md` for the fields, rules and results.
+
+  Returns `{:ok, %{kind, finding_id, alerts: [%{action, alert}], network_id,
+  account_ids, skipped, reason}}` or `{:error, errors}` (field => messages). A rejected
+  finding changes nothing.
   """
   @spec report_finding(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
   def report_finding(attrs), do: SampleStore.report_finding(attrs)
-
-  @doc """
-  Records the scorer's result for one handle (interim, until the intake format is
-  agreed): `%{feed_id:, handle:, posts:, assessment:}`, where `assessment` is what
-  `Dripstone.Scorer.assess/2` returned for `posts`. Updates the account and raises
-  or updates a placeholder alert. See `Dripstone.Tracker.Assessments`.
-  """
-  @spec record_assessment(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
-  def record_assessment(attrs), do: SampleStore.record_assessment(attrs)
 
   ## Reads
 
