@@ -5,8 +5,13 @@ defmodule Dripstone.AIClient do
   a mock reply so dev/test/CI never depend on the GPU box.
   """
 
+  require Logger
+
   def complete(prompt, opts \\ []) do
-    base = System.get_env("INTERNAL_AI_URL", "http://desktop:8000/v1")
+    base =
+      System.get_env("INTERNAL_AI_URL", "http://desktop:8000/v1")
+      |> String.trim_trailing("/")
+
     model = Keyword.get(opts, :model, System.get_env("INTERNAL_AI_MODEL", "Qwen/Qwen3-8B-AWQ"))
 
     body = %{
@@ -23,9 +28,12 @@ defmodule Dripstone.AIClient do
         {:ok, content}
 
       _ ->
+        Logger.warning("AIClient falling back to mock reply (non-200/error)")
         {:ok, "[mock] #{prompt}"}
     end
   rescue
-    _ -> {:ok, "[mock] #{prompt}"}
+    _ ->
+      Logger.warning("AIClient falling back to mock reply (exception)")
+      {:ok, "[mock] #{prompt}"}
   end
 end

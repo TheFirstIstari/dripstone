@@ -35,3 +35,8 @@ dripstone-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Local env secrets — never commit.
+/.env
+/.env.local
+!/.env.example
+
