@@ -59,6 +59,7 @@ defmodule DripstoneWeb.Router do
       live "/networks/:id", NetworkLive.Show
       live "/accounts", AccountLive.Index
       live "/accounts/:id", AccountLive.Show
+      live "/digest", DigestLive
       live "/feeds", FeedLive.Index
     end
 

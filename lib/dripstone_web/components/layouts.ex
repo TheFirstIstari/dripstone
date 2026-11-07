@@ -15,6 +15,7 @@ defmodule DripstoneWeb.Layouts do
     {:alerts, "Alerts", "/alerts", "hero-bell-alert"},
     {:networks, "Networks", "/networks", "hero-share"},
     {:accounts, "Accounts", "/accounts", "hero-user-group"},
+    {:digest, "Digest", "/digest", "hero-newspaper"},
     {:feeds, "Feeds", "/feeds", "hero-signal"}
   ]
 
