@@ -145,6 +145,8 @@
 html {
   background-color: var(--color-canvas);
   color: var(--color-ink);
+  /* Scrollbars follow the theme (inherited by every scroll area) */
+  scrollbar-color: var(--color-line-strong) transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

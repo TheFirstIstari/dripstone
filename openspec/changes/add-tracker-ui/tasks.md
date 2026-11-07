@@ -55,8 +55,8 @@
 
 ## 9. Account screens
 
-- [ ] 9.1 Implement `AccountLive.Index` with search, platform, risk and network filters, sorting, 50-row pages, a total, and an empty state with clear-filters. Verify with `mix test test/dripstone_web/live/account_live/index_test.exs`, covering combined filters, URL restore, ignored unknown params, the default sort, and page 2.
-- [ ] 9.2 Implement `AccountLive.Show`: the header with the feed-built external link (`target="_blank" rel="noopener noreferrer"`), signals by contribution, linked accounts with types and strength, networks, recent posts with domains, an "Add to network…" picker, and empty states. Verify with `mix test test/dripstone_web/live/account_live/show_test.exs`, including a Mastodon handle and profile URL, and adding to a network.
+- [x] 9.1 Implement `AccountLive.Index` with search, platform, risk and network filters, sorting, 50-row pages, a total, and an empty state with clear-filters. Verify with `mix test test/dripstone_web/live/account_live/index_test.exs`, covering combined filters, URL restore, ignored unknown params, the default sort, and page 2.
+- [x] 9.2 Implement `AccountLive.Show`: the header with the feed-built external link (`target="_blank" rel="noopener noreferrer"`), signals by contribution, linked accounts with types and strength, networks, recent posts with domains, an "Add to network…" picker, and empty states. Verify with `mix test test/dripstone_web/live/account_live/show_test.exs`, including a Mastodon handle and profile URL, and adding to a network.
 
 ## 10. Feeds screen
 

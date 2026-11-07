@@ -412,7 +412,7 @@ defmodule DripstoneWeb.CoreComponents do
           </tr>
         </thead>
         <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
-          <tr :if={@empty != []} class="hidden only:table-row">
+          <tr :if={@empty != []} id={"#{@id}-empty"} class="hidden only:table-row">
             <td colspan={length(@col) + if(@action != [], do: 1, else: 0)}>
               {render_slot(@empty)}
             </td>
