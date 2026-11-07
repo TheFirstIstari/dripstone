@@ -1,0 +1,241 @@
+{
+  "version": "2026-11-07",
+  "description": "Hand-built demo corpus: linked promo accounts on x and reddit, their Jev-style relation findings, and the links those findings justify. Loads through Dripstone.Tracker.Intake so the overview renders linked networks with relation labels.",
+  "accounts": [
+    {
+      "id": "show-ring-1",
+      "feed_id": "x",
+      "handle": "dealring_1",
+      "display_name": "Deal Ring One",
+      "risk_score": 82,
+      "signals": [
+        {
+          "name": "Repost ring",
+          "explanation": "Reposts identical promo text minutes after ring members.",
+          "contribution": 45
+        }
+      ],
+      "posts": [
+        {
+          "post_id": "show-r1-p2",
+          "posted_at": "2026-11-06T09:04:00Z",
+          "text": "Flash deal, today only https://deals-a.example/go",
+          "domain": "deals-a.example"
+        },
+        {
+          "post_id": "show-r1-p1",
+          "posted_at": "2026-11-06T09:00:00Z",
+          "text": "Flash deal, today only https://deals-a.example/go",
+          "domain": "deals-a.example"
+        }
+      ]
+    },
+    {
+      "id": "show-ring-2",
+      "feed_id": "x",
+      "handle": "dealring_2",
+      "display_name": "Deal Ring Two",
+      "risk_score": 79,
+      "signals": [
+        {
+          "name": "Repost ring",
+          "explanation": "Reposts identical promo text minutes after ring members.",
+          "contribution": 42
+        }
+      ],
+      "posts": [
+        {
+          "post_id": "show-r2-p2",
+          "posted_at": "2026-11-06T09:06:00Z",
+          "text": "Flash deal, today only https://deals-a.example/go",
+          "domain": "deals-a.example"
+        },
+        {
+          "post_id": "show-r2-p1",
+          "posted_at": "2026-11-06T09:02:00Z",
+          "text": "Flash deal, today only https://deals-a.example/go",
+          "domain": "deals-a.example"
+        }
+      ]
+    },
+    {
+      "id": "show-link-1",
+      "feed_id": "reddit",
+      "handle": "linkwatcher",
+      "display_name": "Link Watcher",
+      "risk_score": 64,
+      "signals": [
+        {
+          "name": "Shared links",
+          "explanation": "Posts the same coupon domain as the ring accounts.",
+          "contribution": 30
+        }
+      ],
+      "posts": [
+        {
+          "post_id": "show-l1-p1",
+          "posted_at": "2026-11-06T10:15:00Z",
+          "text": "Coupon thread: same offer as the ring https://deals-a.example/go",
+          "domain": "deals-a.example"
+        }
+      ]
+    },
+    {
+      "id": "show-timer-1",
+      "feed_id": "x",
+      "handle": "clockwork_promo",
+      "display_name": "Clockwork Promo",
+      "risk_score": 71,
+      "signals": [
+        {
+          "name": "Fixed schedule",
+          "explanation": "Posts on the hour, every hour, alongside ring members.",
+          "contribution": 38
+        }
+      ],
+      "posts": [
+        {
+          "post_id": "show-t1-p2",
+          "posted_at": "2026-11-06T11:00:00Z",
+          "text": "Hourly drop https://deals-b.example/hourly",
+          "domain": "deals-b.example"
+        },
+        {
+          "post_id": "show-t1-p1",
+          "posted_at": "2026-11-06T10:00:00Z",
+          "text": "Hourly drop https://deals-b.example/hourly",
+          "domain": "deals-b.example"
+        }
+      ]
+    },
+    {
+      "id": "show-timer-2",
+      "feed_id": "x",
+      "handle": "clockwork_deals",
+      "display_name": "Clockwork Deals",
+      "risk_score": 68,
+      "signals": [
+        {
+          "name": "Fixed schedule",
+          "explanation": "Posts on the hour, every hour, alongside ring members.",
+          "contribution": 35
+        }
+      ],
+      "posts": [
+        {
+          "post_id": "show-t2-p2",
+          "posted_at": "2026-11-06T11:00:30Z",
+          "text": "Hourly drop https://deals-b.example/hourly",
+          "domain": "deals-b.example"
+        },
+        {
+          "post_id": "show-t2-p1",
+          "posted_at": "2026-11-06T10:00:30Z",
+          "text": "Hourly drop https://deals-b.example/hourly",
+          "domain": "deals-b.example"
+        }
+      ]
+    },
+    {
+      "id": "show-lone-1",
+      "feed_id": "reddit",
+      "handle": "casual_reader",
+      "display_name": "Casual Reader",
+      "risk_score": 12,
+      "signals": [],
+      "posts": [
+        {
+          "post_id": "show-c1-p1",
+          "posted_at": "2026-11-06T08:20:00Z",
+          "text": "Just here for the discussion, no links today.",
+          "domain": null
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "trigger": "new_network",
+      "severity": "high",
+      "title": "Sunrise Repost Ring detected with 88% confidence",
+      "observed_at": "2026-11-06T09:30:00Z",
+      "new_network": {
+        "id": "net-showcase-ring",
+        "name": "Sunrise Repost Ring",
+        "member_ids": ["show-ring-1", "show-ring-2", "show-link-1"],
+        "confidence": 88,
+        "platforms": ["x", "reddit"],
+        "main_domain": "deals-a.example"
+      },
+      "evidence": [
+        {
+          "explanation": "show-ring-1 and show-ring-2 reposted identical promo text within minutes (Jev relation repost-ring, confidence 0.91).",
+          "strength": "strong",
+          "kind": "repost_ring",
+          "relation": "repost-ring",
+          "confidence": 0.91,
+          "account_ids": ["show-ring-1", "show-ring-2"]
+        },
+        {
+          "explanation": "show-link-1 amplifies the same coupon domain (Jev relation shared-link, confidence 0.74).",
+          "strength": "moderate",
+          "kind": "shared_link",
+          "relation": "shared-link",
+          "confidence": 0.74,
+          "account_ids": ["show-ring-1", "show-link-1"]
+        }
+      ],
+      "links": [
+        {"a": "show-ring-1", "b": "show-ring-2", "relation": "repost-ring", "strength": "strong"},
+        {"a": "show-ring-1", "b": "show-link-1", "relation": "shared-link", "strength": "moderate"}
+      ]
+    },
+    {
+      "trigger": "network_growth",
+      "severity": "medium",
+      "title": "Sunrise Repost Ring gained 2 timing-synced accounts",
+      "observed_at": "2026-11-06T11:30:00Z",
+      "network_id": "net-showcase-ring",
+      "network_updates": {
+        "add_member_ids": ["show-timer-1", "show-timer-2"]
+      },
+      "evidence": [
+        {
+          "explanation": "show-timer-1 and show-timer-2 post the same link within a minute of each other, every hour (Jev relation timing-sync, confidence 0.83).",
+          "strength": "strong",
+          "kind": "timing_sync",
+          "relation": "timing-sync",
+          "confidence": 0.83,
+          "account_ids": ["show-timer-1", "show-timer-2"]
+        }
+      ],
+      "links": [
+        {"a": "show-timer-1", "b": "show-timer-2", "relation": "timing-sync", "strength": "strong"}
+      ]
+    },
+    {
+      "trigger": "new_network",
+      "severity": "low",
+      "title": "Casual Reader looks organic (no relation found)",
+      "observed_at": "2026-11-06T12:00:00Z",
+      "new_network": {
+        "id": "net-showcase-lone",
+        "name": "Solo Watch",
+        "member_ids": ["show-lone-1"],
+        "confidence": 12,
+        "platforms": ["reddit"],
+        "main_domain": null
+      },
+      "evidence": [
+        {
+          "explanation": "No coordination with the ring accounts (Jev relation none, confidence 0.95).",
+          "strength": "weak",
+          "kind": "other",
+          "relation": "none",
+          "confidence": 0.95,
+          "account_ids": ["show-lone-1"]
+        }
+      ]
+    }
+  ]
+}
