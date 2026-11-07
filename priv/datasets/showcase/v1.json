@@ -1,0 +1,155 @@
+{
+  "version": "2026-11-07",
+  "description": "Hand-built demo corpus: linked promo accounts and the Jev-style group findings (repost-ring, shared-link, timing-sync, none relations) that justify their links. Loads through Report/Rules, exactly as detection reports, so the overview renders linked networks with relation labels.",
+  "findings": [
+    {
+      "kind": "account",
+      "observed_at": "2026-11-06T09:00:00Z",
+      "model": "jev-1.13",
+      "account": {"feed_id": "x", "handle": "dealring_1"},
+      "posts": [
+        {"id": "show-r1-p1", "published_at": "2026-11-06T09:00:00Z", "urls": ["https://deals-a.example/go"], "text": "Flash deal, today only https://deals-a.example/go"},
+        {"id": "show-r1-p2", "published_at": "2026-11-06T09:04:00Z", "urls": ["https://deals-a.example/go"], "text": "Flash deal, today only https://deals-a.example/go"}
+      ],
+      "heuristics": {"score": 82, "labels": ["repost_ring"], "domains": [{"domain": "deals-a.example", "share": 1.0}]},
+      "answers": {
+        "is_bot": {"type": "noul", "noul": 0.83},
+        "topic": {"type": "choice", "choice": "shopping", "confidence": 0.9, "probabilities": {"shopping": 0.9, "other": 0.1}},
+        "spam": {"type": "score", "score": 2, "confidence": 0.8, "legend": {"0": "not spam", "1": "somewhat spammy", "2": "heavy spam"}, "probabilities": {"0": 0, "1": 0, "2": 1}}
+      }
+    },
+    {
+      "kind": "account",
+      "observed_at": "2026-11-06T09:02:00Z",
+      "model": "jev-1.13",
+      "account": {"feed_id": "x", "handle": "dealring_2"},
+      "posts": [
+        {"id": "show-r2-p1", "published_at": "2026-11-06T09:02:00Z", "urls": ["https://deals-a.example/go"], "text": "Flash deal, today only https://deals-a.example/go"},
+        {"id": "show-r2-p2", "published_at": "2026-11-06T09:06:00Z", "urls": ["https://deals-a.example/go"], "text": "Flash deal, today only https://deals-a.example/go"}
+      ],
+      "heuristics": {"score": 79, "labels": ["repost_ring"], "domains": [{"domain": "deals-a.example", "share": 1.0}]},
+      "answers": {
+        "is_bot": {"type": "noul", "noul": 0.8},
+        "topic": {"type": "choice", "choice": "shopping", "confidence": 0.85, "probabilities": {"shopping": 0.85, "other": 0.15}},
+        "spam": {"type": "score", "score": 2, "confidence": 0.75, "legend": {"0": "not spam", "1": "somewhat spammy", "2": "heavy spam"}, "probabilities": {"0": 0, "1": 0, "2": 1}}
+      }
+    },
+    {
+      "kind": "account",
+      "observed_at": "2026-11-06T10:15:00Z",
+      "model": "jev-1.13",
+      "account": {"feed_id": "reddit", "handle": "linkwatcher"},
+      "posts": [
+        {"id": "show-l1-p1", "published_at": "2026-11-06T10:15:00Z", "urls": ["https://deals-a.example/go"], "text": "Coupon thread: same offer as the ring"}
+      ],
+      "heuristics": {"score": 64, "labels": ["high_link_ratio"], "domains": [{"domain": "deals-a.example", "share": 1.0}]},
+      "answers": {
+        "is_bot": {"type": "noul", "noul": 0.6},
+        "topic": {"type": "choice", "choice": "shopping", "confidence": 0.8, "probabilities": {"shopping": 0.8, "other": 0.2}},
+        "spam": {"type": "score", "score": 1, "confidence": 0.7, "legend": {"0": "not spam", "1": "somewhat spammy", "2": "heavy spam"}, "probabilities": {"0": 0, "1": 0.6, "2": 0.4}}
+      }
+    },
+    {
+      "kind": "account",
+      "observed_at": "2026-11-06T10:00:00Z",
+      "model": "jev-1.13",
+      "account": {"feed_id": "x", "handle": "clockwork_promo"},
+      "posts": [
+        {"id": "show-t1-p1", "published_at": "2026-11-06T10:00:00Z", "urls": ["https://deals-b.example/hourly"], "text": "Hourly drop"},
+        {"id": "show-t1-p2", "published_at": "2026-11-06T11:00:00Z", "urls": ["https://deals-b.example/hourly"], "text": "Hourly drop"}
+      ],
+      "heuristics": {"score": 71, "labels": ["regular_timing"], "domains": [{"domain": "deals-b.example", "share": 1.0}]},
+      "answers": {
+        "is_bot": {"type": "noul", "noul": 0.75},
+        "topic": {"type": "choice", "choice": "shopping", "confidence": 0.8, "probabilities": {"shopping": 0.8, "other": 0.2}},
+        "spam": {"type": "score", "score": 1, "confidence": 0.7, "legend": {"0": "not spam", "1": "somewhat spammy", "2": "heavy spam"}, "probabilities": {"0": 0, "1": 0.7, "2": 0.3}}
+      }
+    },
+    {
+      "kind": "account",
+      "observed_at": "2026-11-06T10:00:30Z",
+      "model": "jev-1.13",
+      "account": {"feed_id": "x", "handle": "clockwork_deals"},
+      "posts": [
+        {"id": "show-t2-p1", "published_at": "2026-11-06T10:00:30Z", "urls": ["https://deals-b.example/hourly"], "text": "Hourly drop"},
+        {"id": "show-t2-p2", "published_at": "2026-11-06T11:00:30Z", "urls": ["https://deals-b.example/hourly"], "text": "Hourly drop"}
+      ],
+      "heuristics": {"score": 68, "labels": ["regular_timing"], "domains": [{"domain": "deals-b.example", "share": 1.0}]},
+      "answers": {
+        "is_bot": {"type": "noul", "noul": 0.72},
+        "topic": {"type": "choice", "choice": "shopping", "confidence": 0.8, "probabilities": {"shopping": 0.8, "other": 0.2}},
+        "spam": {"type": "score", "score": 1, "confidence": 0.7, "legend": {"0": "not spam", "1": "somewhat spammy", "2": "heavy spam"}, "probabilities": {"0": 0, "1": 0.7, "2": 0.3}}
+      }
+    },
+    {
+      "kind": "account",
+      "observed_at": "2026-11-06T08:20:00Z",
+      "model": "jev-1.13",
+      "account": {"feed_id": "reddit", "handle": "casual_reader"},
+      "posts": [
+        {"id": "show-c1-p1", "published_at": "2026-11-06T08:20:00Z", "urls": [], "text": "Just here for the discussion, no links today."}
+      ],
+      "heuristics": {"score": 12, "labels": []},
+      "answers": {
+        "is_bot": {"type": "noul", "noul": 0.05},
+        "topic": {"type": "choice", "choice": "other", "confidence": 0.9, "probabilities": {"other": 0.9, "shopping": 0.1}},
+        "spam": {"type": "score", "score": 0, "confidence": 0.95, "legend": {"0": "not spam", "1": "somewhat spammy", "2": "heavy spam"}, "probabilities": {"0": 0.95, "1": 0.05, "2": 0}}
+      }
+    },
+    {
+      "kind": "group",
+      "observed_at": "2026-11-06T09:30:00Z",
+      "model": "jev-1.13",
+      "accounts": [
+        {"feed_id": "x", "handle": "dealring_1"},
+        {"feed_id": "x", "handle": "dealring_2"}
+      ],
+      "heuristics": {"domains": [{"domain": "deals-a.example", "share": 1.0}]},
+      "answers": {
+        "coordinated": {"type": "noul", "noul": 0.91},
+        "relation": {"type": "choice", "choice": "repost-ring", "confidence": 0.91, "probabilities": {"repost-ring": 0.91, "shared-link": 0.05, "timing-sync": 0.02, "audience-overlap": 0.02, "none": 0}}
+      }
+    },
+    {
+      "kind": "group",
+      "observed_at": "2026-11-06T10:30:00Z",
+      "model": "jev-1.13",
+      "accounts": [
+        {"feed_id": "x", "handle": "dealring_1"},
+        {"feed_id": "reddit", "handle": "linkwatcher"}
+      ],
+      "heuristics": {"domains": [{"domain": "deals-a.example", "share": 1.0}]},
+      "answers": {
+        "coordinated": {"type": "noul", "noul": 0.74},
+        "relation": {"type": "choice", "choice": "shared-link", "confidence": 0.74, "probabilities": {"repost-ring": 0.1, "shared-link": 0.74, "timing-sync": 0.1, "audience-overlap": 0.05, "none": 0.01}}
+      }
+    },
+    {
+      "kind": "group",
+      "observed_at": "2026-11-06T11:30:00Z",
+      "model": "jev-1.13",
+      "accounts": [
+        {"feed_id": "x", "handle": "clockwork_promo"},
+        {"feed_id": "x", "handle": "clockwork_deals"}
+      ],
+      "heuristics": {"domains": [{"domain": "deals-b.example", "share": 1.0}]},
+      "answers": {
+        "coordinated": {"type": "noul", "noul": 0.83},
+        "relation": {"type": "choice", "choice": "timing-sync", "confidence": 0.83, "probabilities": {"repost-ring": 0.05, "shared-link": 0.05, "timing-sync": 0.83, "audience-overlap": 0.05, "none": 0.02}}
+      }
+    },
+    {
+      "kind": "group",
+      "observed_at": "2026-11-06T12:00:00Z",
+      "model": "jev-1.13",
+      "accounts": [
+        {"feed_id": "x", "handle": "dealring_1"},
+        {"feed_id": "reddit", "handle": "casual_reader"}
+      ],
+      "answers": {
+        "coordinated": {"type": "noul", "noul": 0.05},
+        "relation": {"type": "choice", "choice": "none", "confidence": 0.95, "probabilities": {"repost-ring": 0.01, "shared-link": 0.01, "timing-sync": 0.01, "audience-overlap": 0.02, "none": 0.95}}
+      }
+    }
+  ]
+}
