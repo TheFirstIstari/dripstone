@@ -128,6 +128,12 @@ defmodule Dripstone.Tracker.AssessmentsTest do
     assert {:error, %{assessment: [_]}} =
              Assessments.record(%State{}, %{"feed_id" => "x", "handle" => "promo"}, @now)
 
+    assert {:error, %{assessment: errors}} =
+             Assessments.record(%State{}, attrs(%{ai_answers: "junk", source: 42}), @now)
+
+    assert "ai_answers must be a map or nil" in errors
+    assert "source must be an atom, a string, or nil" in errors
+
     assert {:error, %{base: [_]}} = Assessments.record(%State{}, "nope", @now)
 
     # Prior good state still records fine afterwards.

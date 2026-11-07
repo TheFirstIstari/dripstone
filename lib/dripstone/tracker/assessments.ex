@@ -91,6 +91,15 @@ defmodule Dripstone.Tracker.Assessments do
   defp posts?(posts), do: is_list(posts) and Enum.all?(posts, &is_map/1)
   defp labels?(labels), do: is_list(labels) and Enum.all?(labels, &is_binary/1)
 
+  defp answers?(nil), do: true
+  defp answers?(%{}), do: true
+  defp answers?(_), do: false
+
+  defp source?(nil), do: true
+  defp source?(source) when is_atom(source), do: true
+  defp source?(source) when is_binary(source), do: true
+  defp source?(_), do: false
+
   defp check_assessment(errors, assessment) when is_map(assessment) do
     errors
     |> check(:assessment, fetch(assessment, :score), &is_number/1, "score must be a number")
@@ -99,6 +108,18 @@ defmodule Dripstone.Tracker.Assessments do
       fetch(assessment, :labels),
       &labels?/1,
       "labels must be a list of strings"
+    )
+    |> check(
+      :assessment,
+      fetch(assessment, :ai_answers),
+      &answers?/1,
+      "ai_answers must be a map or nil"
+    )
+    |> check(
+      :assessment,
+      fetch(assessment, :source),
+      &source?/1,
+      "source must be an atom, a string, or nil"
     )
   end
 
