@@ -36,6 +36,7 @@ defmodule DripstoneWeb.Nav do
     DripstoneWeb.NetworkLive.Show => :networks,
     DripstoneWeb.AccountLive.Index => :accounts,
     DripstoneWeb.AccountLive.Show => :accounts,
+    DripstoneWeb.DigestLive => :digest,
     DripstoneWeb.FeedLive.Index => :feeds
   }
 

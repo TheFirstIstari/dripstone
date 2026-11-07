@@ -14,6 +14,7 @@ defmodule DripstoneWeb.ShellTest do
     {"/alerts", "alerts", "Alerts"},
     {"/networks", "networks", "Networks"},
     {"/accounts", "accounts", "Accounts"},
+    {"/digest", "digest", "Digest"},
     {"/feeds", "feeds", "Feeds"}
   ]
 

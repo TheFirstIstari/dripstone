@@ -52,6 +52,20 @@ defmodule Dripstone.Tracker.Intake do
     else
       {state, network, skipped} = upsert_network(state, network, finding, now)
       {state, alert, action} = upsert_alert(state, network, finding, dismissal, now)
+
+      state =
+        if action == :merged,
+          do:
+            State.add_history(
+              state,
+              network.id,
+              :system,
+              @detection,
+              "New evidence on open alert “#{alert.title}”",
+              now
+            ),
+          else: state
+
       state = if dismissal, do: reopen(state, network, alert, now), else: state
       {:ok, result(action, alert, network.id, skipped, nil), state}
     end
