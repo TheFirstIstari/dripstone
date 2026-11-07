@@ -22,6 +22,10 @@ defmodule Dripstone.Tracker.Intake do
   @detection "Detection"
   @severity_rank %{low: 1, medium: 2, high: 3}
 
+  # Repeat findings on the same open alert would grow `evidence` without bound,
+  # so the merge below keeps only the newest entries.
+  @max_evidence 100
+
   @type result :: %{
           action: :created | :merged | :ignored,
           alert: Alert.t() | nil,
@@ -188,7 +192,7 @@ defmodule Dripstone.Tracker.Intake do
           alert
           | title: finding.title,
             severity: max_severity(alert.severity, finding.severity),
-            evidence: Enum.uniq(alert.evidence ++ finding.evidence),
+            evidence: merge_evidence(alert.evidence, finding.evidence),
             observed_at: latest(alert.observed_at, finding.observed_at),
             updated_at: now,
             ai_rationale: finding.ai_rationale || alert.ai_rationale,
@@ -243,6 +247,8 @@ defmodule Dripstone.Tracker.Intake do
   end
 
   defp max_severity(a, b), do: if(@severity_rank[b] > @severity_rank[a], do: b, else: a)
+
+  defp merge_evidence(old, new), do: Enum.take(Enum.uniq(old ++ new), -@max_evidence)
 
   defp latest(nil, at), do: at
   defp latest(a, b), do: if(DateTime.after?(b, a), do: b, else: a)
