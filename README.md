@@ -3,9 +3,12 @@
 ## Setup
 
 * `mise install` — install pinned toolchain
-* `docker compose up -d db` — start Postgres
-* `mix ecto.setup` — create/migrate/seed the database
-* `mix phx.server` — start the Phoenix endpoint at [`localhost:4000`](http://localhost:4000)
+* `mise run db-up` — start Postgres
+* `mise run db-setup` — create/migrate/seed the database
+* `mise run dev` — start the Phoenix endpoint at [`localhost:4000`](http://localhost:4000)
+* `mise run test` — run tests
+* `mise run ci` — mirror CI (lint + build + test)
+* `mise tasks ls` — discover all commands
 * See `docs/CACHYOS.md` for CachyOS workstation notes
 
 To start your Phoenix server:
