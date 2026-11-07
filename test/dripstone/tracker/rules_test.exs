@@ -143,6 +143,22 @@ defmodule Dripstone.Tracker.RulesTest do
       [posts] = Map.values(state.posts)
       assert Enum.map(posts, &{&1.post_id, &1.text}) == [{"x3", "c"}, {"x2", "b2"}, {"x1", "a"}]
     end
+
+    test "posts with unparseable timestamps are kept at the end, never dropped" do
+      posts = [
+        %{"id" => "x1", "published_at" => DateTime.to_iso8601(later(1))},
+        %{"id" => "x3", "published_at" => "not a date"},
+        %{"id" => "x2", "published_at" => DateTime.to_iso8601(later(2))}
+      ]
+
+      {_, state} = run(%State{}, account("p", %{"posts" => posts}))
+
+      [stored] = Map.values(state.posts)
+
+      assert [%{post_id: "x2"}, %{post_id: "x1"}, %{post_id: "x3", posted_at: nil}] = stored
+      assert [%{last_seen_at: last_seen}] = Map.values(state.accounts)
+      assert last_seen == later(2)
+    end
   end
 
   describe "group findings" do

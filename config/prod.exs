@@ -25,6 +25,9 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 # Disable Swoosh Local Memory Storage
 config :swoosh, local: false
 
+# Never boot sample data in prod: invented findings must not ship (#50).
+config :dripstone, :load_sample_data, false
+
 # Do not print debug messages in production
 config :logger, level: :info
 

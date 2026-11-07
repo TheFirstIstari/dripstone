@@ -6,7 +6,7 @@ defmodule DripstoneWeb.LoginGateTest do
   import Phoenix.LiveViewTest
   import Dripstone.AccountsFixtures
 
-  @screens ~w(/ /alerts /alerts/alert-1 /networks /networks/net-sunrise /accounts /accounts/acc-0001 /feeds)
+  @screens ~w(/alerts /alerts/alert-1 /networks /networks/net-sunrise /accounts /accounts/acc-0001 /feeds)
 
   describe "logged out" do
     for path <- @screens do
@@ -16,6 +16,14 @@ defmodule DripstoneWeb.LoginGateTest do
 
         assert flash["error"] == "You must log in to access this page."
       end
+    end
+
+    test "the root is a public landing page with a log-in link (200 for deploy checks)", %{
+      conn: conn
+    } do
+      assert {:ok, view, _html} = live(conn, "/")
+      assert has_element?(view, "#landing-log-in", "Log in")
+      refute has_element?(view, "#headline-counts")
     end
 
     test "the plain HTTP request is redirected too", %{conn: conn} do

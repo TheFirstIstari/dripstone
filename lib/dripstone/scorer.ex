@@ -10,7 +10,9 @@ defmodule Dripstone.Scorer do
 
   @state_cap 8_000
 
-  # shortcut: circadian/trend/holdout scoring hooks plug in here (issues #44-46 live elsewhere).
+  # shortcut: circadian/trend scoring hooks plug in here (issues #44-45 live elsewhere).
+  # Holdout discipline (issue #46): `test/fixtures/holdout_posts.json` is frozen and
+  # excluded from all scorer tuning; reported metrics come from that slice.
 
   @doc "Pure heuristics: volume (40) + link ratio (30) + timing regularity (30)."
   def score(posts) when is_list(posts) do
@@ -32,11 +34,18 @@ defmodule Dripstone.Scorer do
     %{score: round(min(total, 100)), labels: labels}
   end
 
+  def score(_posts), do: {:error, {:invalid_args, "posts must be a list"}}
+
   @doc """
-  Heuristics plus `AIClient.decide/3` (is_bot noul, topic choice, spam score,
-  coordinated noul, relation choice). On `{:error, _}` returns heuristics-only.
+  Heuristics plus `AIClient.decide/3` (is_bot noul, topic choice, spam score).
+  On `{:error, _}` returns heuristics-only.
   """
-  def assess(posts, opts \\ []) when is_list(posts) do
+  def assess(posts, opts \\ [])
+
+  def assess(posts, _opts) when not is_list(posts),
+    do: {:error, {:invalid_args, "posts must be a list"}}
+
+  def assess(posts, opts) when is_list(posts) do
     %{score: s, labels: l} = score(posts)
 
     case AIClient.decide(summarize(posts), questions(), Keyword.take(opts, [:plug, :model])) do
@@ -62,18 +71,6 @@ defmodule Dripstone.Scorer do
       spam: %{
         type: :score,
         instructions: "Rate spamminess 0-1: repetitive links, promo text, machine-like timing."
-      },
-      # Don't delete coordinated/relation (issue #53): openspec change add-jev-intake
-      # moves them into a group question set, `assess_group/2`, with Jev `criteria`.
-      # As sent today, Jev rejects the choice/score questions (HTTP 422, no criteria).
-      coordinated: %{
-        type: :noul,
-        instructions: "Do these accounts post in a coordinated way (synced timing, shared links)?"
-      },
-      relation: %{
-        type: :choice,
-        instructions: "Classify the relation between these accounts.",
-        choices: ["repost-ring", "shared-link", "timing-sync", "audience-overlap", "none"]
       }
     }
   end
@@ -81,12 +78,32 @@ defmodule Dripstone.Scorer do
   defp summarize(posts) do
     posts
     |> Enum.take(50)
-    |> Enum.map(fn p ->
-      "#{fetch(p, :handle)} @ #{fetch(p, :published_at)}: #{fetch(p, :text)} #{p |> urls() |> Enum.join(" ")}"
+    |> Enum.map(&line/1)
+    |> Enum.reduce_while({[], 0}, fn
+      line, {[], 0} ->
+        # Always keep the first line, even if over budget.
+        {:cont, {[line], byte_size(line) + 1}}
+
+      line, {[_ | _] = acc, size} ->
+        # +1 for the "\n" join separator.
+        if over_budget?(size, line) do
+          {:halt, {acc, size}}
+        else
+          {:cont, {[line | acc], size + byte_size(line) + 1}}
+        end
     end)
+    |> elem(0)
+    |> Enum.reverse()
     |> Enum.join("\n")
     |> String.slice(0, @state_cap)
   end
+
+  defp line(p) do
+    "#{fetch(p, :handle)} @ #{fetch(p, :published_at)}: #{fetch(p, :text)} #{p |> urls() |> Enum.join(" ")}"
+  end
+
+  # +1 for the "\n" join separator.
+  defp over_budget?(size, line), do: size + byte_size(line) + 1 > @state_cap
 
   defp link_ratio([]), do: 0.0
 

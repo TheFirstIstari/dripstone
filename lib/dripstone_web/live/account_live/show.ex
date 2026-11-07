@@ -225,7 +225,8 @@ defmodule DripstoneWeb.AccountLive.Show do
               </li>
               <li :for={{dom_id, post} <- @streams.posts} id={dom_id} class="space-y-1 px-4 py-3">
                 <div class="flex items-center justify-between gap-2 text-xs text-ink-faint">
-                  <.relative_time at={post.posted_at} />
+                  <.relative_time :if={post.posted_at} at={post.posted_at} />
+                  <span :if={is_nil(post.posted_at)} class="italic">date unknown</span>
                   <a
                     :if={post_url(@feed, @account, post)}
                     href={post_url(@feed, @account, post)}

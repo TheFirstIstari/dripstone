@@ -202,14 +202,18 @@ defmodule Dripstone.Tracker.Queries do
   defp last_activity(state, network) do
     network.member_ids
     |> Enum.flat_map(&Enum.take(Map.get(state.posts, &1, []), 1))
-    |> Enum.map(& &1.posted_at)
+    |> Enum.flat_map(&List.wrap(&1.posted_at))
     |> Enum.concat(List.wrap(network.last_activity_at))
     |> Enum.max(DateTime, fn -> nil end)
   end
 
   @doc false
   def heatmap(state, network) do
-    posts = Enum.flat_map(network.member_ids, &Map.get(state.posts, &1, []))
+    posts =
+      network.member_ids
+      |> Enum.flat_map(&Map.get(state.posts, &1, []))
+      |> Enum.filter(& &1.posted_at)
+
     cells = Enum.frequencies_by(posts, &{Date.day_of_week(&1.posted_at), &1.posted_at.hour})
     by_hour = Enum.frequencies_by(posts, & &1.posted_at.hour)
 

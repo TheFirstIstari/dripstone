@@ -6,10 +6,14 @@ defmodule Dripstone.Accounts.UserNotifier do
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do
+    from =
+      Application.get_env(:dripstone, Dripstone.Mailer)[:from] ||
+        System.get_env("MAIL_FROM", "noreply@localhost")
+
     email =
       new()
       |> to(recipient)
-      |> from({"Dripstone", "contact@example.com"})
+      |> from({"Dripstone", from})
       |> subject(subject)
       |> text_body(body)
 

@@ -32,6 +32,27 @@ defmodule Dripstone.ScorerTest do
     }
   end
 
+  # Frozen holdout slice (`test/fixtures/holdout_posts.json`, issue #46):
+  # excluded from all scorer tuning; reported metrics come from it.
+  defp holdout_posts do
+    path = Path.join([File.cwd!(), "test", "fixtures", "holdout_posts.json"])
+
+    path
+    |> File.read!()
+    |> Jason.decode!()
+    |> Enum.map(fn %{"published_at" => ts} = item ->
+      {:ok, dt, _} = DateTime.from_iso8601(ts)
+
+      %{
+        id: item["id"],
+        handle: item["handle"],
+        text: item["text"],
+        urls: item["urls"],
+        published_at: dt
+      }
+    end)
+  end
+
   test "score/1 empty posts scores zero with no labels" do
     assert %{score: 0, labels: []} = Dripstone.Scorer.score([])
   end
@@ -71,16 +92,14 @@ defmodule Dripstone.ScorerTest do
       assert Map.has_key?(body["questions"], "is_bot")
       assert Map.has_key?(body["questions"], "topic")
       assert Map.has_key?(body["questions"], "spam")
-      assert Map.has_key?(body["questions"], "coordinated")
-      assert Map.has_key?(body["questions"], "relation")
+      refute Map.has_key?(body["questions"], "coordinated")
+      refute Map.has_key?(body["questions"], "relation")
 
       Req.Test.json(conn, %{
         "answers" => %{
           "is_bot" => %{"type" => "noul", "noul" => 0.8},
           "topic" => %{"type" => "choice", "choice" => "crypto"},
-          "spam" => %{"type" => "score", "score" => 0.7},
-          "coordinated" => %{"type" => "noul", "noul" => 0.6},
-          "relation" => %{"type" => "choice", "choice" => "shared-link"}
+          "spam" => %{"type" => "score", "score" => 0.7}
         }
       })
     end)
@@ -90,7 +109,22 @@ defmodule Dripstone.ScorerTest do
     assert is_integer(result.score)
     assert is_list(result.labels)
     assert result.ai_answers["topic"]["choice"] == "crypto"
-    assert result.ai_answers["relation"]["choice"] == "shared-link"
+    refute Map.has_key?(result.ai_answers, "relation")
+  end
+
+  test "score/1 and assess/2 reject non-list input" do
+    assert {:error, {:invalid_args, _}} = Dripstone.Scorer.score(nil)
+    assert {:error, {:invalid_args, _}} = Dripstone.Scorer.score(%{})
+    assert {:error, {:invalid_args, _}} = Dripstone.Scorer.assess(nil)
+    assert {:error, {:invalid_args, _}} = Dripstone.Scorer.assess(%{}, plug: {Req.Test, @stub})
+  end
+
+  test "holdout slice scores deterministically and is never tuned against" do
+    posts = holdout_posts()
+    assert length(posts) == 6
+    assert %{score: s1} = Dripstone.Scorer.score(posts)
+    assert %{score: s2} = Dripstone.Scorer.score(posts)
+    assert s1 == s2
   end
 
   test "assess/2 falls back to heuristics-only on AI error" do

@@ -1,7 +1,9 @@
 defmodule DripstoneWeb.OverviewLive do
   @moduledoc """
-  The landing screen: headline counts, the 30-day alert trend, newest open alerts,
-  recently active networks and feed health. Refreshes live on tracker changes.
+  The root screen. Logged-in analysts get the overview dashboard: headline counts,
+  the 30-day alert trend, newest open alerts, recently active networks and feed
+  health (refreshes live on tracker changes). Logged-out visitors get a public
+  landing page, so deploy checks see a 200.
   """
   use DripstoneWeb, :live_view
 
@@ -9,13 +11,17 @@ defmodule DripstoneWeb.OverviewLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:page_title, "Overview")
-     |> stream_configure(:alerts, dom_id: &"overview-alert-#{&1.alert.id}")
-     |> stream_configure(:networks, dom_id: &"overview-network-#{&1.network.id}")
-     |> stream_configure(:feeds, dom_id: &"feed-strip-#{&1.feed.id()}")
-     |> load()}
+    if socket.assigns.current_scope && socket.assigns.current_scope.user do
+      {:ok,
+       socket
+       |> assign(:page_title, "Overview")
+       |> stream_configure(:alerts, dom_id: &"overview-alert-#{&1.alert.id}")
+       |> stream_configure(:networks, dom_id: &"overview-network-#{&1.network.id}")
+       |> stream_configure(:feeds, dom_id: &"feed-strip-#{&1.feed.id()}")
+       |> load()}
+    else
+      {:ok, assign(socket, :page_title, "Dripstone")}
+    end
   end
 
   @doc false
@@ -43,7 +49,9 @@ defmodule DripstoneWeb.OverviewLive do
   defp feed_border(_status), do: "border-line"
 
   @impl true
-  def render(assigns) do
+  # Logged-out visitors see a public landing page (200 for deploy checks);
+  # analysts see the dashboard below.
+  def render(%{current_scope: %{user: %Dripstone.Accounts.User{}}} = assigns) do
     ~H"""
     <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title="Overview">
@@ -190,6 +198,23 @@ defmodule DripstoneWeb.OverviewLive do
         </div>
       </section>
     </Layouts.app>
+    """
+  end
+
+  def render(assigns) do
+    ~H"""
+    <Layouts.flash_group flash={@flash} />
+    <main id="landing" class="mx-auto max-w-2xl px-6 py-24 text-center">
+      <h1 class="text-3xl font-semibold tracking-tight text-ink">Dripstone</h1>
+      <p class="mt-3 text-ink-muted">Coordinated-activity detection for analysts.</p>
+      <.link
+        navigate={~p"/users/log-in"}
+        id="landing-log-in"
+        class="mt-8 inline-block rounded-lg bg-accent px-4 py-2 font-medium text-accent-ink hover:bg-accent-strong"
+      >
+        Log in
+      </.link>
+    </main>
     """
   end
 end
