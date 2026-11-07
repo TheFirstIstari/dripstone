@@ -37,9 +37,9 @@ defmodule DripstoneWeb.LoginGateTest do
       assert redirected_to(conn) == "/alerts"
     end
 
-    test "the login and registration pages stay public", %{conn: conn} do
+    test "the login page stays public and registration is closed", %{conn: conn} do
       assert {:ok, _view, _html} = live(conn, "/users/log-in")
-      assert {:ok, _view, _html} = live(conn, "/users/register")
+      assert html_response(get(conn, "/users/register"), 404) =~ "Not Found"
     end
   end
 
