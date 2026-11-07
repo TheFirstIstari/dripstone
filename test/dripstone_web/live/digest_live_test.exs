@@ -24,31 +24,22 @@ defmodule DripstoneWeb.DigestLiveTest do
   end
 
   test "a fresh high-severity detection appears; quiet ones stay silent", %{conn: conn} do
-    for {id, severity} <- [{"net-big", "high"}, {"net-quiet", "low"}] do
+    noul = fn p -> %{"type" => "noul", "noul" => p} end
+
+    for {handles, p} <- [{["digesta", "digestb"], 0.95}, {["quieta", "quietb"], 0.5}] do
       assert {:ok, _} =
                Tracker.report_finding(%{
-                 trigger: "new_network",
-                 severity: severity,
-                 title: "#{id} detected",
-                 observed_at: DateTime.utc_now(),
-                 new_network: %{
-                   id: id,
-                   name: id,
-                   member_ids: ["acc-0001", "acc-0002"],
-                   confidence: 90,
-                   platforms: ["x"]
-                 },
-                 evidence: [
-                   %{explanation: "Shared links.", strength: "strong", account_ids: ["acc-0001"]}
-                 ]
+                 "kind" => "group",
+                 "observed_at" => DateTime.to_iso8601(DateTime.utc_now()),
+                 "accounts" => Enum.map(handles, &%{"feed_id" => "x", "handle" => &1}),
+                 "answers" => %{"coordinated" => noul.(p)}
                })
     end
 
     {:ok, view, _html} = live(conn, "/digest")
     html = render(view)
 
-    assert html =~ "Detected with 2 members (90% confidence)"
-    refute html =~ "net-quiet"
-    assert html =~ "digest-new_edge-net-big-"
+    assert html =~ "digest-new_edge-"
+    refute html =~ "quieta"
   end
 end
