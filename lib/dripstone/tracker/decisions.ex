@@ -37,7 +37,8 @@ defmodule Dripstone.Tracker.Decisions do
   @doc "Undoes a decision, restoring the alert's and network's previous statuses."
   def undo(%State{} = state, decision_id, now, by \\ @reviewer) do
     with {:ok, decision} <- fetch(state.decisions, decision_id),
-         %Alert{decision_id: ^decision_id} = alert <- state.alerts[decision.alert_id] do
+         %Alert{decision_id: ^decision_id} = alert <- state.alerts[decision.alert_id],
+         :ok <- network_unchanged(state, decision) do
       alert = %{alert | status: decision.previous_alert_status, decision_id: nil, updated_at: now}
       network = %{state.networks[decision.network_id] | status: decision.previous_network_status}
 
@@ -80,11 +81,12 @@ defmodule Dripstone.Tracker.Decisions do
         at: now,
         note: blank_to_nil(params[:note]),
         previous_alert_status: alert.status,
-        previous_network_status: network.status
+        previous_network_status: network.status,
+        resulting_network_status: network_status(state, network, alert, action)
       }
 
       alert = %{alert | status: alert_status(action), decision_id: id, updated_at: now}
-      network = %{network | status: network_status(state, network, alert, action)}
+      network = %{network | status: decision.resulting_network_status}
 
       state =
         %{
@@ -104,6 +106,18 @@ defmodule Dripstone.Tracker.Decisions do
       {:ok, %{alert: alert, decision: decision, network: network}, state,
        [{:alert_updated, alert}, {:network_updated, network.id}]}
     end
+  end
+
+  # The network may have changed since the decision (a newer decision on another
+  # alert of the same network). Undoing then would clobber that newer outcome.
+  defp network_unchanged(state, decision) do
+    current = state.networks[decision.network_id] && state.networks[decision.network_id].status
+
+    if current == decision.resulting_network_status or
+         (is_nil(decision.resulting_network_status) and
+            current == decision.previous_network_status),
+       do: :ok,
+       else: {:error, :superseded}
   end
 
   defp alert_status(:confirm), do: :confirmed

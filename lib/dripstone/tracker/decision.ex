@@ -14,7 +14,8 @@ defmodule Dripstone.Tracker.Decision do
     :at,
     :note,
     :previous_alert_status,
-    :previous_network_status
+    :previous_network_status,
+    :resulting_network_status
   ]
 
   @type t :: %__MODULE__{
@@ -26,6 +27,7 @@ defmodule Dripstone.Tracker.Decision do
           at: DateTime.t(),
           note: String.t() | nil,
           previous_alert_status: atom() | nil,
-          previous_network_status: atom() | nil
+          previous_network_status: atom() | nil,
+          resulting_network_status: atom() | nil
         }
 end
