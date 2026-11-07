@@ -22,12 +22,11 @@ jobs:
           path: ~/.local/share/mise
           key: mise-${{ runner.os }}-${{ hashFiles('mise.toml') }}
       - uses: jdx/mise-action@v2
-      - name: Cache hex/mix/deps/build
+      - name: Cache hex/deps/build
         uses: actions/cache@v4
         with:
           path: |
             ~/.hex
-            ~/.mix
             deps
             _build/test
           key: mix-${{ runner.os }}-elixir1.20-otp28-${{ hashFiles('mix.lock', 'mise.toml') }}
@@ -37,7 +36,7 @@ jobs:
       - run: mix local.hex --force && mix local.rebar --force
       - run: mix deps.get --only test
       - run: mix format --check-formatted
-      - run: mix compile --warnings-as-errors --force
+      - run: mix compile --warnings-as-errors
       - run: docker compose up -d db
       - run: |
           for i in $(seq 1 30); do
