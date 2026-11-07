@@ -136,6 +136,10 @@ config :dripstone, Oban,
   repo: Dripstone.Repo,
   queues: [default: 10]
 
+# Sample data boots the tracker until persistence lands (#48). Prod must not
+# present invented findings, so prod.exs disables this.
+config :dripstone, :load_sample_data, true
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
