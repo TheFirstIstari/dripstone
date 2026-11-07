@@ -11,7 +11,6 @@ defmodule Dripstone.Application do
       [
         DripstoneWeb.Telemetry,
         Dripstone.Repo,
-        {DNSCluster, query: Application.get_env(:dripstone, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Dripstone.PubSub},
         {Oban, Application.fetch_env!(:dripstone, Oban)},
         DripstoneWeb.LoginThrottle,
