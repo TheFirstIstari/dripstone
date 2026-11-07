@@ -76,13 +76,28 @@ defmodule Dripstone.Tracker.Simulator do
     {:noreply, state}
   end
 
+  @window_seconds 24 * 3_600
+
   defp refresh_feeds(state) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     feed_health =
       Enum.map(state.feed_health, fn
         %{status: :healthy} = health ->
-          %{health | last_item_at: now, items_24h: health.items_24h + 1}
+          # Rolling 24h window: reset the count once the window expires.
+          health =
+            if expired?(health.window_started_at, now),
+              do: %{health | items_24h: 0, window_started_at: now},
+              else: health
+
+          window_started_at = health.window_started_at || now
+
+          %{
+            health
+            | last_item_at: now,
+              items_24h: health.items_24h + 1,
+              window_started_at: window_started_at
+          }
 
         health ->
           health
@@ -90,4 +105,8 @@ defmodule Dripstone.Tracker.Simulator do
 
     {:ok, :refreshed, %{state | feed_health: feed_health}, []}
   end
+
+  # Unknown window start: keep the existing count and start the window now.
+  defp expired?(nil, _now), do: false
+  defp expired?(started_at, now), do: DateTime.diff(now, started_at) >= @window_seconds
 end
