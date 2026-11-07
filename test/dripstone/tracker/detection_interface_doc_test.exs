@@ -15,7 +15,14 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
 
   setup do
     previous = SampleStore.get_state()
-    :ok = SampleStore.put_state(%State{})
+    # The doc examples run against an empty app; acc-0001..acc-0006 are the
+    # members those examples report, so seed them as tracked accounts first.
+    accounts =
+      for id <- ~w(acc-0001 acc-0002 acc-0003 acc-0004 acc-0005 acc-0006),
+          into: %{},
+          do: {id, %Dripstone.Tracker.Account{id: id, feed_id: "x", handle: id}}
+
+    :ok = SampleStore.put_state(%State{accounts: accounts})
     on_exit(fn -> SampleStore.put_state(previous) end)
     :ok
   end

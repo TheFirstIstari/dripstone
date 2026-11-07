@@ -9,7 +9,7 @@ defmodule Dripstone.Tracker.ReportFindingTest do
 
   setup do
     previous = SampleStore.get_state()
-    :ok = SampleStore.put_state(%State{})
+    :ok = SampleStore.put_state(state_with_accounts())
     on_exit(fn -> SampleStore.put_state(previous) end)
     :ok = Tracker.subscribe()
     :ok

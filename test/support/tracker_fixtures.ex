@@ -3,7 +3,7 @@ defmodule Dripstone.TrackerFixtures do
   # Finding payloads and states for intake tests. Payloads use atom keys; tests
   # that need JSON-style string keys convert them with `stringify/1`.
 
-  alias Dripstone.Tracker.{Decision, Intake, Network, State}
+  alias Dripstone.Tracker.{Account, Decision, Intake, Network, State}
 
   @t0 ~U[2026-11-01 12:00:00Z]
 
@@ -58,8 +58,20 @@ defmodule Dripstone.TrackerFixtures do
 
   @doc "A state containing network `net-1` (created via the intake) and its alert."
   def state_with_network(overrides \\ %{}) do
-    {:ok, _result, state} = Intake.run(%State{}, new_network_finding(overrides), @t0)
+    founding = new_network_finding(overrides)
+    {:ok, _result, state} = Intake.run(state_with_accounts(founding), founding, @t0)
     state
+  end
+
+  @doc "A state pre-seeded with accounts covering every member id in `finding`."
+  def state_with_accounts(finding \\ new_network_finding()) do
+    ids =
+      List.flatten([
+        get_in(finding, [:new_network, :member_ids]) || [],
+        get_in(finding, [:network_updates, :add_member_ids]) || []
+      ])
+
+    %State{accounts: Map.new(ids, &{&1, %Account{id: &1, feed_id: "x", handle: &1}})}
   end
 
   def update_network(state, id, fun),

@@ -15,7 +15,7 @@ defmodule Dripstone.Tracker.IntakeTest do
 
   describe "new networks" do
     test "creates a Suspected network, an open alert and a system history entry" do
-      {result, state} = run!(%State{}, new_network_finding(), t0())
+      {result, state} = run!(state_with_accounts(), new_network_finding(), t0())
 
       assert %{action: :created, network_id: "net-1", skipped: [], reason: nil} = result
 
@@ -71,7 +71,8 @@ defmodule Dripstone.Tracker.IntakeTest do
           }
         })
 
-      {_result, state} = run!(state_with_network(), attrs, at(2))
+      state = Map.update!(state_with_network(), :accounts, &Map.merge(&1, state_with_accounts(attrs).accounts))
+      {_result, state} = run!(state, attrs, at(2))
       network = state.networks["net-1"]
 
       assert network.member_ids == ["a1", "a2", "a3", "a4"]
@@ -166,6 +167,8 @@ defmodule Dripstone.Tracker.IntakeTest do
       attrs =
         finding("net-1", %{observed_at: at(5), network_updates: %{add_member_ids: ["a9"]}})
 
+      state = Map.update!(state, :accounts, &Map.merge(&1, state_with_accounts(attrs).accounts))
+
       assert {:ok, %{action: :ignored, alert: nil, reason: :predates_dismissal}, ^state} =
                Intake.run(state, attrs, at(20))
     end
@@ -185,6 +188,7 @@ defmodule Dripstone.Tracker.IntakeTest do
         end)
 
       attrs = finding("net-1", %{network_updates: %{add_member_ids: ["a3", "a5"]}})
+      state = Map.update!(state, :accounts, &Map.merge(&1, state_with_accounts(attrs).accounts))
       {result, state} = run!(state, attrs, at(2))
 
       assert state.networks["net-1"].member_ids == ["a1", "a2", "a5"]
