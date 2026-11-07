@@ -45,7 +45,7 @@ defmodule DripstoneWeb.OverviewLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title="Overview">
         <:subtitle>What needs attention, and what Dripstone is tracking.</:subtitle>
       </.page_header>

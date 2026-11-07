@@ -449,7 +449,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
   @impl true
   def render(%{network: nil} = assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.not_found title="Network not found" back={~p"/networks"} back_label="Back to networks" />
     </Layouts.app>
     """
@@ -457,7 +457,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
 
   def render(%{network: %{retired_into: target}} = assigns) when not is_nil(target) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title={@network.name} back={~p"/networks"} back_label="Networks" />
       <.card id="merged-notice" class="max-w-xl">
         <p class="flex items-center gap-2 font-medium text-ink">
@@ -480,7 +480,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.link
         navigate={~p"/networks"}
         class="mb-3 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"

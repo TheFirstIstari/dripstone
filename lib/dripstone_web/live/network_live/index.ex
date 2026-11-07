@@ -71,7 +71,7 @@ defmodule DripstoneWeb.NetworkLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title="Networks">
         <:subtitle>Suspected bot farms, and the evidence linking their accounts.</:subtitle>
         <:actions>

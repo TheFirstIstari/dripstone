@@ -26,7 +26,7 @@ defmodule DripstoneWeb.FeedLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title="Feeds">
         <:subtitle>Health of each platform feed.</:subtitle>
       </.page_header>

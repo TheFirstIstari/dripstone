@@ -112,7 +112,7 @@ defmodule DripstoneWeb.AlertLive.Show do
   @impl true
   def render(%{detail: nil} = assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.not_found title="Alert not found" back={~p"/alerts"} back_label="Back to alerts" />
     </Layouts.app>
     """
@@ -120,7 +120,7 @@ defmodule DripstoneWeb.AlertLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <div
         id="alert-shortcuts"
         phx-hook=".AlertShortcuts"

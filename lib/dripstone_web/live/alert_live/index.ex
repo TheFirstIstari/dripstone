@@ -69,7 +69,7 @@ defmodule DripstoneWeb.AlertLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title="Alerts">
         <:subtitle>
           Alerts raised by detection. Review the evidence, then confirm or dismiss.

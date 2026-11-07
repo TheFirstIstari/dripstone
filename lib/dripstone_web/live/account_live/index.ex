@@ -111,7 +111,7 @@ defmodule DripstoneWeb.AccountLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title="Accounts">
         <:subtitle>Every tracked account across the feeds.</:subtitle>
         <:actions>

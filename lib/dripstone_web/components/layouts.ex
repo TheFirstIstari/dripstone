@@ -124,7 +124,10 @@ defmodule DripstoneWeb.Layouts do
             />
           </.form>
 
-          <div class="ml-auto"><.theme_toggle /></div>
+          <div class="ml-auto flex items-center gap-2 sm:gap-3">
+            <.user_menu current_scope={@current_scope} />
+            <.theme_toggle />
+          </div>
         </header>
 
         <main id="main" class="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -137,6 +140,51 @@ defmodule DripstoneWeb.Layouts do
       <.flash_group flash={@flash} />
       <.toast_stack toasts={@nav.toasts} />
     </div>
+    """
+  end
+
+  attr :current_scope, :map, default: nil
+
+  # Signed-in analyst (email, Settings, Log out) or Log in / Register links.
+  defp user_menu(assigns) do
+    ~H"""
+    <nav id="user-menu" class="flex items-center gap-1 text-sm" aria-label="Account">
+      <%= if @current_scope && @current_scope.user do %>
+        <span
+          id="user-email"
+          class="hidden max-w-48 truncate px-2 text-ink-muted md:inline"
+          title={@current_scope.user.email}
+        >
+          {@current_scope.user.email}
+        </span>
+        <.link
+          href={~p"/users/settings"}
+          class="rounded-lg px-2 py-1.5 text-ink-muted hover:bg-surface-raised hover:text-ink"
+        >
+          Settings
+        </.link>
+        <.link
+          href={~p"/users/log-out"}
+          method="delete"
+          class="rounded-lg px-2 py-1.5 text-ink-muted hover:bg-surface-raised hover:text-ink"
+        >
+          Log out
+        </.link>
+      <% else %>
+        <.link
+          href={~p"/users/register"}
+          class="hidden rounded-lg px-2 py-1.5 text-ink-muted hover:bg-surface-raised hover:text-ink sm:inline"
+        >
+          Register
+        </.link>
+        <.link
+          href={~p"/users/log-in"}
+          class="rounded-lg bg-accent px-3 py-1.5 font-medium text-accent-ink hover:bg-accent-strong"
+        >
+          Log in
+        </.link>
+      <% end %>
+    </nav>
     """
   end
 

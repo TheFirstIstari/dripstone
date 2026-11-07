@@ -20,7 +20,8 @@ defmodule DripstoneWeb.Router do
   scope "/", DripstoneWeb do
     pipe_through :browser
 
-    live_session :tracker, on_mount: DripstoneWeb.Nav do
+    live_session :tracker,
+      on_mount: [{DripstoneWeb.UserAuth, :mount_current_scope}, DripstoneWeb.Nav] do
       live "/", OverviewLive
       live "/alerts", AlertLive.Index
       live "/alerts/:id", AlertLive.Show

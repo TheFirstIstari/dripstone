@@ -73,7 +73,7 @@ defmodule DripstoneWeb.AccountLive.Show do
   @impl true
   def render(%{account: nil} = assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.not_found title="Account not found" back={~p"/accounts"} back_label="Back to accounts" />
     </Layouts.app>
     """
@@ -81,7 +81,7 @@ defmodule DripstoneWeb.AccountLive.Show do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} nav={@nav}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title={handle(@account)} back={~p"/accounts"} back_label="Accounts">
         <:subtitle>{@account.display_name}</:subtitle>
         <:meta>
