@@ -160,3 +160,13 @@ are reported against it.
 #### Scenario: Showcase gain with flat holdout reports the flat result
 - **WHEN** a scorer change improves showcase metrics but holdout stays flat
 - **THEN** the flat holdout result is the one reported
+
+### Requirement: Parallel development
+Each GitHub issue SHALL ship as its own PR against main so work proceeds in
+parallel; every PR SHALL be CI-green before merge; merge order SHALL follow
+the epic's execution waves (dependencies first); a PR SHALL close only its own
+issue(s) via keywords and never bundle unrelated fixes.
+
+#### Scenario: Parallel scorer and fetcher PRs merge cleanly
+- **WHEN** two contributors open a scorer PR and a fetcher PR the same day
+- **THEN** both merge against main with no conflicts and green CI on each
