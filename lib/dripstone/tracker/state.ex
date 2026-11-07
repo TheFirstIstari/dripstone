@@ -2,13 +2,15 @@ defmodule Dripstone.Tracker.State do
   @moduledoc """
   Everything the tracker knows, as plain data. The store holds one of these;
   the intake and other operations are pure functions from one state to the next.
-  `history` is newest first. `seq` feeds `next_id/2`.
+
+  `posts` is keyed by account id (newest first). `history` is newest first.
+  `seq` feeds `next_id/2`. `cache` holds derived data such as graph layouts.
   """
 
   alias Dripstone.Tracker.{Alert, Decision, HistoryEntry, Network, Note}
 
   defstruct accounts: %{},
-            posts: [],
+            posts: %{},
             links: [],
             feed_health: [],
             networks: %{},
@@ -16,11 +18,12 @@ defmodule Dripstone.Tracker.State do
             decisions: %{},
             notes: %{},
             history: [],
+            cache: %{},
             seq: 0
 
   @type t :: %__MODULE__{
           accounts: map(),
-          posts: list(),
+          posts: %{String.t() => list()},
           links: list(),
           feed_health: list(),
           networks: %{String.t() => Network.t()},
@@ -28,6 +31,7 @@ defmodule Dripstone.Tracker.State do
           decisions: %{String.t() => Decision.t()},
           notes: %{String.t() => Note.t()},
           history: [HistoryEntry.t()],
+          cache: map(),
           seq: non_neg_integer()
         }
 

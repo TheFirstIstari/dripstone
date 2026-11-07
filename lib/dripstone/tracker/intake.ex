@@ -151,9 +151,12 @@ defmodule Dripstone.Tracker.Intake do
             joined_at: Map.merge(network.joined_at, Map.new(new_ids, &{&1, at}))
         }
 
-        {network, ["Added #{length(new_ids)} members" | changes], skipped}
+        {network, ["Added #{members_text(length(new_ids))}" | changes], skipped}
     end
   end
+
+  defp members_text(1), do: "1 member"
+  defp members_text(n), do: "#{n} members"
 
   defp rename(acc, nil), do: acc
   defp rename({%Network{name: name} = n, changes, skipped}, name), do: {n, changes, skipped}

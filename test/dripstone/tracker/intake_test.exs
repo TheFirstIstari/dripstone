@@ -81,7 +81,7 @@ defmodule Dripstone.Tracker.IntakeTest do
       assert network.last_activity_at == at(1)
 
       summaries = state |> history("net-1") |> Enum.map(& &1.summary)
-      assert "Added 1 members" in summaries
+      assert "Added 1 member" in summaries
       assert "Confidence 86% → 91%" in summaries
       assert Enum.all?(history(state, "net-1"), &(&1.actor == :system))
     end

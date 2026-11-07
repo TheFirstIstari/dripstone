@@ -7,23 +7,32 @@ defmodule Dripstone.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      DripstoneWeb.Telemetry,
-      Dripstone.Repo,
-      {DNSCluster, query: Application.get_env(:dripstone, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: Dripstone.PubSub},
-      {Oban, Application.fetch_env!(:dripstone, Oban)},
-      Dripstone.Tracker.SampleStore,
-      # Start a worker by calling: Dripstone.Worker.start_link(arg)
-      # {Dripstone.Worker, arg},
-      # Start to serve requests, typically the last entry
-      DripstoneWeb.Endpoint
-    ]
+    children =
+      [
+        DripstoneWeb.Telemetry,
+        Dripstone.Repo,
+        {DNSCluster, query: Application.get_env(:dripstone, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: Dripstone.PubSub},
+        {Oban, Application.fetch_env!(:dripstone, Oban)},
+        Dripstone.Tracker.SampleStore
+      ] ++
+        simulator() ++
+        [
+          # Start to serve requests, typically the last entry
+          DripstoneWeb.Endpoint
+        ]
 
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Dripstone.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Dev-only fake detection; see Dripstone.Tracker.Simulator.
+  defp simulator do
+    if Application.get_env(:dripstone, :simulate_alerts, false),
+      do: [Dripstone.Tracker.Simulator],
+      else: []
   end
 
   # Tell Phoenix to update the endpoint configuration

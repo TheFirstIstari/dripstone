@@ -3,19 +3,23 @@ defmodule Dripstone.Tracker do
   The tracker context: the one interface the UI uses, and the one entry point
   detection reports findings through.
 
-  Backed by `Dripstone.Tracker.SampleStore` for now; the functions are meant to
-  keep their signatures when real storage replaces it.
+  Backed by `Dripstone.Tracker.SampleStore` (replayed sample data) for now; the
+  functions are meant to keep their signatures when real storage replaces it.
 
-  Changes are broadcast on the `"tracker"` PubSub topic:
+  Changes return `{:ok, result}` or `{:error, reason}`, where `reason` is an atom
+  (`:not_found`, `:retired`, `:not_open`, ...) or an `Ecto.Changeset` for invalid
+  text input. They are broadcast on the `"tracker"` PubSub topic:
 
     * `{:alert_raised, alert}`: a new alert
     * `{:alert_updated, alert}`: an existing alert changed
     * `{:network_updated, network_id}`: a network changed
   """
 
-  alias Dripstone.Tracker.SampleStore
+  alias Dripstone.Tracker.{Curation, Decisions, Queries, SampleStore}
 
   @topic "tracker"
+
+  ## Detection
 
   @doc """
   Reports a finding from detection. See `docs/DETECTION_INTERFACE.md` for the
@@ -24,10 +28,76 @@ defmodule Dripstone.Tracker do
   @spec report_finding(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
   def report_finding(attrs), do: SampleStore.report_finding(attrs)
 
+  ## Reads
+
+  @doc "Maps a 0–100 risk score to `:low`, `:medium` or `:high`."
+  defdelegate risk_level(score), to: Queries
+
+  def overview, do: read(&Queries.overview(&1, DateTime.utc_now()))
+  def list_alerts(params \\ %{}), do: read(&Queries.list_alerts(&1, params))
+  def get_alert(id), do: read(&Queries.get_alert(&1, id))
+  def alert_neighbors(id, params \\ %{}), do: read(&Queries.alert_neighbors(&1, id, params))
+  def list_networks(params \\ %{}), do: read(&Queries.list_networks(&1, params))
+  def get_network(id), do: read(&Queries.get_network(&1, id))
+  def network_graph(id), do: SampleStore.network_graph(id)
+  def list_accounts(params \\ %{}), do: read(&Queries.list_accounts(&1, params))
+  def get_account(id), do: read(&Queries.get_account(&1, id))
+  def feed_health, do: read(&Queries.feed_health/1)
+  def list_tags(prefix \\ ""), do: read(&Queries.list_tags(&1, prefix))
+
+  ## Decisions
+
+  @doc "Changeset for the optional decision note."
+  defdelegate decision_note_changeset(attrs \\ %{}), to: Decisions, as: :note_changeset
+
+  def confirm_alert(id, attrs \\ %{}), do: change(&Decisions.confirm(&1, id, attrs, now()))
+  def dismiss_alert(id, attrs \\ %{}), do: change(&Decisions.dismiss(&1, id, attrs, now()))
+  def undo_decision(decision_id), do: change(&Decisions.undo(&1, decision_id, now()))
+
+  ## Curation
+
+  defdelegate name_changeset(attrs \\ %{}), to: Curation
+  defdelegate tag_changeset(attrs \\ %{}), to: Curation
+  defdelegate note_changeset(attrs \\ %{}), to: Curation
+
+  def rename_network(id, attrs), do: change(&Curation.rename(&1, id, attrs, now()))
+  def add_tag(id, attrs), do: change(&Curation.add_tag(&1, id, attrs, now()))
+  def remove_tag(id, tag), do: change(&Curation.remove_tag(&1, id, tag, now()))
+  def add_note(id, attrs), do: change(&Curation.add_note(&1, id, attrs, now()))
+  def add_members(id, account_ids), do: change(&Curation.add_members(&1, id, account_ids, now()))
+
+  def remove_members(id, account_ids),
+    do: change(&Curation.remove_members(&1, id, account_ids, now()))
+
+  def move_members(from_id, to_id, account_ids),
+    do: change(&Curation.move_members(&1, from_id, to_id, account_ids, now()))
+
+  def merge_networks(source_id, target_id),
+    do: change(&Curation.merge(&1, source_id, target_id, now()))
+
+  def split_network(id, account_ids, attrs),
+    do: change(&Curation.split(&1, id, account_ids, attrs, now()))
+
+  def relate_networks(a_id, b_id, note \\ nil),
+    do: change(&Curation.relate(&1, a_id, b_id, note, now()))
+
+  def unrelate_networks(a_id, b_id), do: change(&Curation.unrelate(&1, a_id, b_id, now()))
+
+  ## Sample data
+
+  @doc "Regenerates the sample data relative to now (resets all changes)."
+  def reset_sample_data!, do: :ok = SampleStore.reset()
+
+  ## PubSub
+
   @doc "Subscribes the calling process to tracker changes."
   @spec subscribe() :: :ok | {:error, term()}
   def subscribe, do: Phoenix.PubSub.subscribe(Dripstone.PubSub, @topic)
 
   @doc false
   def broadcast(message), do: Phoenix.PubSub.broadcast(Dripstone.PubSub, @topic, message)
+
+  defp read(fun), do: SampleStore.read(fun)
+  defp change(fun), do: SampleStore.change(fun)
+  defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end

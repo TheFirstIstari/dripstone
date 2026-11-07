@@ -55,6 +55,10 @@ config :dripstone, DripstoneWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :dripstone, dev_routes: true
 
+# Fake detection that reports a new finding every 45s, to see live updates in the UI.
+# Off unless started with DRIPSTONE_SIMULATE=1 (see Dripstone.Tracker.Simulator).
+config :dripstone, simulate_alerts: System.get_env("DRIPSTONE_SIMULATE") == "1"
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 
