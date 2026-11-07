@@ -14,9 +14,9 @@
 
 ## 3. Findings intake
 
-- [ ] 3.1 Implement finding validation as a schemaless changeset (catalog trigger, at least one evidence item, severity, known or new network, `observed_at`). Verify with unit tests for each rejection in `specs/alert-intake/spec.md`, and that a rejected finding leaves state unchanged.
-- [ ] 3.2 Implement the intake pipeline (design §2): network creation and updates with analyst protections, de-duplication with severity escalation, the dismissal and stale rule, `System` history entries, the result map (`action`, `skipped`), and the PubSub broadcast. Verify with table-driven tests for every alert-intake scenario: repeated findings merging, a re-alert marked previously dismissed, a stale finding ignored, a removed member skipped, an analyst name kept, and a broadcast received.
-- [ ] 3.3 Write `docs/DETECTION_INTERFACE.md` with every finding field, the validation errors, the result shape, and one example finding per initial trigger type. Verify with a test that parses each example out of the doc and reports it successfully through `report_finding/1`.
+- [x] 3.1 Implement finding validation as a schemaless changeset (catalog trigger, at least one evidence item, severity, known or new network, `observed_at`). Verify with unit tests for each rejection in `specs/alert-intake/spec.md`, and that a rejected finding leaves state unchanged.
+- [x] 3.2 Implement the intake pipeline (design §2): network creation and updates with analyst protections, de-duplication with severity escalation, the dismissal and stale rule, `System` history entries, the result map (`action`, `skipped`), and the PubSub broadcast. Verify with table-driven tests for every alert-intake scenario: repeated findings merging, a re-alert marked previously dismissed, a stale finding ignored, a removed member skipped, an analyst name kept, and a broadcast received.
+- [x] 3.3 Write `docs/DETECTION_INTERFACE.md` with every finding field, the validation errors, the result shape, and one example finding per initial trigger type. Verify with a test that parses each example out of the doc and reports it successfully through `report_finding/1`.
 
 ## 4. Tracker context and store
 
