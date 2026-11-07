@@ -73,6 +73,12 @@ config :dripstone, Dripstone.AIClient,
   model: System.get_env("INTERNAL_AI_MODEL", "jev-1.13-free"),
   api_key: System.get_env("OPENCODE_API_KEY")
 
+# Oban background jobs. Test env overrides with `testing: :manual`;
+# prod re-asserts at runtime (see runtime.exs) so releases pick it up.
+config :dripstone, Oban,
+  repo: Dripstone.Repo,
+  queues: [default: 10]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

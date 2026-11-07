@@ -12,6 +12,7 @@ defmodule Dripstone.Application do
       Dripstone.Repo,
       {DNSCluster, query: Application.get_env(:dripstone, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Dripstone.PubSub},
+      {Oban, Application.fetch_env!(:dripstone, Oban)},
       # Start a worker by calling: Dripstone.Worker.start_link(arg)
       # {Dripstone.Worker, arg},
       # Start to serve requests, typically the last entry

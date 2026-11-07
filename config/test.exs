@@ -26,6 +26,10 @@ config :dripstone, Dripstone.Mailer, adapter: Swoosh.Adapters.Test
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 
+# Oban runs inline in test — jobs never touch the DB or execute
+# unless the test explicitly enqueues/performs them.
+config :dripstone, Oban, testing: :manual
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 
