@@ -51,6 +51,10 @@ defmodule Dripstone.Tracker do
   def list_accounts(params \\ %{}), do: read(&Queries.list_accounts(&1, params))
   def get_account(id), do: read(&Queries.get_account(&1, id))
   def feed_health, do: read(&Queries.feed_health(&1, DateTime.utc_now()))
+
+  def change_digest(since \\ nil),
+    do: read(&Dripstone.Tracker.Digest.build(&1, DateTime.utc_now(), since))
+
   def list_tags(prefix \\ ""), do: read(&Queries.list_tags(&1, prefix))
 
   ## Decisions
