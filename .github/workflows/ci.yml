@@ -19,17 +19,6 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           cache: false
-      - name: Cache hex/deps/build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.hex
-            deps
-            _build/test
-          key: mix-${{ runner.os }}-elixir1.20-otp28-${{ hashFiles('mix.lock', 'mise.toml') }}
-          restore-keys: |
-            mix-${{ runner.os }}-elixir1.20-otp28-
-            mix-${{ runner.os }}-
       - run: mix local.hex --force && mix local.rebar --force
       - run: mix deps.get --only test
       - run: mix format --check-formatted
