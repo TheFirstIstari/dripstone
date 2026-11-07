@@ -4,14 +4,14 @@ defmodule Dripstone.Tracker.Post do
   feed to build a link; `domain` is the promoted domain, if the post links out.
   """
 
-  @enforce_keys [:id, :account_id, :post_id, :posted_at]
+  @enforce_keys [:id, :account_id, :post_id]
   defstruct [:id, :account_id, :post_id, :posted_at, :text, :domain]
 
   @type t :: %__MODULE__{
           id: String.t(),
           account_id: String.t(),
           post_id: String.t(),
-          posted_at: DateTime.t(),
+          posted_at: DateTime.t() | nil,
           text: String.t() | nil,
           domain: String.t() | nil
         }

@@ -63,8 +63,9 @@ defmodule Dripstone.Tracker.AssessmentsTest do
     assert account.assessment == %{ai_answers: @answers, source: :heuristics_plus_ai}
     assert account.last_seen_at == ~U[2026-11-01 11:00:00Z]
 
-    # The undated post is skipped; the rest are newest first.
-    assert [%{post_id: "x2", domain: nil}, %{post_id: "x1", domain: "deals.example"}] =
+    # Posts with unparseable timestamps are kept at the end with an explicit
+    # nil marker instead of being dropped; ordering never invents a time.
+    assert [%{post_id: "x2"}, %{post_id: "x1"}, %{post_id: "x3", posted_at: nil}] =
              state.posts[account.id]
 
     network = state.networks[network_id]
@@ -140,8 +141,9 @@ defmodule Dripstone.Tracker.AssessmentsTest do
     assert {:ok, _, state} =
              Assessments.record(state, %{attrs() | posts: fresh}, @now)
 
-    # Old x1 survives, x2 is refreshed to the newer batch, newest first.
-    assert [%{post_id: "x2"}, %{post_id: "x1"}, %{post_id: "x9"}] =
+    # Old x1 survives, x2 is refreshed to the newer batch, newest first;
+    # the undated x3 is kept at the end instead of dropped.
+    assert [%{post_id: "x2"}, %{post_id: "x1"}, %{post_id: "x9"}, %{post_id: "x3"}] =
              state.posts[account.id]
 
     [updated] = Map.values(state.accounts)
