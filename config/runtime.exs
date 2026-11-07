@@ -139,6 +139,7 @@ if config_env() == :prod do
     relay: System.get_env("SMTP_HOST", "localhost"),
     port: String.to_integer(System.get_env("SMTP_PORT", "25")),
     username: System.get_env("SMTP_USERNAME", ""),
+    password: System.get_env("SMTP_PASSWORD", ""),
     tls:
       (case System.get_env("SMTP_TLS", "always") do
          "never" -> :never
