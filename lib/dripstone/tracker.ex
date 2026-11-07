@@ -24,7 +24,7 @@ defmodule Dripstone.Tracker do
   ## Detection
 
   @doc """
-  Reports a finding from detection. See `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md` for the
+  Reports a finding from detection. See `openspec/docs/DETECTION_INTERFACE.md` for the
   fields and results.
   """
   @spec report_finding(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}

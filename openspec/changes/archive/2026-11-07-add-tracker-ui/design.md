@@ -185,7 +185,7 @@ The Networks and Accounts lists follow the inbox pattern: a filter bar over a st
 table with URL-kept filters (see specs). Feeds is a single table:
 
 ```
- Feeds              Feeds are added in code: see openspec/changes/add-tracker-ui/docs/FEEDS.md
+ Feeds              Feeds are added in code: see openspec/docs/FEEDS.md
  Platform   Status         Last item   24h items   Accounts   Last error
  X          ✓ Healthy      12s ago     18,204      402        —
  Telegram   ✕ Down         3h ago      1,102       97         401 Unauthorized · 3h ago
@@ -232,7 +232,7 @@ Structs (`Account`, `Network`, `Link`, `Signal`, `Post`, `Evidence`, `Alert`,
   5. a PubSub broadcast.
 - It returns `{:ok, %{alert: alert, action: :created | :merged, skipped: [...]}}` or
   `{:error, reasons}`.
-- `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md` documents every field and result, with one example per
+- `openspec/docs/DETECTION_INTERFACE.md` documents every field and result, with one example per
   trigger type. This is the document to agree with the detection owner. Changing it is
   expected; the UI shouldn't need to change when it does.
 
@@ -246,7 +246,7 @@ Structs (`Account`, `Network`, `Link`, `Signal`, `Post`, `Evidence`, `Alert`,
   `Dripstone.Alerts.trigger_types/0` and `get_trigger_type/1`.
 - Ids are strings, and filter params are matched against them, so no atoms are created
   from input.
-- `openspec/changes/add-tracker-ui/docs/TRIGGERS.md` explains how to add a type. Its detector lives on the detection side
+- `openspec/docs/TRIGGERS.md` explains how to add a type. Its detector lives on the detection side
   and reports findings with that id.
 
 ### 4. Feed registry
@@ -255,7 +255,7 @@ Structs (`Account`, `Network`, `Link`, `Signal`, `Post`, `Evidence`, `Alert`,
 - The registry is `config :dripstone, Dripstone.Feeds, feeds: [...]`, with the six
   modules under `lib/dripstone/feeds/`.
 - Unknown feed ids render as a plain label instead of crashing.
-- `openspec/changes/add-tracker-ui/docs/FEEDS.md` explains how to add a platform. Ingestion callbacks are left out until
+- `openspec/docs/FEEDS.md` explains how to add a platform. Ingestion callbacks are left out until
   the detection and ingestion design exists.
 
 ### 5. Sample data flows through the intake
@@ -362,7 +362,7 @@ is acceptable for an internal tool.
 
 - [The intake contract doesn't match what detection ends up producing] → It is one
   function over a plain map with a documented shape. Adapting means changing the map
-  mapping and the doc, not the UI. Review `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md` with the detection
+  mapping and the doc, not the UI. Review `openspec/docs/DETECTION_INTERFACE.md` with the detection
   owner early.
 - [Intake rules (dedupe, dismissal, protections) are subtle] → Table-driven unit tests per
   spec scenario, with the boot replay as an integration check.

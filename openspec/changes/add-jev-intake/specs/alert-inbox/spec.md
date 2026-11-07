@@ -13,6 +13,10 @@ it involves. The page SHALL also list the decision model's answers behind the al
 - **THEN** the Strong item is listed first, and each item shows its strength label,
   explanation and involved accounts
 
+#### Scenario: AI rationale is labeled
+- **WHEN** the alert includes an AI-written rationale
+- **THEN** it appears under a visible `AI-generated` label with its generation time
+
 #### Scenario: Answers behind the alert
 - **WHEN** an alert was raised from a finding with `coordinated` 0.88 and `relation`
   `shared-link` (confidence 0.70), answered by `jev-1.13`

@@ -56,7 +56,7 @@ defmodule DripstoneWeb.FeedLiveTest do
     assert has_element?(
              view,
              "#feeds-how-to-add",
-             "openspec/changes/add-tracker-ui/docs/FEEDS.md"
+             "openspec/docs/FEEDS.md"
            )
 
     refute has_element?(view, "#feeds button")

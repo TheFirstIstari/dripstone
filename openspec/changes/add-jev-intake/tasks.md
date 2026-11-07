@@ -2,11 +2,11 @@
 
 ## 1. Groundwork
 
-- [ ] 1.1 Move `FEEDS.md`, `TRIGGERS.md` and `DETECTION_INTERFACE.md` from `openspec/changes/add-tracker-ui/docs/` to `openspec/docs/`, and update every reference to the old path in code, tests, docs and UI text (`git grep "add-tracker-ui/docs"`). Then archive `add-tracker-ui` (`openspec archive add-tracker-ui`, CLI pinned to 1.16.0) so its capabilities exist under `openspec/specs/`. Verify that:
-  - `git grep "add-tracker-ui/docs"` finds nothing;
+- [x] 1.1 Move `FEEDS.md`, `TRIGGERS.md` and `DETECTION_INTERFACE.md` from `openspec/changes/add-tracker-ui/docs/` to `openspec/docs/`, and update every reference to the old path in code, tests, docs and UI text (`git grep "add-tracker-ui/docs"`). Then archive `add-tracker-ui` (`openspec archive add-tracker-ui`, CLI pinned to 1.16.0) so its capabilities exist under `openspec/specs/`. Verify that:
+  - `git grep "add-tracker-ui/docs"` finds nothing outside this change's own planning files (which describe the move);
   - `mix test` passes, including the doc test;
   - `openspec validate add-jev-intake --strict` passes with no "target spec does not exist" notes.
-- [ ] 1.2 Update the stale vLLM wording in `openspec/config.yaml` to say detection uses Jev via OpenCode Console. Verify with `openspec context --json`, which shows the new text.
+- [x] 1.2 Update the stale vLLM wording in `openspec/config.yaml` to say detection uses Jev via OpenCode Console. Verify with `openspec context --json`, which shows the new text.
 - [x] 1.3 Confirm the answer shape returned by the OpenCode Console proxy. One live call to `jev-1.13-free` with the key `public` (2026-11-07) used a `noul`, a `choice` and a `score` question with `criteria`. It returned HTTP 200 with the documented shapes; the scorer's current format returned HTTP 422 (see design.md Context). Group 2's parsing tests use the recorded shape as a fixture.
 
 ## 2. Answers and report validation

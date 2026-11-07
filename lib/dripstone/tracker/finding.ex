@@ -1,6 +1,6 @@
 defmodule Dripstone.Tracker.Finding do
   @moduledoc """
-  A validated finding reported by detection (see `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md`).
+  A validated finding reported by detection (see `openspec/docs/DETECTION_INTERFACE.md`).
 
   `cast/2` accepts a plain map with all-atom or all-string keys (so a decoded JSON
   payload works as-is) and validates it against the trigger catalog and the known

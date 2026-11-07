@@ -59,7 +59,7 @@ names, summaries, before/after comparisons, the other four trigger types). In de
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
-| `trigger` | yes | string | A trigger type id from the catalog (`openspec/changes/add-tracker-ui/docs/TRIGGERS.md`). |
+| `trigger` | yes | string | A trigger type id from the catalog (`openspec/docs/TRIGGERS.md`). |
 | `severity` | yes | string | `low`, `medium` or `high`. |
 | `title` | yes | string | Short headline shown in the alert list, up to 200 characters. |
 | `observed_at` | yes | ISO 8601 date-time | When detection observed the evidence. Used for the dismissal rule. |

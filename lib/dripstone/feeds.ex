@@ -7,7 +7,7 @@ defmodule Dripstone.Feeds do
       config :dripstone, Dripstone.Feeds, feeds: [Dripstone.Feeds.X, ...]
 
   Everything that shows or filters by platform reads this registry, so adding a
-  platform is one module plus one entry in that list. See `openspec/changes/add-tracker-ui/docs/FEEDS.md`.
+  platform is one module plus one entry in that list. See `openspec/docs/FEEDS.md`.
   """
 
   @doc "All registered feed modules, in configured order."
