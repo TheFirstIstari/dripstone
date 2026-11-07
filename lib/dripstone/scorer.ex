@@ -71,18 +71,6 @@ defmodule Dripstone.Scorer do
       spam: %{
         type: :score,
         instructions: "Rate spamminess 0-1: repetitive links, promo text, machine-like timing."
-      },
-      # Don't delete coordinated/relation (issue #53): openspec change add-jev-intake
-      # moves them into a group question set, `assess_group/2`, with Jev `criteria`.
-      # As sent today, Jev rejects the choice/score questions (HTTP 422, no criteria).
-      coordinated: %{
-        type: :noul,
-        instructions: "Do these accounts post in a coordinated way (synced timing, shared links)?"
-      },
-      relation: %{
-        type: :choice,
-        instructions: "Classify the relation between these accounts.",
-        choices: ["repost-ring", "shared-link", "timing-sync", "audience-overlap", "none"]
       }
     }
   end
