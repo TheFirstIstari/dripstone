@@ -7,7 +7,7 @@ defmodule Dripstone.Tracker.Assessments do
 
     * creates or updates the account: `risk_score` is the scorer's `score`, the
       signals are its `labels`, and its `ai_answers` and `source` are kept as-is;
-    * replaces the account's posts with the scored ones;
+    * merges the scored posts into the account's history (newest wins per post);
     * reports a `scorer_assessment` finding through `Dripstone.Tracker.Intake`, whose
       evidence is the scorer's raw output, one line per value.
 
@@ -163,7 +163,7 @@ defmodule Dripstone.Tracker.Assessments do
     do: %Signal{name: label, explanation: "Heuristic label from the scorer.", contribution: nil}
 
   defp posts(state, account_id, raw_posts) do
-    {posts, state} =
+    {fresh, state} =
       Enum.flat_map_reduce(raw_posts, state, fn raw, state ->
         case posted_at(fetch(raw, :published_at)) do
           nil ->
@@ -185,7 +185,14 @@ defmodule Dripstone.Tracker.Assessments do
         end
       end)
 
-    {Enum.sort_by(posts, & &1.posted_at, {:desc, DateTime}), state}
+    # Re-assessments merge into history: the new batch wins per platform post
+    # id, and the list stays newest-first.
+    merged =
+      (fresh ++ Map.get(state.posts, account_id, []))
+      |> Enum.uniq_by(& &1.post_id)
+      |> Enum.sort_by(& &1.posted_at, {:desc, DateTime})
+
+    {merged, state}
   end
 
   defp newest([]), do: nil

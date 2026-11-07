@@ -116,6 +116,38 @@ defmodule Dripstone.Tracker.AssessmentsTest do
     assert "score: 40" in Enum.map(second.evidence, & &1.explanation)
   end
 
+  test "re-assessment merges posts instead of replacing history" do
+    {:ok, _, state} = Assessments.record(%State{}, attrs(), @now)
+    [account] = Map.values(state.accounts)
+
+    fresh = [
+      %{
+        id: "x2",
+        handle: "promo",
+        text: "Edited",
+        urls: [],
+        published_at: ~U[2026-11-02 09:00:00Z]
+      },
+      %{
+        id: "x9",
+        handle: "promo",
+        text: "New",
+        urls: [],
+        published_at: ~U[2026-10-01 09:00:00Z]
+      }
+    ]
+
+    assert {:ok, _, state} =
+             Assessments.record(state, %{attrs() | posts: fresh}, @now)
+
+    # Old x1 survives, x2 is refreshed to the newer batch, newest first.
+    assert [%{post_id: "x2"}, %{post_id: "x1"}, %{post_id: "x9"}] =
+             state.posts[account.id]
+
+    [updated] = Map.values(state.accounts)
+    assert updated.last_seen_at == ~U[2026-11-02 09:00:00Z]
+  end
+
   test "string-keyed attrs are accepted; malformed attrs return errors without touching state" do
     stringy =
       attrs()
