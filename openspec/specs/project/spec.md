@@ -16,13 +16,15 @@ background jobs, as declared in `mix.exs` and `docker-compose.yml`.
 - **THEN** Phoenix ~> 1.8, Oban ~> 2.19, and a Postgres 17 `db` service are declared
 
 ### Requirement: Host topology
-The deployment SHALL use a CachyOS x86_64 host fronted by Tailscale + Caddy,
-with AI via OpenCode Console over HTTPS (no GPU node).
+The deployment SHALL use a CachyOS x86_64 host fronted by Cloudflare Tunnel,
+with public URL https://dripstone.dev and AI via OpenCode Console over HTTPS
+(no GPU node).
 
 #### Scenario: Topology documented
 - **WHEN** a contributor reads this spec
-- **THEN** the host (CachyOS x86_64), edge (Tailscale + Caddy), and AI path
-  (OpenCode Console over HTTPS, no GPU node) are identified
+- **THEN** the host (CachyOS x86_64), edge (Cloudflare Tunnel), public URL
+  (https://dripstone.dev), and AI path (OpenCode Console over HTTPS, no GPU
+  node) are identified
 
 ### Requirement: AI decisions endpoint
 The app SHALL call the Console systemone endpoint with
