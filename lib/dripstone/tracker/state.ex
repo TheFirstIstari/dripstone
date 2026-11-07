@@ -40,7 +40,13 @@ defmodule Dripstone.Tracker.State do
   def next_id(%__MODULE__{seq: seq} = state, prefix),
     do: {"#{prefix}-#{seq + 1}", %{state | seq: seq + 1}}
 
-  @doc "Records a history entry for a network."
+  @max_history 500
+
+  @doc "Maximum number of history entries kept (newest first)."
+  @spec max_history() :: pos_integer()
+  def max_history, do: @max_history
+
+  @doc "Records a history entry for a network, keeping only the newest entries."
   @spec add_history(t(), String.t(), :analyst | :system, String.t(), String.t(), DateTime.t()) ::
           t()
   def add_history(state, network_id, actor, by, summary, at) do
@@ -55,6 +61,6 @@ defmodule Dripstone.Tracker.State do
       summary: summary
     }
 
-    %{state | history: [entry | state.history]}
+    %{state | history: Enum.take([entry | state.history], @max_history)}
   end
 end

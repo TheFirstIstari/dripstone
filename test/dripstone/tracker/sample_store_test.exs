@@ -78,7 +78,7 @@ defmodule Dripstone.Tracker.SampleStoreTest do
     assert Tracker.get_alert(alert.id).alert.status == :open
   end
 
-  test "network graphs are cached per membership" do
+  test "network graphs are cached per membership and cleared on change" do
     graph = Tracker.network_graph("net-c0422")
     assert map_size(SampleStore.get_state().cache) == 1
     assert Tracker.network_graph("net-c0422") == graph
@@ -86,9 +86,24 @@ defmodule Dripstone.Tracker.SampleStoreTest do
     [member | _] = Tracker.get_network("net-c0422").network.member_ids
     {:ok, _} = Tracker.remove_members("net-c0422", [member])
 
+    assert SampleStore.get_state().cache == %{}
     refute Enum.any?(Tracker.network_graph("net-c0422").nodes, &(&1.id == member))
-    assert map_size(SampleStore.get_state().cache) == 2
+    assert map_size(SampleStore.get_state().cache) == 1
     assert Tracker.network_graph("net-nope") == nil
+  end
+
+  test "history is capped at the newest entries" do
+    now = DateTime.utc_now()
+    state = SampleStore.get_state()
+    max = Dripstone.Tracker.State.max_history()
+
+    state =
+      Enum.reduce(1..(max + 10), state, fn i, acc ->
+        Dripstone.Tracker.State.add_history(acc, "net-echo", :system, "sys", "e#{i}", now)
+      end)
+
+    assert length(state.history) == max
+    assert hd(state.history).summary == "e#{max + 10}"
   end
 
   test "loading is deterministic for a given time" do

@@ -83,7 +83,8 @@ defmodule Dripstone.Tracker.SampleStore do
     case fun.(state) do
       {:ok, reply, %State{} = new_state, messages} ->
         Enum.each(messages, &Tracker.broadcast/1)
-        {:reply, {:ok, reply}, new_state}
+        # State changed, so any cached graph may be stale.
+        {:reply, {:ok, reply}, %{new_state | cache: %{}}}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
