@@ -249,7 +249,7 @@ defmodule Dripstone.Tracker.QueriesTest do
     end
 
     test "feed health lists every feed, non-healthy first on the overview", %{state: state} do
-      feeds = Queries.feed_health(state)
+      feeds = Queries.feed_health(state, @now)
       assert Enum.map(feeds, & &1.feed.id()) == ~w(x reddit bluesky mastodon telegram facebook)
       assert Enum.sum(Enum.map(feeds, & &1.accounts)) == 1300
 
@@ -259,7 +259,23 @@ defmodule Dripstone.Tracker.QueriesTest do
 
     test "a feed with no health data counts as not connected", %{state: state} do
       state = %{state | feed_health: Enum.reject(state.feed_health, &(&1.feed_id == "x"))}
-      assert %{health: %FeedHealth{status: :not_connected}} = hd(Queries.feed_health(state))
+      assert %{health: %FeedHealth{status: :not_connected}} = hd(Queries.feed_health(state, @now))
+    end
+
+    test "a healthy feed that has gone quiet longer than its interval is Degraded", %{
+      state: state
+    } do
+      statuses = fn now ->
+        Map.new(Queries.feed_health(state, now), &{&1.feed.id(), &1.health.status})
+      end
+
+      # X expects an item every 60s; its last item was 12s before @now.
+      assert statuses.(@now)["x"] == :healthy
+      assert statuses.(DateTime.add(@now, 30))["x"] == :healthy
+      assert statuses.(DateTime.add(@now, 120))["x"] == :degraded
+
+      # Down stays Down however long it has been quiet.
+      assert statuses.(DateTime.add(@now, 86_400))["telegram"] == :down
     end
   end
 end

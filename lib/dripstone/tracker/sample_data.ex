@@ -489,7 +489,7 @@ defmodule Dripstone.Tracker.SampleData do
       %FeedHealth{
         feed_id: "mastodon",
         status: :healthy,
-        last_item_at: DateTime.add(now, -140, :second),
+        last_item_at: DateTime.add(now, -70, :second),
         items_24h: 2_302
       },
       %FeedHealth{

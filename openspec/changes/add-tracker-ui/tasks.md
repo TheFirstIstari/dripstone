@@ -60,7 +60,7 @@
 
 ## 10. Feeds screen
 
-- [ ] 10.1 Implement `FeedLive.Index`: a read-only table with status, last item, 24h items, account count and last error, plus the `docs/FEEDS.md` note. Verify with `mix test test/dripstone_web/live/feed_live_test.exs`, covering all six feeds, the Down feed's error, no edit controls, and a throwaway feed appearing.
+- [x] 10.1 Implement `FeedLive.Index`: a read-only table with status, last item, 24h items, account count and last error, plus the `docs/FEEDS.md` note. Verify with `mix test test/dripstone_web/live/feed_live_test.exs`, covering all six feeds, the Down feed's error, no edit controls, and a throwaway feed appearing.
 
 ## 11. Integration checks
 

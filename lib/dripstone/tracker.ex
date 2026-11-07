@@ -42,7 +42,7 @@ defmodule Dripstone.Tracker do
   def network_graph(id), do: SampleStore.network_graph(id)
   def list_accounts(params \\ %{}), do: read(&Queries.list_accounts(&1, params))
   def get_account(id), do: read(&Queries.get_account(&1, id))
-  def feed_health, do: read(&Queries.feed_health/1)
+  def feed_health, do: read(&Queries.feed_health(&1, DateTime.utc_now()))
   def list_tags(prefix \\ ""), do: read(&Queries.list_tags(&1, prefix))
 
   ## Decisions

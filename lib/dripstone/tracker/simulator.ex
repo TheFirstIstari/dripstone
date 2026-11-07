@@ -7,6 +7,10 @@ defmodule Dripstone.Tracker.Simulator do
   Started only when `config :dripstone, :simulate_alerts` is true, which `dev.exs`
   sets from `DRIPSTONE_SIMULATE=1`. Each tick picks a network and trigger with no
   open alert, so it raises a new alert rather than merging into one.
+
+  It also stands in for ingestion: each tick marks the Healthy sample feeds as having
+  just received an item, so they don't go quiet (and turn Degraded) while the app runs.
+  Down and Degraded feeds are left as they are.
   """
 
   use GenServer
@@ -37,8 +41,24 @@ defmodule Dripstone.Tracker.Simulator do
       Logger.debug("Simulator #{action} #{alert && alert.id} (#{finding.trigger})")
     end
 
+    {:ok, _} = SampleStore.change(&refresh_feeds/1)
     schedule(interval)
     {:noreply, state}
+  end
+
+  defp refresh_feeds(state) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    feed_health =
+      Enum.map(state.feed_health, fn
+        %{status: :healthy} = health ->
+          %{health | last_item_at: now, items_24h: health.items_24h + 1}
+
+        health ->
+          health
+      end)
+
+    {:ok, :refreshed, %{state | feed_health: feed_health}, []}
   end
 
   defp schedule(interval), do: Process.send_after(self(), :tick, interval)

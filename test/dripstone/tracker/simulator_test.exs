@@ -29,4 +29,25 @@ defmodule Dripstone.Tracker.SimulatorTest do
     _ = :sys.get_state(:test_simulator)
     assert length(Tracker.list_alerts()) > before
   end
+
+  test "keeps healthy sample feeds fresh, leaving down and degraded ones alone" do
+    stale = DateTime.add(DateTime.utc_now(), -3_600) |> DateTime.truncate(:second)
+    state = SampleStore.get_state()
+
+    :ok =
+      SampleStore.put_state(%{
+        state
+        | feed_health: Enum.map(state.feed_health, &%{&1 | last_item_at: stale})
+      })
+
+    start_supervised!({Simulator, interval: 10, name: :test_simulator})
+    assert_receive {:alert_raised, _}, 2_000
+    _ = :sys.get_state(:test_simulator)
+
+    health = Map.new(SampleStore.get_state().feed_health, &{&1.feed_id, &1})
+    assert DateTime.after?(health["x"].last_item_at, stale)
+    assert health["telegram"].last_item_at == stale
+    assert health["facebook"].last_item_at == stale
+    assert Enum.find(Tracker.feed_health(), &(&1.feed.id() == "x")).health.status == :healthy
+  end
 end

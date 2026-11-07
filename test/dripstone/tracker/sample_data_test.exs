@@ -96,6 +96,15 @@ defmodule Dripstone.Tracker.SampleDataTest do
 
       assert Enum.any?(data.feed_health, &(&1.status == :degraded))
     end
+
+    test "feeds reported Healthy are within their expected interval", %{data: data} do
+      for %FeedHealth{status: :healthy} = health <- data.feed_health do
+        interval = Feeds.get(health.feed_id).expected_interval()
+
+        assert DateTime.diff(@now, health.last_item_at) <= interval,
+               "#{health.feed_id} has gone quiet"
+      end
+    end
   end
 
   describe "events" do

@@ -42,7 +42,7 @@ defmodule Dripstone.Tracker.Queries do
       newest_open_alerts:
         open |> newest_first() |> Enum.take(5) |> Enum.map(&alert_entry(state, &1)),
       recent_networks: state |> list_networks(%{}) |> Enum.take(5),
-      feeds: state |> feed_health() |> Enum.sort_by(&(&1.health.status != :healthy), :desc)
+      feeds: state |> feed_health(now) |> Enum.sort_by(&(&1.health.status != :healthy), :desc)
     }
   end
 
@@ -324,21 +324,33 @@ defmodule Dripstone.Tracker.Queries do
 
   ## Feeds
 
-  @doc "Every registered feed with its health and tracked-account count, in registry order."
-  def feed_health(%State{} = state) do
+  @doc """
+  Every registered feed with its health and tracked-account count, in registry order.
+
+  A feed reported Healthy whose last item is older than its expected interval is
+  shown as Degraded: it has gone quiet. Feeds with no health data are Not connected.
+  """
+  def feed_health(%State{} = state, now) do
     health = Map.new(state.feed_health, &{&1.feed_id, &1})
     counts = state.accounts |> Map.values() |> Enum.frequencies_by(& &1.feed_id)
 
     for feed <- Feeds.all() do
       id = feed.id()
+      reported = Map.get(health, id, %FeedHealth{feed_id: id, status: :not_connected})
 
       %{
         feed: feed,
-        health: Map.get(health, id, %FeedHealth{feed_id: id, status: :not_connected}),
+        health: %{reported | status: effective_status(reported, feed, now)},
         accounts: Map.get(counts, id, 0)
       }
     end
   end
+
+  defp effective_status(%FeedHealth{status: :healthy, last_item_at: %DateTime{} = at}, feed, now) do
+    if DateTime.diff(now, at) > feed.expected_interval(), do: :degraded, else: :healthy
+  end
+
+  defp effective_status(%FeedHealth{status: status}, _feed, _now), do: status
 
   ## Helpers
 
