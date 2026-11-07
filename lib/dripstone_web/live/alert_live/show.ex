@@ -267,9 +267,24 @@ defmodule DripstoneWeb.AlertLive.Show do
             </ol>
           </.card>
 
-          <.card :if={@detail.alert.ai_rationale} id="ai-rationale">
-            <.ai_label generated_at={@detail.alert.ai_rationale.generated_at} />
-            <p class="mt-2 text-sm leading-relaxed text-ink">{@detail.alert.ai_rationale.text}</p>
+          <.answers_panel
+            :if={@detail.alert.finding_id}
+            id="alert-answers"
+            answers={@detail.alert.answers}
+            model={@detail.alert.model}
+            observed_at={@detail.alert.observed_at}
+          />
+
+          <.card id="ai-rationale">
+            <%= if @detail.alert.ai_rationale do %>
+              <.ai_label generated_at={@detail.alert.ai_rationale.generated_at} />
+              <p class="mt-2 text-sm leading-relaxed text-ink">{@detail.alert.ai_rationale.text}</p>
+            <% else %>
+              <p id="no-rationale" class="text-sm text-ink-muted">
+                No AI-written rationale is available. The decision model answers typed
+                questions and doesn't write text.
+              </p>
+            <% end %>
           </.card>
         </div>
 

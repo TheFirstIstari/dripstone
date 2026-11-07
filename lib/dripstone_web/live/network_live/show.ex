@@ -689,6 +689,8 @@ defmodule DripstoneWeb.NetworkLive.Show do
             <% end %>
           </.card>
 
+          <.network_assessment id="network-assessment" assessment={@network.assessment} />
+
           <.card id="posting-heatmap" title="When members post (UTC)">
             <.heatmap id="network-heatmap" heatmap={@heatmap} />
           </.card>

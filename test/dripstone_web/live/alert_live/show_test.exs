@@ -62,9 +62,11 @@ defmodule DripstoneWeb.AlertLive.ShowTest do
       assert has_element?(view, "#ai-rationale [data-ai-label]", "AI-generated")
     end
 
-    test "alerts without AI text or a comparison simply omit those sections", %{conn: conn} do
+    test "alerts without AI text say so, and omit the comparison (spec: No AI-written rationale)",
+         %{conn: conn} do
       {:ok, view, _html} = live(conn, "/alerts/#{lone_alert("net-driftwood").id}")
-      refute has_element?(view, "#ai-rationale")
+      assert has_element?(view, "#ai-rationale #no-rationale")
+      refute has_element?(view, "#ai-rationale [data-ai-label]")
       refute has_element?(view, "#comparison")
       assert has_element?(view, "#evidence")
     end
