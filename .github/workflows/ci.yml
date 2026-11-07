@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   proof:
-    runs-on: [self-hosted, Linux, X64, cachyos]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
