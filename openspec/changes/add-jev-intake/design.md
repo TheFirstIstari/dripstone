@@ -190,25 +190,30 @@ expects. `AIClient` is unchanged.
 `AssessWorker` builds an account report from the adapter's posts and `assess/2`, then
 calls `report_finding/1`. The `model` comes from the configured model id.
 
-### 9. Sample data in the new format
-`SampleData` events become account, group and trend reports, with deterministic answers
-chosen so the same networks, alerts and decisions as today come out. The analyst
-decision and curation events are unchanged.
+### 9. Sample data stays a seed; the showcase shows the new path
+*Changed during implementation.* The plan was to rebuild `SampleData` as new-format
+findings. `Rules` generates its own network ids, names, titles and severities, though,
+while the demo and 16 test files (222 references) depend on its hand-picked ones. A
+rebuild would mean rewriting most UI tests to keep a demo seed, which is switched off in
+production anyway (#50).
 
-Things the new path cannot produce are applied as a clearly named
-`SampleData.placeholders/1` overlay after the replay:
-- AI-written network summaries;
-- `near_duplicate` and `created_together` links;
-- signal contributions.
-
-That way, the placeholder features keep demo content without the intake pretending to
-supply it.
+Meanwhile, the showcase corpus (`priv/datasets/showcase/v1.json`, #103) already carries
+new-format findings that replay through `Report` and `Rules`. So:
+- **`SampleData` stays an internal seed,** replayed as internal findings, with its
+  hand-written summaries, rationales and `near_duplicate`/`created_together` links.
+- **The app can start on the showcase instead.** `config :dripstone, :load_sample_data`
+  accepts `:showcase` as well as `true`/`false`, and `dev.exs` sets it from
+  `DRIPSTONE_SAMPLE=showcase`.
+- **The dev simulator sends new-format findings** through `report_finding/1`, so live
+  alerts in dev come from the real rules (§10).
 
 ### 10. Dev simulator
 The simulator has two jobs:
 - every 2 minutes, it queues `AssessWorker` jobs, which are live account findings;
-- every 45 seconds, it reports a generated group or trend finding with canned answers
-  and no AI call, so network alerts keep arriving in dev.
+- every 45 seconds, it reports a generated finding with canned answers and no AI call,
+  so network alerts keep arriving in dev. The finding is either a trend finding for an
+  existing network, or a group finding: two new accounts joining an existing network, or
+  a few new accounts forming a new one.
 
 The feed refresh keeps the 24-hour item window that is already on main (the #66 fix,
 `FeedHealth.window_started_at`) unchanged.
@@ -247,11 +252,11 @@ The feed refresh keeps the 24-hour item window that is already on main (the #66 
   `DETECTION_INTERFACE.md` doc test. → Task 1.1 moves the three docs to a stable
   `openspec/docs/` (still under OpenSpec, as the move into the change intended) and
   updates every reference.
-- **Rebuilding the sample data is the largest task, and it can drift from today's demo.**
-  → The existing sample tests (counts, statuses, the quiet-feed guard) stay and must
-  still pass.
+- **The sample data doesn't travel the new path** (§9). → Every live finding (the
+  worker, the simulator) and the showcase corpus do. The sample seed is clearly internal
+  and switched off in production.
 - **There is no live source of group or trend findings until prescreening exists.**
-  → The simulator stub and the sample data exercise those paths.
+  → The dev simulator and the showcase corpus exercise those paths.
 
 ## Migration Plan
 

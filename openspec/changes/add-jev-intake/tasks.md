@@ -63,8 +63,8 @@
 
 ## 6. Sample data and simulator
 
-- [ ] 6.1 Rebuild `SampleData` events as account, group and trend reports with deterministic answers, plus the `placeholders/1` overlay (summaries, `near_duplicate`/`created_together` links, contributions; design §9). Verify that the existing sample, store and LiveView tests still pass (counts, statuses, the quiet-feed guard), and add a test that every sample alert traces back to a replayed report.
-- [ ] 6.2 Update the simulator (design §10): `AssessWorker` jobs every 2 minutes and a canned group or trend report every tick, keeping the existing 24-hour feed item window. Verify that:
+- [x] 6.1 Let the app start on the showcase corpus (design §9): `:load_sample_data` accepts `:showcase`, and `dev.exs` sets it from `DRIPSTONE_SAMPLE=showcase`. The large sample data stays an internal seed (changed from the original plan, see design §9). Verify with a store test that `load: :showcase` boots the showcase's networks, and that the existing sample, store and LiveView tests still pass.
+- [x] 6.2 Update the simulator (design §10): `AssessWorker` jobs every 2 minutes and a canned group or trend report every tick, keeping the existing 24-hour feed item window. Verify that:
   - the simulator tests (with the `enqueue:` option and a manual `:tick`) show a job queued and an `{:alert_raised, _}` broadcast arriving;
   - the existing items-window tests from main still pass.
 

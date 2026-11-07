@@ -73,8 +73,9 @@ them.
 **Removals and rebuilds.**
 - The interim `scorer_assessment` trigger and `record_assessment/1` are removed.
 - `AssessWorker` and the dev simulator send account findings instead.
-- The sample data is rebuilt as findings in the new format, so it travels the same
-  path as live detection.
+- The large sample data stays an internal seed (it is a demo, and is switched off in
+  production). The new-format path is exercised by the dev simulator and by the
+  showcase corpus (`priv/datasets/showcase/`), which the app can start on instead.
 
 **Docs.** `DETECTION_INTERFACE.md` is rewritten for the new contract, and the stale
 vLLM wording in `openspec/config.yaml` is updated to Jev.
