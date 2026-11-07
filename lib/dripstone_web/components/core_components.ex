@@ -1,30 +1,16 @@
 defmodule DripstoneWeb.CoreComponents do
   @moduledoc """
-  Provides core UI components.
+  Core UI building blocks: flash, buttons, inputs, headers, tables, lists, icons and
+  modals, styled with Tailwind and the Dripstone design tokens in `assets/css/app.css`
+  (`bg-surface`, `text-ink`, `border-line`, `bg-accent`, ...).
 
-  At first glance, this module may seem daunting, but its goal is to provide
-  core building blocks for your application, such as tables, forms, and
-  inputs. The components consist mostly of markup and are well-documented
-  with doc strings and declarative assigns. You may customize and style
-  them in any way you want, based on your application growth and needs.
+  Domain-specific components (badges, charts, the alert toast stack) live in
+  `DripstoneWeb.TrackerComponents`.
 
-  The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-  augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-  and themes. Here are useful references:
-
-    * [daisyUI](https://daisyui.com/docs/intro/) - a good place to get
-      started and see the available components.
-
-    * [Tailwind CSS](https://tailwindcss.com) - the foundational framework
-      we build on. You will use it for layout, sizing, flexbox, grid, and
-      spacing.
-
-    * [Heroicons](https://heroicons.com) - see `icon/1` for usage.
-
-    * [Phoenix.Component](https://phoenix-live-view.hexdocs.pm/Phoenix.Component.html) -
-      the component system used by Phoenix. Some components, such as `<.link>`
-      and `<.form>`, are defined there.
-
+    * [Tailwind CSS](https://tailwindcss.com) for layout and spacing
+    * [Heroicons](https://heroicons.com), see `icon/1`
+    * [Phoenix.Component](https://phoenix-live-view.hexdocs.pm/Phoenix.Component.html)
+      for `<.link>`, `<.form>` and friends
   """
   use Phoenix.Component
   use Gettext, backend: DripstoneWeb.Gettext
@@ -37,12 +23,7 @@ defmodule DripstoneWeb.CoreComponents do
   ## Examples
 
       <.flash kind={:info} flash={@flash} />
-      <.flash
-        id="welcome-back"
-        kind={:info}
-        phx-mounted={show("#welcome-back") |> JS.remove_attribute("hidden")}
-        hidden
-      >
+      <.flash id="welcome-back" kind={:info} phx-mounted={show("#welcome-back")} hidden>
         Welcome Back!
       </.flash>
   """
@@ -63,23 +44,34 @@ defmodule DripstoneWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="fixed top-4 right-4 z-50 w-80 sm:w-96"
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
+        "flex items-start gap-3 rounded-card border bg-surface p-4 text-sm shadow-pop",
+        @kind == :info && "border-line",
+        @kind == :error && "border-sev-high/50"
       ]}>
-        <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
-          <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
+        <.icon
+          :if={@kind == :info}
+          name="hero-information-circle"
+          class="size-5 shrink-0 text-accent"
+        />
+        <.icon
+          :if={@kind == :error}
+          name="hero-exclamation-circle"
+          class="size-5 shrink-0 text-sev-high"
+        />
+        <div class="min-w-0 flex-1">
+          <p :if={@title} class="font-semibold text-ink">{@title}</p>
+          <p class="text-ink-muted">{msg}</p>
         </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
+        <button
+          type="button"
+          class="group -m-1 rounded p-1 cursor-pointer"
+          aria-label={gettext("close")}
+        >
+          <.icon name="hero-x-mark" class="size-4 text-ink-faint group-hover:text-ink" />
         </button>
       </div>
     </div>
@@ -89,23 +81,45 @@ defmodule DripstoneWeb.CoreComponents do
   @doc """
   Renders a button with navigation support.
 
+  Variants: `"primary"` (accent), `"secondary"` (default, outlined), `"ghost"`
+  (no border) and `"danger"`.
+
   ## Examples
 
       <.button>Send!</.button>
       <.button phx-click="go" variant="primary">Send!</.button>
       <.button navigate={~p"/"}>Home</.button>
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
+  attr :rest, :global,
+    include: ~w(href navigate patch method download name value disabled type form)
+
   attr :class, :any
-  attr :variant, :string, values: ~w(primary)
+  attr :variant, :string, values: ~w(primary secondary ghost danger)
+  attr :size, :string, default: "md", values: ~w(sm md)
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
+    variants = %{
+      "primary" =>
+        "bg-accent text-accent-ink border-transparent hover:bg-accent-strong shadow-card",
+      "secondary" =>
+        "bg-surface text-ink border-line hover:border-line-strong hover:bg-surface-raised shadow-card",
+      "ghost" =>
+        "bg-transparent text-ink-muted border-transparent hover:bg-surface-raised hover:text-ink",
+      "danger" => "bg-sev-high text-white border-transparent hover:opacity-90 shadow-card"
+    }
+
+    sizes = %{"sm" => "h-8 px-2.5 text-xs gap-1.5", "md" => "h-9 px-3.5 text-sm gap-2"}
 
     assigns =
       assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
+        [
+          "inline-flex items-center justify-center rounded-lg border font-medium cursor-pointer",
+          "transition-colors duration-150 select-none whitespace-nowrap",
+          "disabled:cursor-not-allowed disabled:opacity-50 phx-submit-loading:opacity-70",
+          Map.fetch!(sizes, assigns.size),
+          Map.fetch!(variants, assigns[:variant] || "secondary")
+        ]
       end)
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
@@ -212,8 +226,8 @@ defmodule DripstoneWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
+    <div class="mb-2">
+      <label for={@id} class="inline-flex items-center gap-2 text-sm text-ink cursor-pointer">
         <input
           type="hidden"
           name={@name}
@@ -221,17 +235,15 @@ defmodule DripstoneWeb.CoreComponents do
           disabled={@rest[:disabled]}
           form={@rest[:form]}
         />
-        <span class="label">
-          <input
-            type="checkbox"
-            id={@id}
-            name={@name}
-            value="true"
-            checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
-            {@rest}
-          />{@label}
-        </span>
+        <input
+          type="checkbox"
+          id={@id}
+          name={@name}
+          value="true"
+          checked={@checked}
+          class={@class || "size-4 rounded border-line-strong accent-[var(--color-accent)]"}
+          {@rest}
+        />{@label}
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -240,13 +252,16 @@ defmodule DripstoneWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-2">
+      <label for={@id} class="block">
+        <span :if={@label} class={label_class()}>{@label}</span>
         <select
           id={@id}
           name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          class={[
+            @class || [field_class(), "pr-8"],
+            @errors != [] && (@error_class || error_field_class())
+          ]}
           multiple={@multiple}
           {@rest}
         >
@@ -261,15 +276,15 @@ defmodule DripstoneWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-2">
+      <label for={@id} class="block">
+        <span :if={@label} class={label_class()}>{@label}</span>
         <textarea
           id={@id}
           name={@name}
           class={[
-            @class || "w-full textarea",
-            @errors != [] && (@error_class || "textarea-error")
+            @class || [field_class(), "h-auto min-h-20 py-2"],
+            @errors != [] && (@error_class || error_field_class())
           ]}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
@@ -282,17 +297,17 @@ defmodule DripstoneWeb.CoreComponents do
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label for={@id}>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-2">
+      <label for={@id} class="block">
+        <span :if={@label} class={label_class()}>{@label}</span>
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
           class={[
-            @class || "w-full input",
-            @errors != [] && (@error_class || "input-error")
+            @class || field_class(),
+            @errors != [] && (@error_class || error_field_class())
           ]}
           {@rest}
         />
@@ -302,11 +317,23 @@ defmodule DripstoneWeb.CoreComponents do
     """
   end
 
+  defp label_class, do: "mb-1 block text-xs font-medium text-ink-muted"
+
+  defp field_class do
+    [
+      "block w-full h-9 rounded-lg border border-line bg-surface px-3 text-sm text-ink",
+      "placeholder:text-ink-faint shadow-card transition-colors",
+      "hover:border-line-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+    ]
+  end
+
+  defp error_field_class, do: "border-sev-high focus:border-sev-high focus:ring-sev-high/25"
+
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
-      <.icon name="hero-exclamation-circle" class="size-5" />
+    <p class="mt-1.5 flex gap-1.5 items-center text-xs text-sev-high">
+      <.icon name="hero-exclamation-circle-mini" class="size-4" />
       {render_slot(@inner_block)}
     </p>
     """
@@ -323,10 +350,10 @@ defmodule DripstoneWeb.CoreComponents do
     ~H"""
     <header class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4"]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8">
+        <h1 class="text-lg font-semibold leading-8 text-ink">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70">
+        <p :if={@subtitle != []} class="text-sm text-ink-muted">
           {render_slot(@subtitle)}
         </p>
       </div>
@@ -356,9 +383,11 @@ defmodule DripstoneWeb.CoreComponents do
 
   slot :col, required: true do
     attr :label, :string
+    attr :class, :any
   end
 
   slot :action, doc: "the slot for showing user actions in the last table column"
+  slot :empty, doc: "shown when there are no rows (rendered inside the tbody)"
 
   def table(assigns) do
     assigns =
@@ -367,34 +396,50 @@ defmodule DripstoneWeb.CoreComponents do
       end
 
     ~H"""
-    <table class="table table-zebra">
-      <thead>
-        <tr>
-          <th :for={col <- @col}>{col[:label]}</th>
-          <th :if={@action != []}>
-            <span class="sr-only">{gettext("Actions")}</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
-        <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td
-            :for={col <- @col}
-            phx-click={@row_click && @row_click.(row)}
-            class={@row_click && "hover:cursor-pointer"}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-line">
+            <th
+              :for={col <- @col}
+              class="px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap"
+            >
+              {col[:label]}
+            </th>
+            <th :if={@action != []} class="px-4 py-2.5">
+              <span class="sr-only">{gettext("Actions")}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
+          <tr :if={@empty != []} class="hidden only:table-row">
+            <td colspan={length(@col) + if(@action != [], do: 1, else: 0)}>
+              {render_slot(@empty)}
+            </td>
+          </tr>
+          <tr
+            :for={row <- @rows}
+            id={@row_id && @row_id.(row)}
+            class="border-b border-line last:border-b-0 transition-colors hover:bg-surface-raised"
           >
-            {render_slot(col, @row_item.(row))}
-          </td>
-          <td :if={@action != []} class="w-0 font-semibold">
-            <div class="flex gap-4">
-              <%= for action <- @action do %>
-                {render_slot(action, @row_item.(row))}
-              <% end %>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            <td
+              :for={col <- @col}
+              phx-click={@row_click && @row_click.(row)}
+              class={["px-4 py-3 align-middle", @row_click && "cursor-pointer", col[:class]]}
+            >
+              {render_slot(col, @row_item.(row))}
+            </td>
+            <td :if={@action != []} class="w-0 px-4 py-3 font-medium">
+              <div class="flex gap-3">
+                <%= for action <- @action do %>
+                  {render_slot(action, @row_item.(row))}
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     """
   end
 
@@ -414,14 +459,87 @@ defmodule DripstoneWeb.CoreComponents do
 
   def list(assigns) do
     ~H"""
-    <ul class="list">
-      <li :for={item <- @item} class="list-row">
-        <div class="list-col-grow">
-          <div class="font-bold">{item.title}</div>
-          <div>{render_slot(item)}</div>
+    <dl class="divide-y divide-line">
+      <div :for={item <- @item} class="flex gap-4 py-3 text-sm">
+        <dt class="w-1/3 flex-none text-ink-muted">{item.title}</dt>
+        <dd class="text-ink">{render_slot(item)}</dd>
+      </div>
+    </dl>
+    """
+  end
+
+  @doc """
+  Renders a modal dialog. Show it by rendering it with `show`; `on_cancel` runs when
+  it is dismissed (Escape, clicking outside, or the close button).
+
+  ## Examples
+
+      <.modal :if={@pending} id="confirm-merge" show on_cancel={JS.push("cancel_pending")}>
+        <:title>Merge networks?</:title>
+        This moves 12 members.
+        <:actions>
+          <.button phx-click="cancel_pending">Cancel</.button>
+          <.button variant="primary" phx-click="confirm_pending">Merge</.button>
+        </:actions>
+      </.modal>
+  """
+  attr :id, :string, required: true
+  attr :show, :boolean, default: false
+  attr :on_cancel, JS, default: %JS{}
+  slot :title
+  slot :inner_block, required: true
+  slot :actions
+
+  def modal(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      phx-mounted={@show && show_modal(@id)}
+      phx-remove={hide_modal(@id)}
+      data-cancel={JS.exec(@on_cancel, "phx-remove")}
+      class="relative z-50 hidden"
+    >
+      <div
+        id={"#{@id}-bg"}
+        class="fixed inset-0 bg-ink/40 backdrop-blur-[2px] transition-opacity"
+        aria-hidden="true"
+      />
+      <div
+        class="fixed inset-0 overflow-y-auto"
+        aria-labelledby={"#{@id}-title"}
+        aria-modal="true"
+        role="dialog"
+        tabindex="0"
+      >
+        <div class="flex min-h-full items-center justify-center p-4">
+          <.focus_wrap
+            id={"#{@id}-container"}
+            phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
+            phx-key="escape"
+            phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
+            class="relative hidden w-full max-w-md rounded-card border border-line bg-surface p-6 shadow-pop transition"
+          >
+            <button
+              phx-click={JS.exec("data-cancel", to: "##{@id}")}
+              type="button"
+              class="absolute top-4 right-4 rounded p-1 text-ink-faint hover:text-ink cursor-pointer"
+              aria-label={gettext("close")}
+            >
+              <.icon name="hero-x-mark" class="size-5" />
+            </button>
+            <h2 :if={@title != []} id={"#{@id}-title"} class="pr-8 text-base font-semibold text-ink">
+              {render_slot(@title)}
+            </h2>
+            <div id={"#{@id}-content"} class="mt-2 text-sm text-ink-muted">
+              {render_slot(@inner_block)}
+            </div>
+            <div :if={@actions != []} class="mt-6 flex justify-end gap-2">
+              {render_slot(@actions)}
+            </div>
+          </.focus_wrap>
         </div>
-      </li>
-    </ul>
+      </div>
+    </div>
     """
   end
 
@@ -448,7 +566,7 @@ defmodule DripstoneWeb.CoreComponents do
 
   def icon(%{name: "hero-" <> _} = assigns) do
     ~H"""
-    <span class={[@name, @class]} />
+    <span class={[@name, @class]} aria-hidden="true" />
     """
   end
 
@@ -457,10 +575,10 @@ defmodule DripstoneWeb.CoreComponents do
   def show(js \\ %JS{}, selector) do
     JS.show(js,
       to: selector,
-      time: 300,
+      time: 200,
       transition:
-        {"transition-all ease-out duration-300",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
+        {"transition-all ease-out duration-200",
+         "opacity-0 translate-y-2 sm:translate-y-0 sm:scale-95",
          "opacity-100 translate-y-0 sm:scale-100"}
     )
   end
@@ -468,11 +586,36 @@ defmodule DripstoneWeb.CoreComponents do
   def hide(js \\ %JS{}, selector) do
     JS.hide(js,
       to: selector,
-      time: 200,
+      time: 150,
       transition:
-        {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+        {"transition-all ease-in duration-150", "opacity-100 translate-y-0 sm:scale-100",
+         "opacity-0 translate-y-2 sm:translate-y-0 sm:scale-95"}
     )
+  end
+
+  def show_modal(js \\ %JS{}, id) when is_binary(id) do
+    js
+    |> JS.show(to: "##{id}")
+    |> JS.show(
+      to: "##{id}-bg",
+      time: 200,
+      transition: {"transition-all ease-out duration-200", "opacity-0", "opacity-100"}
+    )
+    |> show("##{id}-container")
+    |> JS.add_class("overflow-hidden", to: "body")
+    |> JS.focus_first(to: "##{id}-content")
+  end
+
+  def hide_modal(js \\ %JS{}, id) do
+    js
+    |> JS.hide(
+      to: "##{id}-bg",
+      transition: {"transition-all ease-in duration-150", "opacity-100", "opacity-0"}
+    )
+    |> hide("##{id}-container")
+    |> JS.hide(to: "##{id}", transition: {"block", "block", "hidden"})
+    |> JS.remove_class("overflow-hidden", to: "body")
+    |> JS.pop_focus()
   end
 
   @doc """

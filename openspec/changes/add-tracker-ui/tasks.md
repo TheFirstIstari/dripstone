@@ -29,12 +29,12 @@
 
 ## 5. Design system and app shell
 
-- [ ] 5.1 Remove daisyUI from `app.css` and `mix.exs`, then add the `@theme` tokens with dark overrides and reduced-motion rules (design §9). Verify that `mix assets.build` succeeds and that `grep -ri daisy lib assets mix.exs` finds nothing.
-- [ ] 5.2 Restyle `core_components.ex` with Tailwind only (names and attrs unchanged) and add a `modal` component. Verify with `mix compile --warnings-as-errors` and a check that no daisyUI class names remain.
-- [ ] 5.3 Add `DripstoneWeb.TrackerComponents` (design §10) and import it in `html_helpers`. Verify with `rendered_to_string/1` tests that severity, risk, status and strength badges include text labels, and that `sparkline` and `heatmap` render text summaries.
-- [ ] 5.4 Rebuild `Layouts.app(flash, nav)`: a sidebar with active state and badge, a drawer, a top bar with search and theme toggle, `toast_stack` (max 3), and the `Sample data` indicator. Set the title suffix to ` · Dripstone` and remove the Phoenix branding. Verify with the tests in 5.6.
-- [ ] 5.5 Add the `DripstoneWeb.Nav` hook (design §7) and `live_session :tracker` routes for `/`, `/alerts`, `/alerts/:id`, `/networks`, `/networks/:id`, `/accounts`, `/accounts/:id` and `/feeds`. Remove `PageController`, `PageHTML`, `home.html.heex` and its test. Verify that `mix phx.routes` lists exactly these routes plus the dev routes.
-- [ ] 5.6 Write shell LiveView tests (`test/dripstone_web/live/shell_test.exs`): active nav, the badge count (hidden at zero, updating on broadcast), a High toast versus no toast for Medium, search navigating to `/accounts?q=…`, the title format, the `Sample data` indicator, and not-found for unknown alert, network and account ids. Verify by running that file.
+- [x] 5.1 Remove daisyUI from `app.css` and `mix.exs`, then add the `@theme` tokens with dark overrides and reduced-motion rules (design §9). Verify that `mix assets.build` succeeds and that `grep -ri daisy lib assets mix.exs` finds nothing.
+- [x] 5.2 Restyle `core_components.ex` with Tailwind only (names and attrs unchanged) and add a `modal` component. Verify with `mix compile --warnings-as-errors` and a check that no daisyUI class names remain.
+- [x] 5.3 Add `DripstoneWeb.TrackerComponents` (design §10) and import it in `html_helpers`. Verify with `rendered_to_string/1` tests that severity, risk, status and strength badges include text labels, and that `sparkline` and `heatmap` render text summaries.
+- [x] 5.4 Rebuild `Layouts.app(flash, nav)`: a sidebar with active state and badge, a drawer, a top bar with search and theme toggle, `toast_stack` (max 3), and the `Sample data` indicator. Set the title suffix to ` · Dripstone` and remove the Phoenix branding. Verify with the tests in 5.6.
+- [x] 5.5 Add the `DripstoneWeb.Nav` hook (design §7) and `live_session :tracker` routes for `/`, `/alerts`, `/alerts/:id`, `/networks`, `/networks/:id`, `/accounts`, `/accounts/:id` and `/feeds`. Remove `PageController`, `PageHTML`, `home.html.heex` and its test. Verify that `mix phx.routes` lists exactly these routes plus the dev routes.
+- [x] 5.6 Write shell LiveView tests (`test/dripstone_web/live/shell_test.exs`): active nav, the badge count (hidden at zero, updating on broadcast), a High toast versus no toast for Medium, search navigating to `/accounts?q=…`, the title format, the `Sample data` indicator, and not-found for unknown alert, network and account ids. Verify by running that file.
 
 ## 6. Overview screen
 

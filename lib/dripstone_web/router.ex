@@ -20,7 +20,16 @@ defmodule DripstoneWeb.Router do
   scope "/", DripstoneWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live_session :tracker, on_mount: DripstoneWeb.Nav do
+      live "/", OverviewLive
+      live "/alerts", AlertLive.Index
+      live "/alerts/:id", AlertLive.Show
+      live "/networks", NetworkLive.Index
+      live "/networks/:id", NetworkLive.Show
+      live "/accounts", AccountLive.Index
+      live "/accounts/:id", AccountLive.Show
+      live "/feeds", FeedLive.Index
+    end
   end
 
   # Other scopes may use custom stacks.
