@@ -25,6 +25,10 @@ Findings combine both, and there is no field for it.
 
 ## Interim: scorer assessments (what runs today)
 
+> **Being replaced** by the openspec change `add-jev-intake` (it supersedes issues #49
+> and #53). Read `openspec/changes/add-jev-intake/` before building on this section or
+> on the finding format above.
+
 Until this contract is agreed, the scorer's output goes straight into the tracker
 without being turned into findings:
 

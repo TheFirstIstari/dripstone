@@ -11,6 +11,9 @@ defmodule Dripstone.Workers.AssessWorker do
   `Scorer.assess/2` calls the AI client, which may only run in a job like this one,
   never in LiveView or request processes. One attempt only, so a failing job never
   repeats AI calls.
+
+  Being changed: openspec change `add-jev-intake` makes this worker send an account
+  finding through `Tracker.report_finding/1` instead (it supersedes issue #49).
   """
 
   use Oban.Worker, queue: :default, max_attempts: 1

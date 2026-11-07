@@ -14,6 +14,10 @@ defmodule Dripstone.Tracker.Assessments do
   The scorer looks at one handle at a time, so each account gets its own
   single-member placeholder network. The severity, title, evidence strength and
   network are placeholders, not detection results.
+
+  Being replaced: openspec change `add-jev-intake` removes this module and the
+  `scorer_assessment` trigger in favour of account, group and trend findings
+  (it supersedes issue #49). Read that change before extending this module.
   """
 
   alias Dripstone.Feeds
