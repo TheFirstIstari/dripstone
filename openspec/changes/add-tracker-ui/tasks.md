@@ -44,7 +44,7 @@
 
 - [x] 7.1 Implement `AlertLive.Index`: URL filters (status defaulting to Open; severity; trigger and platform options from the catalog and registry), a streamed newest-first list, live insertion of matching alerts with a NEW highlight, a previously-dismissed marker, and an empty state. Verify with `mix test test/dripstone_web/live/alert_live/index_test.exs`, covering the default filter, combined filters with URL restore, live arrival matching versus not matching, and a throwaway trigger type in the filter.
 - [x] 7.2 Implement `AlertLive.Show`: fields, network card, evidence sorted by strength, before/after values, the AI rationale under `ai_label`, a note form, Confirm/Dismiss, Undo, the read-only decided state, and `j`/`k` neighbors with the inbox query. Verify with `mix test test/dripstone_web/live/alert_live/show_test.exs` (`async: false`, store reset), covering each decision path, the note limit, before/after domains, and neighbor navigation.
-- [ ] 7.3 Add the colocated `.AlertShortcuts` hook (c/d/j/k, ignored in text fields) with a unique element id. Verify with a LiveView test that sends the hook's events, and by hand in the browser that typing `c` in the note field doesn't confirm.
+- [x] 7.3 Add the colocated `.AlertShortcuts` hook (c/d/j/k, ignored in text fields) with a unique element id. Verify with a LiveView test that sends the hook's events, and by hand in the browser that typing `c` in the note field doesn't confirm.
 
 ## 8. Network screens
 
@@ -64,8 +64,8 @@
 
 ## 11. Integration checks
 
-- [ ] 11.1 Run `mix precommit` and verify that it passes with no warnings, formatting changes or test failures.
-- [ ] 11.2 Run `DRIPSTONE_SIMULATE=1 mix phx.server` and click through every screen in light, dark and system themes at phone and desktop widths. Verify live arrivals and toasts, curation flows end to end (rename, tag, merge, split), the drawer, focus rings, reduced motion, and the absence of daisyUI or Phoenix branding, and that the layouts match the `design.md` wireframes.
+- [x] 11.1 Run `mix precommit` and verify that it passes with no warnings, formatting changes or test failures.
+- [x] 11.2 Run `DRIPSTONE_SIMULATE=1 mix phx.server` and click through every screen in light, dark and system themes at phone and desktop widths. Verify live arrivals and toasts, curation flows end to end (rename, tag, merge, split), the drawer, focus rings, reduced motion, and the absence of daisyUI or Phoenix branding, and that the layouts match the `design.md` wireframes.
 
 ## Workflow follow-up
 
