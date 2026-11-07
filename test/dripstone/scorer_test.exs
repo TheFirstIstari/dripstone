@@ -92,16 +92,14 @@ defmodule Dripstone.ScorerTest do
       assert Map.has_key?(body["questions"], "is_bot")
       assert Map.has_key?(body["questions"], "topic")
       assert Map.has_key?(body["questions"], "spam")
-      assert Map.has_key?(body["questions"], "coordinated")
-      assert Map.has_key?(body["questions"], "relation")
+      refute Map.has_key?(body["questions"], "coordinated")
+      refute Map.has_key?(body["questions"], "relation")
 
       Req.Test.json(conn, %{
         "answers" => %{
           "is_bot" => %{"type" => "noul", "noul" => 0.8},
           "topic" => %{"type" => "choice", "choice" => "crypto"},
-          "spam" => %{"type" => "score", "score" => 0.7},
-          "coordinated" => %{"type" => "noul", "noul" => 0.6},
-          "relation" => %{"type" => "choice", "choice" => "shared-link"}
+          "spam" => %{"type" => "score", "score" => 0.7}
         }
       })
     end)
@@ -111,7 +109,7 @@ defmodule Dripstone.ScorerTest do
     assert is_integer(result.score)
     assert is_list(result.labels)
     assert result.ai_answers["topic"]["choice"] == "crypto"
-    assert result.ai_answers["relation"]["choice"] == "shared-link"
+    refute Map.has_key?(result.ai_answers, "relation")
   end
 
   test "score/1 and assess/2 reject non-list input" do
