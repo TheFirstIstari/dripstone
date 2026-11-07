@@ -34,7 +34,7 @@ defmodule DripstoneWeb.ShellTest do
   end
 
   defp title(html),
-    do: html |> LazyHTML.from_document() |> LazyHTML.query("title") |> LazyHTML.text()
+    do: html |> LazyHTML.from_document() |> LazyHTML.query("head > title") |> LazyHTML.text()
 
   describe "navigation" do
     for {path, key, _title} <- @sections do

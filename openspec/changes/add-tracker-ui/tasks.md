@@ -38,7 +38,7 @@
 
 ## 6. Overview screen
 
-- [ ] 6.1 Implement `OverviewLive` per the wireframe: live counts linking to filtered screens, the 30-day trend with total, five newest open alerts, five recent networks, and a feed strip with non-healthy feeds first, plus empty states. Verify with `mix test test/dripstone_web/live/overview_live_test.exs`, covering the count links, a live update on a reported finding, feed ordering, and the clear state.
+- [x] 6.1 Implement `OverviewLive` per the wireframe: live counts linking to filtered screens, the 30-day trend with total, five newest open alerts, five recent networks, and a feed strip with non-healthy feeds first, plus empty states. Verify with `mix test test/dripstone_web/live/overview_live_test.exs`, covering the count links, a live update on a reported finding, feed ordering, and the clear state.
 
 ## 7. Alerts screens
 
