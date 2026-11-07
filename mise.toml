@@ -7,5 +7,5 @@ python = "3.12.12"
 [env]
 DATABASE_URL = "ecto://postgres:postgres@localhost/dripstone_dev"
 PHX_HOST = "localhost"
-INTERNAL_AI_URL = "http://wsl-3090:8000/v1"
+INTERNAL_AI_URL = "http://desktop:8000/v1"
 INTERNAL_AI_MODEL = "Qwen/Qwen3-8B-AWQ"

@@ -7,11 +7,20 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  proof:
+  test:
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-      - run: elixir --version
-      # - run: mix test
+      - run: mix local.hex --force && mix local.rebar --force
+      - run: mix deps.get
+      - run: docker compose up -d db
+      - run: |
+          for i in $(seq 1 60); do
+            pg_isready -h localhost -U postgres && break
+            sleep 1
+          done
+          pg_isready -h localhost -U postgres
+      - run: MIX_ENV=test mix ecto.setup
+      - run: MIX_ENV=test mix test

@@ -1,7 +1,7 @@
-# WSL-3090 vLLM host
+# Desktop vLLM host
 
 1. Verify GPU: `nvidia-smi` (expect RTX 3090, driver ready).
-2. Tailscale hostname must be `wsl-3090`: `sudo tailscale set --hostname=wsl-3090`.
+2. Tailscale hostname must be `desktop`: `sudo tailscale set --hostname=desktop`.
 3. Setup env:
    ```bash
    uv venv && source .venv/bin/activate
@@ -17,7 +17,7 @@
 6. Reboot note: re-run step 4 after every reboot/driver update.
 
 Note: Windows Tailscale != WSL Tailscale — must run `tailscale up` INSIDE the WSL distro.
-Set `--hostname=wsl-3090` so the tailnet sees the Linux node by name.
+Set `--hostname=desktop` so the tailnet sees the Linux node by name.
 Ensure same tailnet as `tailscale whoami` on CachyOS (same login/account).
-If admin shows the Windows node but `tailscale status` on CachyOS lacks wsl-3090,
+If admin shows the Windows node but `tailscale status` on CachyOS lacks desktop,
 that's the cause — the WSL distro never joined the tailnet.
