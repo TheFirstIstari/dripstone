@@ -11,7 +11,8 @@
 - Asset rules from `AGENTS.md`: only the `app.js` and `app.css` bundles; no external
   script or stylesheet links; no inline `<script>` in templates; JS goes in colocated
   hooks or `assets/js/`. This rules out CDN fonts and favors server-rendered charts.
-- Users reach the app over the tailnet only, so there is no authentication in this change.
+- All tracker screens sit behind analyst login (see `openspec/specs/project/spec.md`,
+  "Analyst login"); logged-out visitors are redirected to the login page.
 - Detection (AI plus heuristics) is owned by another teammate, and its shape (how it
   runs, what it emits, how it talks to the app) is not yet known. Anything this change
   assumes about it must be cheap to change.

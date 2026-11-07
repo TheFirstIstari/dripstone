@@ -4,8 +4,9 @@
 2. `docker compose up -d` (starts postgres:17).
 3. `mix deps.get`
 4. `mix ecto.setup`
-5. `INTERNAL_AI_URL=http://desktop:8000/v1 mix phx.server`
-6. Validate: `curl localhost:4000` returns 200; `curl $INTERNAL_AI_URL/models` lists Qwen model.
+5. `mix phx.server` (AI calls use OpenCode Console via `OPENCODE_API_KEY` in `.env`;
+   without a key they fail to `{:error, _}` and the app falls back to heuristics)
+6. Validate: `curl localhost:4000` returns 200.
 
 ## GitHub runner
 
