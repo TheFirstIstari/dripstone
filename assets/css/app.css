@@ -67,15 +67,21 @@
   --color-status-degraded: oklch(62% 0.15 62);
   --color-status-down: oklch(56% 0.2 25);
 
-  /* Graph link kinds */
-  --color-link-shared-link: oklch(58% 0.11 192);
-  --color-link-near-duplicate: oklch(56% 0.16 295);
-  --color-link-synced-posting: oklch(64% 0.15 62);
-  --color-link-created-together: oklch(60% 0.17 350);
 
   --radius-card: 0.75rem;
   --shadow-card: 0 1px 2px oklch(20% 0.01 60 / 0.06), 0 1px 1px oklch(20% 0.01 60 / 0.04);
   --shadow-pop: 0 12px 32px -8px oklch(20% 0.02 60 / 0.25), 0 2px 6px oklch(20% 0.02 60 / 0.08);
+}
+
+/*
+  Graph link-kind colors. Plain variables (not @theme) because they are only used
+  through var() in SVG styles, and Tailwind drops @theme variables no utility uses.
+*/
+:root {
+  --color-link-shared-link: oklch(58% 0.11 192);
+  --color-link-near-duplicate: oklch(56% 0.16 295);
+  --color-link-synced-posting: oklch(64% 0.15 62);
+  --color-link-created-together: oklch(60% 0.17 350);
 }
 
 [data-theme="dark"] {

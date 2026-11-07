@@ -629,7 +629,7 @@ defmodule DripstoneWeb.TrackerComponents do
         y1={y(@positions, edge.a)}
         x2={x(@positions, edge.b)}
         y2={y(@positions, edge.b)}
-        stroke={"var(--color-link-#{kind_slug(edge.kind)})"}
+        style={"stroke: var(--color-link-#{kind_slug(edge.kind)})"}
         stroke-width={if(@selected in [edge.a, edge.b], do: 3, else: 1.4)}
         stroke-opacity={edge_opacity(@selected, edge)}
         data-kind={edge.kind}

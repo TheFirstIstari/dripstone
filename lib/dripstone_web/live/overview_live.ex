@@ -78,7 +78,7 @@ defmodule DripstoneWeb.OverviewLive do
         />
       </div>
 
-      <div class="mt-4 grid gap-4 lg:mt-6 lg:grid-cols-3 lg:gap-6">
+      <div class="mt-4 grid grid-cols-1 gap-4 lg:mt-6 lg:grid-cols-3 lg:gap-6">
         <div class="space-y-4 lg:col-span-2 lg:space-y-6">
           <.card id="alert-trend" title="Alerts raised · last 30 days">
             <:header_actions>

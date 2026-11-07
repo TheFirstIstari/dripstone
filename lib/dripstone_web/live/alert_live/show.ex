@@ -212,7 +212,7 @@ defmodule DripstoneWeb.AlertLive.Show do
         </:actions>
       </.page_header>
 
-      <div class="grid gap-4 lg:grid-cols-3 lg:gap-6">
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
         <div class="space-y-4 lg:col-span-2 lg:space-y-6">
           <.card :if={@detail.alert.comparison} id="comparison" title="What changed">
             <dl class="grid gap-3 sm:grid-cols-2">
