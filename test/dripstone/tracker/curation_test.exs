@@ -227,6 +227,15 @@ defmodule Dripstone.Tracker.CurationTest do
       assert Enum.any?(Tracker.list_networks(), &(&1.network.id == split.id))
     end
 
+    test "split fragment inherits a Confirmed source status" do
+      picked = members("net-bluewave") |> Enum.take(3)
+
+      {:ok, split} =
+        Tracker.split_network("net-bluewave", picked, %{"name" => "Bluewave Offshoot"})
+
+      assert split.status == :confirmed
+    end
+
     test "splitting every member, none, or with no name is refused" do
       all = members("net-c0422")
 
