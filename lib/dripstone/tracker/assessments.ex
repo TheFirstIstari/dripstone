@@ -169,38 +169,41 @@ defmodule Dripstone.Tracker.Assessments do
   defp posts(state, account_id, raw_posts) do
     {fresh, state} =
       Enum.flat_map_reduce(raw_posts, state, fn raw, state ->
-        case posted_at(fetch(raw, :published_at)) do
-          nil ->
-            {[], state}
+        {id, state} = State.next_id(state, "post")
 
-          at ->
-            {id, state} = State.next_id(state, "post")
+        post = %Post{
+          id: id,
+          account_id: account_id,
+          post_id: to_string(fetch(raw, :id)),
+          posted_at: posted_at(fetch(raw, :published_at)),
+          text: fetch(raw, :text),
+          domain: raw |> fetch(:urls) |> List.wrap() |> Enum.find_value(&host/1)
+        }
 
-            post = %Post{
-              id: id,
-              account_id: account_id,
-              post_id: to_string(fetch(raw, :id)),
-              posted_at: at,
-              text: fetch(raw, :text),
-              domain: raw |> fetch(:urls) |> List.wrap() |> Enum.find_value(&host/1)
-            }
-
-            {[post], state}
-        end
+        {[post], state}
       end)
 
     # Re-assessments merge into history: the new batch wins per platform post
-    # id, and the list stays newest-first.
-    merged =
+    # id. Dated posts stay newest-first; posts with unparseable timestamps are
+    # kept at the end (never dropped, never invented) so evidence isn't lost.
+    {dated, undated} =
       (fresh ++ Map.get(state.posts, account_id, []))
       |> Enum.uniq_by(& &1.post_id)
-      |> Enum.sort_by(& &1.posted_at, {:desc, DateTime})
+      |> Enum.split_with(& &1.posted_at)
+
+    merged =
+      Enum.sort_by(dated, & &1.posted_at, {:desc, DateTime}) ++
+        Enum.sort_by(undated, & &1.post_id)
 
     {merged, state}
   end
 
-  defp newest([]), do: nil
-  defp newest([post | _]), do: post.posted_at
+  defp newest(posts) do
+    case Enum.find(posts, & &1.posted_at) do
+      nil -> nil
+      post -> post.posted_at
+    end
+  end
 
   defp posted_at(%DateTime{} = at), do: DateTime.truncate(at, :second)
   defp posted_at(unix) when is_integer(unix), do: DateTime.from_unix!(unix)
