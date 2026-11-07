@@ -326,9 +326,7 @@ defmodule Dripstone.Tracker.Finding do
   defp percent?(value), do: is_integer(value) and value in 0..100
 
   # Unknown member ids are rejected at cast time so a later split never
-  # crashes on `state.accounts[&1].feed_id`. Empty accounts (e.g. a fresh
-  # state in tests) means "nothing known yet", so anything goes.
-  defp known?(_ids, accounts) when map_size(accounts) == 0, do: true
+  # crashes on `state.accounts[&1].feed_id`.
   defp known?(ids, accounts), do: Enum.all?(ids, &Map.has_key?(accounts, &1))
 
   defp unknown(ids, accounts), do: Enum.find(ids, &(not Map.has_key?(accounts, &1)))
