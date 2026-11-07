@@ -224,7 +224,7 @@ defmodule Dripstone.Tracker.Curation do
       split = %Network{
         id: new_id,
         name: name,
-        status: :suspected,
+        status: network.status,
         confidence: network.confidence,
         member_ids: ids,
         joined_at: Map.new(ids, &{&1, now}),
