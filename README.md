@@ -19,9 +19,20 @@ mise run db-setup
 mise run dev
 ```
 
+Before `db-setup`, put a password (min 12 chars) in `.env` for the seed analyst:
+
+```sh
+ANALYST_PASSWORD=<dev-only-password>
+```
+
 Then open http://localhost:4000.
 
-`docs/CACHYOS.md` has workstation and runner notes.
+No key needed for a green suite: with `OPENCODE_API_KEY` unset, AI calls fail to
+`{:error, _}` and the app falls back to heuristics; tests stub the AI client.
+`mise run test` is green on a fresh clone with an empty `.env`.
+
+`docs/CACHYOS.md` has workstation and runner notes. The old desktop GPU
+setup is archived at `docs/archive/desktop.md` and no longer used.
 
 ## AI key
 

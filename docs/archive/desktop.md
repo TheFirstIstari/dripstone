@@ -1,3 +1,5 @@
+> Archived: the desktop GPU box is gone — AI now comes from OpenCode Console (Jev). Kept for history only.
+
 # Desktop vLLM host
 
 1. Verify GPU: `nvidia-smi` (expect RTX 3090, driver ready).
