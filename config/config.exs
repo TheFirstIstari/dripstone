@@ -59,6 +59,12 @@ config :dripstone, Dripstone.Alerts,
       id: "promotion_shift",
       name: "Promotion shift",
       description: "A network has changed the domain or promotion it spreads."
+    ],
+    [
+      id: "scorer_assessment",
+      name: "Scorer assessment",
+      description:
+        "Placeholder: the scorer's raw output for one account, until the intake format is agreed."
     ]
   ]
 

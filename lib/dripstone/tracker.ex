@@ -28,6 +28,15 @@ defmodule Dripstone.Tracker do
   @spec report_finding(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
   def report_finding(attrs), do: SampleStore.report_finding(attrs)
 
+  @doc """
+  Records the scorer's result for one handle (interim, until the intake format is
+  agreed): `%{feed_id:, handle:, posts:, assessment:}`, where `assessment` is what
+  `Dripstone.Scorer.assess/2` returned for `posts`. Updates the account and raises
+  or updates a placeholder alert. See `Dripstone.Tracker.Assessments`.
+  """
+  @spec record_assessment(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
+  def record_assessment(attrs), do: SampleStore.record_assessment(attrs)
+
   ## Reads
 
   @doc "Maps a 0–100 risk score to `:low`, `:medium` or `:high`."

@@ -22,6 +22,34 @@ endpoint) is not decided yet; the map is the same either way.
 Detection doesn't need to say whether AI analysis or heuristics produced a finding.
 Findings combine both, and there is no field for it.
 
+## Interim: scorer assessments (what runs today)
+
+Until this contract is agreed, the scorer's output goes straight into the tracker
+without being turned into findings:
+
+```
+Dripstone.Workers.AssessWorker  (Oban job, args %{"adapter" => "stub_x", "handle" => "..."})
+  -> adapter.fetch_posts(handle)
+  -> Dripstone.Scorer.assess(posts)        # %{score, labels, ai_answers, source}
+  -> Dripstone.Tracker.record_assessment(%{feed_id:, handle:, posts:, assessment:})
+```
+
+`record_assessment/1` (see `Dripstone.Tracker.Assessments`):
+
+- creates or updates the account: risk score = `score`, signals = `labels` (no
+  per-signal contribution), with `ai_answers` and `source` kept as they are;
+- replaces the account's posts with the scored ones;
+- raises (or updates) a **`scorer_assessment`** alert on a single-member
+  placeholder network named "@handle (unsorted)". The evidence is the raw output,
+  one line per value (`source: heuristics_plus_ai`, `is_bot: 0.8`,
+  `relation: shared-link`, ...).
+
+Placeholders, to settle in the format discussion: severity (always Medium), the
+alert title, evidence strength (always moderate), the one-network-per-account
+grouping, and everything findings carry that the scorer doesn't give (network
+names, summaries, before/after comparisons, the other four trigger types). In dev,
+`DRIPSTONE_SIMULATE=1` queues one of these jobs every 2 minutes.
+
 ## Finding fields
 
 | Field | Required | Type | Notes |

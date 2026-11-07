@@ -118,7 +118,12 @@ defmodule DripstoneWeb.AccountLive.Show do
               <li :for={{signal, i} <- Enum.with_index(@account.signals)} id={"signal-#{i}"}>
                 <div class="flex items-baseline justify-between gap-3">
                   <span class="text-sm font-medium text-ink">{signal.name}</span>
-                  <span class="text-sm font-semibold tabular-nums text-ink">+{signal.contribution}</span>
+                  <span
+                    :if={signal.contribution}
+                    class="text-sm font-semibold tabular-nums text-ink"
+                  >
+                    +{signal.contribution}
+                  </span>
                 </div>
                 <div
                   class="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-raised"
@@ -272,6 +277,7 @@ defmodule DripstoneWeb.AccountLive.Show do
     end
   end
 
+  defp bar_width(nil, _score), do: 0
   defp bar_width(_contribution, 0), do: 0
   defp bar_width(contribution, score), do: round(contribution / score * 100)
 

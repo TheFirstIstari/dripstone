@@ -12,7 +12,7 @@ defmodule Dripstone.Tracker.SampleStore do
   use GenServer
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{Graph, Intake, SampleLoader, State}
+  alias Dripstone.Tracker.{Assessments, Graph, Intake, SampleLoader, State}
 
   @doc false
   def start_link(opts \\ []) do
@@ -32,10 +32,17 @@ defmodule Dripstone.Tracker.SampleStore do
   def change(fun, server \\ __MODULE__), do: GenServer.call(server, {:change, fun})
 
   @doc "Reports a finding through the intake. See `Dripstone.Tracker.report_finding/1`."
-  def report_finding(attrs, server \\ __MODULE__) do
+  def report_finding(attrs, server \\ __MODULE__),
+    do: intake(&Intake.run(&1, attrs, DateTime.utc_now()), server)
+
+  @doc "Records a scorer assessment. See `Dripstone.Tracker.record_assessment/1`."
+  def record_assessment(attrs, server \\ __MODULE__),
+    do: intake(&Assessments.record(&1, attrs, DateTime.utc_now()), server)
+
+  defp intake(run, server) do
     change(
       fn state ->
-        with {:ok, result, new_state} <- Intake.run(state, attrs, DateTime.utc_now()) do
+        with {:ok, result, new_state} <- run.(state) do
           {:ok, result, new_state, messages(result)}
         end
       end,

@@ -25,7 +25,13 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
 
   test "the doc has one example per initial trigger type" do
     triggers = Enum.map(examples(), & &1["trigger"])
-    assert Enum.sort(triggers) == Alerts.trigger_types() |> Enum.map(& &1.id) |> Enum.sort()
+
+    # scorer_assessment is raised by Tracker.record_assessment/1 (interim), not
+    # reported as a finding, so the doc describes it without a finding example.
+    expected =
+      for %{id: id} <- Alerts.trigger_types(), id != "scorer_assessment", do: id
+
+    assert Enum.sort(triggers) == Enum.sort(expected)
   end
 
   test "every example is accepted by report_finding/1, in order" do
