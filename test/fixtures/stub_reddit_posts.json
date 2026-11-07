@@ -1,0 +1,5 @@
+[
+  {"id": "r1", "title": "Tracker launch thread", "selftext": "Discussing the new launch", "url": "https://example.com/ship", "created_utc": 1759312800},
+  {"id": "r2", "title": "Text-only discussion", "selftext": "No links, just opinions", "url": "", "created_utc": 1759316400},
+  {"id": "r3", "title": "Deal repost", "selftext": "", "url": "https://example.com/deal", "created_utc": 1759320000}
+]
