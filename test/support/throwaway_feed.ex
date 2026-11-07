@@ -1,6 +1,6 @@
 defmodule Dripstone.Test.ThrowawayFeed do
   @moduledoc false
-  # A feed written from the skeleton in docs/FEEDS.md, used to prove that
+  # A feed written from the skeleton in openspec/changes/add-tracker-ui/docs/FEEDS.md, used to prove that
   # registering a new feed is enough for it to appear in the registry.
   @behaviour Dripstone.Feeds.Feed
 

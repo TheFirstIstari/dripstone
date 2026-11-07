@@ -5,7 +5,7 @@
 - [x] 1.1 Add the `Dripstone.Feeds.Feed` behaviour and the `Dripstone.Feeds` registry (`all/0`, `get/1` by string id) configured in `config.exs` (design §4). Verify with a unit test that `all/0` keeps the configured order and that `get("nope")` returns `nil`.
 - [x] 1.2 Implement the X, Reddit, Bluesky, Mastodon, Telegram and Facebook feeds, one module per file. Verify with tests covering `format_handle/1`, `profile_url/1` and `post_url/1` for each, including Mastodon `@user@instance`.
 - [x] 1.3 Add the `Dripstone.Alerts.TriggerType` struct and the catalog (`trigger_types/0`, `get_trigger_type/1`) with the four initial types (design §3). Verify with a unit test of the catalog contents and lookup.
-- [x] 1.4 Write `docs/FEEDS.md` and `docs/TRIGGERS.md` with copy-paste skeletons and the one-line registry step. Verify with tests that register a throwaway feed and a throwaway trigger type through `Application.put_env` (restored afterwards) and see them in `all/0` / `trigger_types/0`.
+- [x] 1.4 Write `openspec/changes/add-tracker-ui/docs/FEEDS.md` and `openspec/changes/add-tracker-ui/docs/TRIGGERS.md` with copy-paste skeletons and the one-line registry step. Verify with tests that register a throwaway feed and a throwaway trigger type through `Application.put_env` (restored afterwards) and see them in `all/0` / `trigger_types/0`.
 
 ## 2. Tracker structs and sample base data
 
@@ -16,7 +16,7 @@
 
 - [x] 3.1 Implement finding validation as a schemaless changeset (catalog trigger, at least one evidence item, severity, known or new network, `observed_at`). Verify with unit tests for each rejection in `specs/alert-intake/spec.md`, and that a rejected finding leaves state unchanged.
 - [x] 3.2 Implement the intake pipeline (design §2): network creation and updates with analyst protections, de-duplication with severity escalation, the dismissal and stale rule, `System` history entries, the result map (`action`, `skipped`), and the PubSub broadcast. Verify with table-driven tests for every alert-intake scenario: repeated findings merging, a re-alert marked previously dismissed, a stale finding ignored, a removed member skipped, an analyst name kept, and a broadcast received.
-- [x] 3.3 Write `docs/DETECTION_INTERFACE.md` with every finding field, the validation errors, the result shape, and one example finding per initial trigger type. Verify with a test that parses each example out of the doc and reports it successfully through `report_finding/1`.
+- [x] 3.3 Write `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md` with every finding field, the validation errors, the result shape, and one example finding per initial trigger type. Verify with a test that parses each example out of the doc and reports it successfully through `report_finding/1`.
 
 ## 4. Tracker context and store
 
@@ -60,7 +60,7 @@
 
 ## 10. Feeds screen
 
-- [x] 10.1 Implement `FeedLive.Index`: a read-only table with status, last item, 24h items, account count and last error, plus the `docs/FEEDS.md` note. Verify with `mix test test/dripstone_web/live/feed_live_test.exs`, covering all six feeds, the Down feed's error, no edit controls, and a throwaway feed appearing.
+- [x] 10.1 Implement `FeedLive.Index`: a read-only table with status, last item, 24h items, account count and last error, plus the `openspec/changes/add-tracker-ui/docs/FEEDS.md` note. Verify with `mix test test/dripstone_web/live/feed_live_test.exs`, covering all six feeds, the Down feed's error, no edit controls, and a throwaway feed appearing.
 
 ## 11. Integration checks
 
@@ -69,6 +69,6 @@
 
 ## Workflow follow-up
 
-- Review `docs/DETECTION_INTERFACE.md` with the detection owner before or right after apply; adjust the intake if the AI side needs a different shape.
+- Review `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md` with the detection owner before or right after apply; adjust the intake if the AI side needs a different shape.
 - After review, archive the change so the eight new capability specs move into `openspec/specs/`.
 - Next change: persistence (Ecto schemas behind `Dripstone.Tracker`) and the real detection integration through the intake.

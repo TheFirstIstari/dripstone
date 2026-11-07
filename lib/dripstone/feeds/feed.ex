@@ -4,7 +4,7 @@ defmodule Dripstone.Feeds.Feed do
 
   A feed describes one platform: its stable id, display name, how account handles
   are shown, and how to link to an account's profile and to a post. Feeds are
-  listed in the `Dripstone.Feeds` registry (see `docs/FEEDS.md`).
+  listed in the `Dripstone.Feeds` registry (see `openspec/changes/add-tracker-ui/docs/FEEDS.md`).
 
   Account and post references are plain maps (or structs) with at least a
   `:handle` key; posts also carry `:post_id`. Some feeds read extra keys, such as

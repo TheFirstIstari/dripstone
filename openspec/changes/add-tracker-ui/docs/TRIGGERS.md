@@ -1,3 +1,4 @@
+<!-- Contract doc for the alert-intake capability; the catalog entry is exercised by tests. -->
 # Adding an alert trigger type
 
 A **trigger type** is a kind of alert that detection can raise, such as "Promotion

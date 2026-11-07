@@ -53,7 +53,12 @@ defmodule DripstoneWeb.FeedLiveTest do
   test "is read-only and points to the doc for adding feeds", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/feeds")
 
-    assert has_element?(view, "#feeds-how-to-add", "docs/FEEDS.md")
+    assert has_element?(
+             view,
+             "#feeds-how-to-add",
+             "openspec/changes/add-tracker-ui/docs/FEEDS.md"
+           )
+
     refute has_element?(view, "#feeds button")
     refute has_element?(view, "#feeds form")
     refute has_element?(view, "#feeds a")

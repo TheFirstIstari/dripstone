@@ -11,7 +11,7 @@ defmodule Dripstone.Alerts do
         ]
 
   Adding a trigger type is one entry in that list; it then appears in alert
-  labels and filters. See `docs/TRIGGERS.md`.
+  labels and filters. See `openspec/changes/add-tracker-ui/docs/TRIGGERS.md`.
   """
 
   alias Dripstone.Alerts.TriggerType

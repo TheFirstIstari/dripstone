@@ -1,5 +1,5 @@
 defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
-  # Reports the examples from docs/DETECTION_INTERFACE.md through the shared store,
+  # Reports the examples from openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md through the shared store,
   # so the doc can't drift from the code. Uses the app-wide store: not async.
   use ExUnit.Case, async: false
 
@@ -7,7 +7,10 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
   alias Dripstone.Tracker
   alias Dripstone.Tracker.{SampleStore, State}
 
-  @doc_path Path.expand("../../../docs/DETECTION_INTERFACE.md", __DIR__)
+  @doc_path Path.expand(
+              "../../../openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md",
+              __DIR__
+            )
   @external_resource @doc_path
 
   setup do

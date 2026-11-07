@@ -25,7 +25,7 @@ config :dripstone,
   generators: [timestamp_type: :utc_datetime]
 
 # Platform feeds, in display order. Adding a platform: write a module that
-# implements Dripstone.Feeds.Feed and add it here (see docs/FEEDS.md).
+# implements Dripstone.Feeds.Feed and add it here (see openspec/changes/add-tracker-ui/docs/FEEDS.md).
 config :dripstone, Dripstone.Feeds,
   feeds: [
     Dripstone.Feeds.X,
@@ -37,7 +37,7 @@ config :dripstone, Dripstone.Feeds,
   ]
 
 # Alert trigger types, in display order. Ids are stable strings that detection
-# reports findings with. Adding one: append an entry here (see docs/TRIGGERS.md).
+# reports findings with. Adding one: append an entry here (see openspec/changes/add-tracker-ui/docs/TRIGGERS.md).
 config :dripstone, Dripstone.Alerts,
   trigger_types: [
     [

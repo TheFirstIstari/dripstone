@@ -9,7 +9,7 @@ defmodule Dripstone.Tracker.SampleData do
       `%{at: DateTime.t(), type: :finding | :decision | :curation, ...}`
 
   Finding events carry a `:finding` map in the shape detection reports through the
-  findings intake (see `docs/DETECTION_INTERFACE.md`). Decision and curation events
+  findings intake (see `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md`). Decision and curation events
   stand in for analyst actions. The store replays the events in order, so every
   sample alert is produced by the real intake.
 

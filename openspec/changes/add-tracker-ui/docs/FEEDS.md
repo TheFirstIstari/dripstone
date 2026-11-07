@@ -1,3 +1,4 @@
+<!-- Contract doc for the feeds capability; the skeleton is followed by tests. -->
 # Adding a platform feed
 
 A **feed** tells Dripstone about one social platform: its id, its display name, how
