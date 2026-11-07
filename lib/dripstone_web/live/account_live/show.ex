@@ -122,7 +122,7 @@ defmodule DripstoneWeb.AccountLive.Show do
           <.card id="signals" title={signals_title(@account.risk_score)}>
             <p :if={@account.signals == []} class="text-sm text-ink-muted">No signals recorded.</p>
             <ol class="space-y-3">
-              <li :for={{signal, i} <- Enum.with_index(@account.signals)} id={"signal-#{i}"}>
+              <li :for={{signal, i} <- Enum.with_index(ordered(@account.signals))} id={"signal-#{i}"}>
                 <div class="flex items-baseline justify-between gap-3">
                   <span class="text-sm font-medium text-ink">{signal.name}</span>
                   <span
@@ -131,8 +131,16 @@ defmodule DripstoneWeb.AccountLive.Show do
                   >
                     +{signal.contribution}
                   </span>
+                  <span
+                    :if={is_nil(signal.contribution) and signal.value}
+                    id={"signal-#{i}-value"}
+                    class="text-sm font-semibold tabular-nums text-ink"
+                  >
+                    {signal.value}
+                  </span>
                 </div>
                 <div
+                  :if={signal.contribution}
                   class="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-raised"
                   aria-hidden="true"
                 >
@@ -185,6 +193,15 @@ defmodule DripstoneWeb.AccountLive.Show do
         </div>
 
         <div class="space-y-4 lg:space-y-6">
+          <.answers_panel
+            :if={@account.assessment}
+            id="account-answers"
+            title="Latest model assessment"
+            answers={@account.assessment.answers}
+            model={@account.assessment.model}
+            observed_at={@account.assessment.observed_at}
+          />
+
           <.card id="account-networks" title="Networks" padded={false}>
             <:header_actions>
               <.button id="open-network-picker" phx-click="open_picker" size="sm" variant="ghost">
@@ -285,7 +302,12 @@ defmodule DripstoneWeb.AccountLive.Show do
     end
   end
 
-  defp bar_width(nil, _score), do: 0
+  # Signals with a contribution first, largest first; the rest keep their order.
+  defp ordered(signals) do
+    {with, without} = Enum.split_with(signals, &is_integer(&1.contribution))
+    Enum.sort_by(with, & &1.contribution, :desc) ++ without
+  end
+
   defp bar_width(_contribution, 0), do: 0
   defp bar_width(contribution, score), do: round(contribution / score * 100)
 

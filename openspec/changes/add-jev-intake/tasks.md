@@ -58,7 +58,7 @@
 
 ## 5. Scorer and worker
 
-- [ ] 5.1 Give `Scorer` its three question sets (design §8), each `choice` and `score` question carrying `criteria` with the exact labels the intake expects. Add `assess_group/2` and `assess_trend/2`. Verify with offline `Req.Test` tests that assert each request's question definitions (the "Question definitions follow the model's schema" scenarios) and that `member:` keys are generated per account.
+- [x] 5.1 Give `Scorer` its three question sets (design §8), each `choice` and `score` question carrying `criteria` with the exact labels the intake expects. Add `assess_group/2` and `assess_trend/2`. Verify with offline `Req.Test` tests that assert each request's question definitions (the "Question definitions follow the model's schema" scenarios) and that `member:` keys are generated per account.
 - [x] 5.2 Change `AssessWorker` to build an account report and call `report_finding/1`. Verify with the worker test: with no key it records a heuristics-only account and raises no alert, and an unknown adapter cancels the job.
 
 ## 6. Sample data and simulator
@@ -70,9 +70,9 @@
 
 ## 7. UI
 
-- [ ] 7.1 Add the `answers_panel` component and show it on alert detail (answers, model, observed time, or "heuristics only"), with the rationale placeholder when there is none. Verify with LiveView tests for the "Answers behind the alert", "No AI answers" and "No AI-written rationale" scenarios.
-- [ ] 7.2 Add the network assessment panel to the network summary (coordinated, relation, trajectory, or "not assessed"), and add the new link types and colors to the graph legend, filters and shared evidence. Verify with LiveView tests for the "Assessed network", "Never assessed" and "Relation labels in the legend" scenarios.
-- [ ] 7.3 Show signal values when there is no contribution, contributed signals first, and the answers panel on account detail. Verify with LiveView tests for "Signals without contributions" and "Account with links" (`Repost ring`).
+- [x] 7.1 Add the `answers_panel` component and show it on alert detail (answers, model, observed time, or "heuristics only"), with the rationale placeholder when there is none. Verify with LiveView tests for the "Answers behind the alert", "No AI answers" and "No AI-written rationale" scenarios.
+- [x] 7.2 Add the network assessment panel to the network summary (coordinated, relation, trajectory, or "not assessed"), and add the new link types and colors to the graph legend, filters and shared evidence. Verify with LiveView tests for the "Assessed network", "Never assessed" and "Relation labels in the legend" scenarios.
+- [x] 7.3 Show signal values when there is no contribution, contributed signals first, and the answers panel on account detail. Verify with LiveView tests for "Signals without contributions" and "Account with links" (`Repost ring`).
 
 ## 8. Integration checks
 

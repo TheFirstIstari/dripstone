@@ -6,7 +6,10 @@ defmodule Dripstone.Tracker.Alert do
   before/after values for alerts that compare a network over time.
   `previously_dismissed_alert_id` is set when the alert re-raises a dismissed network.
   `answers` and `model` are the decision-model answers (parsed, keyed by question
-  name) and model behind the latest finding that raised or updated the alert.
+  name) and model behind the latest finding that raised or updated the alert, and
+  `finding_id` is that finding's id. All three are `nil` for alerts that didn't come
+  from a detection finding (e.g. replayed sample data); `answers` alone is `nil` when
+  that finding had heuristics only.
   """
 
   alias Dripstone.Tracker.Evidence
@@ -27,6 +30,7 @@ defmodule Dripstone.Tracker.Alert do
     :decision_id,
     :answers,
     :model,
+    :finding_id,
     status: :open,
     evidence: []
   ]
@@ -49,6 +53,7 @@ defmodule Dripstone.Tracker.Alert do
           previously_dismissed_alert_id: String.t() | nil,
           decision_id: String.t() | nil,
           answers: map() | nil,
-          model: String.t() | nil
+          model: String.t() | nil,
+          finding_id: String.t() | nil
         }
 end

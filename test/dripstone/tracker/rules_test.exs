@@ -239,6 +239,19 @@ defmodule Dripstone.Tracker.RulesTest do
       assert state.networks[result.network_id].name == "Crypto cluster on X"
     end
 
+    test "the catch-all topic \"other\" doesn't name the network" do
+      {_, state} = run(%State{}, account("h1", %{"answers" => %{"topic" => choice("other")}}))
+      {result, state} = run(state, group(["h1", "h2"], %{"coordinated" => noul(0.9)}))
+      assert state.networks[result.network_id].name == "Unnamed cluster on X"
+    end
+
+    test "alerts from a finding record its id" do
+      {%{alerts: [%{alert: alert}], finding_id: finding_id}, _} =
+        run(%State{}, group(handles(2), %{"coordinated" => noul(0.9)}))
+
+      assert alert.finding_id == finding_id
+    end
+
     test "a group mostly inside a known network is a finding for that network" do
       {state, network_id, _alert} = network_of(4)
 

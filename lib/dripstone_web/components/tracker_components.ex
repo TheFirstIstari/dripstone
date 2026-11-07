@@ -13,7 +13,7 @@ defmodule DripstoneWeb.TrackerComponents do
   import DripstoneWeb.CoreComponents, only: [icon: 1]
 
   alias Dripstone.Feeds
-  alias Dripstone.Tracker.Link
+  alias Dripstone.Tracker.{Answers, Link}
 
   ## Badges
 
@@ -202,6 +202,179 @@ defmodule DripstoneWeb.TrackerComponents do
       </span>
     </span>
     """
+  end
+
+  ## Decision-model answers
+
+  @answer_order ~w(is_bot spam topic coordinated relation increasing trajectory)
+
+  @doc """
+  The decision model's answers behind a finding: each question with its answer and
+  confidence, plus the model and when it was observed. `answers` is the parsed map
+  (`Dripstone.Tracker.Answers`); `nil` means only heuristics were available.
+  """
+  attr :id, :string, required: true
+  attr :answers, :map, default: nil
+  attr :model, :string, default: nil
+  attr :observed_at, DateTime, default: nil
+  attr :title, :string, default: "What the model answered"
+  attr :class, :any, default: nil
+
+  def answers_panel(assigns) do
+    assigns = assign(assigns, :rows, answer_rows(assigns.answers))
+
+    ~H"""
+    <.card id={@id} title={@title} class={@class} padded={false}>
+      <p :if={is_nil(@answers)} id={"#{@id}-heuristics-only"} class="px-4 py-3 text-sm text-ink-muted">
+        The AI didn't answer for this finding, so only heuristics were available.
+      </p>
+      <dl :if={@answers} class="divide-y divide-line">
+        <div
+          :for={row <- @rows}
+          id={"#{@id}-#{row.dom_id}"}
+          class="flex items-baseline justify-between gap-3 px-4 py-2 text-sm"
+        >
+          <dt class="text-ink-muted">{row.label}</dt>
+          <dd class="text-right font-medium tabular-nums text-ink">
+            {row.value}
+            <span :if={row.confidence} class="ml-1 text-xs font-normal text-ink-faint">
+              {row.confidence} sure
+            </span>
+          </dd>
+        </div>
+      </dl>
+      <p
+        :if={@model || @observed_at}
+        id={"#{@id}-source"}
+        class="border-t border-line px-4 py-2 text-xs text-ink-faint"
+      >
+        <span :if={@model} class="font-mono">{@model}</span>
+        <span :if={@model && @observed_at}> · </span>
+        <span :if={@observed_at}>observed <.relative_time at={@observed_at} /></span>
+      </p>
+    </.card>
+    """
+  end
+
+  defp answer_rows(nil), do: []
+
+  defp answer_rows(answers) do
+    answers
+    |> Enum.sort_by(fn {name, _} -> {answer_rank(name), name} end)
+    |> Enum.map(fn {name, answer} ->
+      %{
+        dom_id: "answer-" <> String.replace(name, ~r/[^a-zA-Z0-9_-]+/, "-"),
+        label: answer_label(name),
+        value: answer_value(answer),
+        confidence: answer_confidence(answer)
+      }
+    end)
+  end
+
+  defp answer_rank(name) do
+    cond do
+      name in @answer_order -> Enum.find_index(@answer_order, &(&1 == name))
+      String.starts_with?(name, "member:") -> length(@answer_order)
+      true -> length(@answer_order) + 1
+    end
+  end
+
+  defp answer_label("is_bot"), do: "Bot-like"
+  defp answer_label("spam"), do: "Spam"
+  defp answer_label("topic"), do: "Topic"
+  defp answer_label("coordinated"), do: "Coordinated"
+  defp answer_label("relation"), do: "Relation"
+  defp answer_label("increasing"), do: "Coordination increasing"
+  defp answer_label("trajectory"), do: "Trajectory"
+
+  defp answer_label("member:" <> rest) do
+    case String.split(rest, ":", parts: 2) do
+      [feed, handle] -> "Takes part: #{handle} (#{feed})"
+      _ -> "Takes part: #{rest}"
+    end
+  end
+
+  defp answer_label(name), do: name
+
+  defp answer_value(%{type: :choice, label: label}), do: label
+  defp answer_value(answer), do: Answers.display(answer)
+
+  defp answer_confidence(%{type: type, confidence: c})
+       when type in [:choice, :score] and is_number(c),
+       do: Answers.percent(c)
+
+  defp answer_confidence(_answer), do: nil
+
+  @doc """
+  A network's latest decision-model assessment: coordination, relation and
+  trajectory, each with when it was observed, or a not-assessed state.
+  """
+  attr :id, :string, required: true
+  attr :assessment, :map, default: nil
+
+  def network_assessment(assigns) do
+    assigns = assign(assigns, :a, assigns.assessment || %{})
+
+    ~H"""
+    <.card id={@id} title="Model assessment">
+      <p
+        :if={not assessed?(@a)}
+        id={"#{@id}-none"}
+        class="text-sm text-ink-muted"
+      >
+        This network hasn't been assessed by the model yet.
+      </p>
+      <dl :if={assessed?(@a)} class="space-y-2 text-sm">
+        <div id={"#{@id}-coordinated"} class="flex items-baseline justify-between gap-3">
+          <dt class="text-ink-muted">Coordinated</dt>
+          <dd class="text-right font-medium tabular-nums text-ink">
+            {if is_number(@a[:coordinated]), do: Answers.percent(@a[:coordinated]), else: "—"}
+            <.observed at={@a[:group_observed_at]} />
+          </dd>
+        </div>
+        <div id={"#{@id}-relation"} class="flex items-baseline justify-between gap-3">
+          <dt class="text-ink-muted">Relation</dt>
+          <dd class="text-right font-medium text-ink">
+            {relation_label(@a[:relation])}
+            <span :if={@a[:relation_confidence]} class="ml-1 text-xs font-normal text-ink-faint">
+              {Answers.percent(@a[:relation_confidence])} sure
+            </span>
+            <.observed at={@a[:group_observed_at]} />
+          </dd>
+        </div>
+        <div id={"#{@id}-trajectory"} class="flex items-baseline justify-between gap-3">
+          <dt class="text-ink-muted">Trajectory</dt>
+          <dd class="text-right font-medium text-ink">
+            {if @a[:trajectory], do: String.capitalize(@a[:trajectory]), else: "—"}
+            <.observed at={@a[:trend_observed_at]} />
+          </dd>
+        </div>
+      </dl>
+    </.card>
+    """
+  end
+
+  attr :at, DateTime, default: nil
+
+  defp observed(assigns) do
+    ~H"""
+    <span :if={@at} class="block text-xs font-normal text-ink-faint">
+      <.relative_time at={@at} />
+    </span>
+    """
+  end
+
+  defp assessed?(a),
+    do: is_number(a[:coordinated]) or is_binary(a[:relation]) or is_binary(a[:trajectory])
+
+  defp relation_label(nil), do: "—"
+
+  defp relation_label(label) do
+    case Map.fetch(Answers.relations(), label) do
+      {:ok, :none} -> "None"
+      {:ok, kind} -> link_kind_label(kind)
+      :error -> label
+    end
   end
 
   defp badge_class,

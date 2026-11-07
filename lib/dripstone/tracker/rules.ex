@@ -355,7 +355,8 @@ defmodule Dripstone.Tracker.Rules do
     topic =
       members
       |> Enum.map(&(state.accounts[&1] && state.accounts[&1].topic))
-      |> Enum.reject(&is_nil/1)
+      # "other" is the topic question's catch-all, not a useful name.
+      |> Enum.reject(&(is_nil(&1) or &1 == "other"))
       |> Enum.frequencies()
       |> Enum.max_by(fn {_topic, n} -> n end, fn -> nil end)
 
@@ -575,7 +576,7 @@ defmodule Dripstone.Tracker.Rules do
   # Runs one internal finding through the intake and stamps the resulting alert
   # with the report's answers and model. The last element is the intake's reason
   # when it ignored the finding (e.g. `:predates_dismissal`), otherwise nil.
-  defp intake(state, finding, %{report: report, now: now}) do
+  defp intake(state, finding, %{id: ctx_id, report: report, now: now}) do
     with {:ok, %{action: action, alert: alert, skipped: skipped, reason: reason}, state} <-
            Intake.run(state, finding, now) do
       case action do
@@ -583,7 +584,7 @@ defmodule Dripstone.Tracker.Rules do
           {:ok, state, [], skipped, reason}
 
         _ ->
-          alert = %{alert | answers: report.answers, model: report.model}
+          alert = %{alert | answers: report.answers, model: report.model, finding_id: ctx_id}
           state = %{state | alerts: Map.put(state.alerts, alert.id, alert)}
           {:ok, state, [%{action: action, alert: alert}], skipped, nil}
       end
