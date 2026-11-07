@@ -8,6 +8,18 @@ schema: spec-driven
 #   context: |
 #     Designs and tasks must cover Windows, macOS, and Linux
 #     Write all artifacts in Spanish
+context: |
+  Dripstone is an internal analysis platform for our team to discover and track
+  bot farms (networks of coordinated or inauthentic accounts) on social platforms
+  (initially X, Reddit, Bluesky, Mastodon, Telegram, Facebook; feeds are modular).
+  Detection is automated: a live AI model (vLLM on the `desktop` node) combined with
+  heuristics finds linked accounts and suspected networks, and raises alerts. Humans
+  do not triage raw data; analysts review alerts and the evidence behind them,
+  confirm or dismiss them, and curate networks. Dismissed networks can re-alert on
+  new evidence. The team decides what action to take outside the app.
+  The AI/detection side is owned separately and its interface is still being
+  defined: keep the app's contract with it small and documented.
+  Single team, accessed over the tailnet; no public users.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
