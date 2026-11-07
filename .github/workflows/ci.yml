@@ -14,8 +14,6 @@ jobs:
     timeout-minutes: 15
     env:
       MIX_ENV: test
-      HEX_HOME: ~/.hex
-      MIX_HOME: ~/.mix
     steps:
       - uses: actions/checkout@v4
       - name: Cache mise tools

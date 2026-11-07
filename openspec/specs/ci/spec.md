@@ -7,22 +7,23 @@ Continuous integration pipeline for the project, defined in
 ## Requirements
 
 ### Requirement: Self-hosted runner
-The CI workflow SHALL run on `runs-on: [self-hosted, Linux, X64]`.
+The CI workflow SHALL run on `runs-on: [self-hosted, Linux, X64, cachyos-x8664]`.
 
 #### Scenario: Runner labels
 - **WHEN** a push to `main` or a pull request triggers the workflow
-- **THEN** the `test` job executes on a self-hosted Linux X64 runner
+- **THEN** the `ci` job executes on a self-hosted Linux X64 runner
 
 ### Requirement: Test pipeline
 The workflow SHALL checkout, set up the toolchain via mise, install deps,
-start the `db` compose service, wait with `pg_isready`, run `ecto.setup`,
+start the `db` compose service, wait with `pg_isready`, run `ecto.create` +
+`ecto.migrate`,
 and run the test suite.
 
 #### Scenario: Pipeline steps
-- **WHEN** the `test` job runs
+- **WHEN** the `ci` job runs
 - **THEN** it executes checkout, mise setup, `mix deps.get`,
   `docker compose up -d db`, `pg_isready` wait loop, `MIX_ENV=test mix
-  ecto.setup`, and `MIX_ENV=test mix test` in order
+  ecto.create`, `MIX_ENV=test mix ecto.migrate`, and `MIX_ENV=test mix test` in order
 
 ### Requirement: Read-only permissions
 The workflow SHALL declare `permissions: contents: read`.
