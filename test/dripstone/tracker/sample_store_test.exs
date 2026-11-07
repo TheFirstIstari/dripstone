@@ -116,4 +116,15 @@ defmodule Dripstone.Tracker.SampleStoreTest do
     assert SampleStore.get_state(:sample_store_empty_check).alerts == %{}
     GenServer.stop(pid)
   end
+
+  test "load: :showcase starts on the showcase corpus" do
+    {:ok, pid} = SampleStore.start_link(load: :showcase, name: :sample_store_showcase_check)
+    state = SampleStore.get_state(:sample_store_showcase_check)
+    GenServer.stop(pid)
+
+    {:ok, expected} = Dripstone.Showcase.load()
+
+    assert Map.keys(state.networks) |> Enum.sort() == Map.keys(expected.networks) |> Enum.sort()
+    assert map_size(state.accounts) == 6
+  end
 end

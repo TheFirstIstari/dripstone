@@ -9,7 +9,13 @@ defmodule Dripstone.Tracker.Simulator do
   (which calls the AI if `OPENCODE_API_KEY` is set, otherwise heuristics only) →
   `Tracker.report_finding/1` (an account finding).
 
-  It also stands in for ingestion: every `interval` ms it marks the Healthy sample
+  Every `interval` ms (45 seconds by default) it also reports a generated finding
+  with canned answers (model `"simulator"`, no AI call) through
+  `Tracker.report_finding/1`, so network alerts keep arriving through the real
+  rules: a trend finding for a live network, two new accounts joining one, or a few
+  new accounts forming a new network. `kinds:` limits the choice (for tests).
+
+  It also stands in for ingestion: on the same tick it marks the Healthy sample
   feeds as having just received an item, so they don't go quiet (and turn
   Degraded) while the app runs. Down and Degraded feeds are left as they are.
 
@@ -22,6 +28,7 @@ defmodule Dripstone.Tracker.Simulator do
 
   require Logger
 
+  alias Dripstone.Tracker
   alias Dripstone.Tracker.SampleStore
   alias Dripstone.Workers.AssessWorker
 
@@ -49,7 +56,8 @@ defmodule Dripstone.Tracker.Simulator do
     state = %{
       interval: Keyword.get(opts, :interval, @default_interval),
       assess_interval: Keyword.get(opts, :assess_interval, @default_assess_interval),
-      enqueue: Keyword.get(opts, :enqueue, &Oban.insert/1)
+      enqueue: Keyword.get(opts, :enqueue, &Oban.insert/1),
+      kinds: Keyword.get(opts, :kinds, [:trend, :growth, :new])
     }
 
     Process.send_after(self(), :tick, state.interval)
@@ -60,6 +68,7 @@ defmodule Dripstone.Tracker.Simulator do
   @impl true
   def handle_info(:tick, state) do
     {:ok, _} = SampleStore.change(&refresh_feeds/1)
+    report_canned(state.kinds)
     Process.send_after(self(), :tick, state.interval)
     {:noreply, state}
   end
@@ -75,6 +84,82 @@ defmodule Dripstone.Tracker.Simulator do
     Process.send_after(self(), :assess, state.assess_interval)
     {:noreply, state}
   end
+
+  ## Canned findings
+
+  @relations ~w(repost-ring shared-link timing-sync audience-overlap)
+  @trajectories ~w(forming stable fading)
+
+  defp report_canned(kinds) do
+    finding = SampleStore.read(&canned_finding(&1, kinds))
+
+    case Tracker.report_finding(finding) do
+      {:ok, %{alerts: alerts}} ->
+        for %{action: action, alert: alert} <- alerts,
+            do: Logger.debug("Simulator #{action} #{alert.id} (#{alert.trigger_id})")
+
+      {:error, errors} ->
+        Logger.warning("Simulator finding was rejected: #{inspect(errors)}")
+    end
+  end
+
+  # A random finding of one of `kinds`; with no live network, a new one is formed.
+  defp canned_finding(state, kinds) do
+    networks =
+      for {_, n} <- state.networks, is_nil(n.retired_into), n.member_ids != [], do: n
+
+    kind = if networks == [], do: :new, else: Enum.random(kinds)
+    base = %{observed_at: DateTime.utc_now(), model: "simulator"}
+
+    case kind do
+      :trend ->
+        network = Enum.random(networks)
+
+        Map.merge(base, %{
+          kind: "trend",
+          network_id: network.id,
+          answers: %{
+            "increasing" => noul(Enum.random(50..95) / 100),
+            "trajectory" => choice(Enum.random(@trajectories))
+          }
+        })
+
+      :growth ->
+        network = Enum.random(networks)
+        feed = List.first(network.platforms) || "x"
+
+        members =
+          network.member_ids
+          |> Enum.take_random(3)
+          |> Enum.map(&%{feed_id: state.accounts[&1].feed_id, handle: state.accounts[&1].handle})
+
+        group(base, members ++ new_accounts(feed, 2), network.id)
+
+      :new ->
+        group(base, new_accounts(Enum.random(~w(x reddit bluesky)), Enum.random(3..5)), nil)
+    end
+  end
+
+  defp group(base, accounts, network_id) do
+    base
+    |> Map.merge(%{
+      kind: "group",
+      accounts: accounts,
+      answers: %{
+        "coordinated" => noul(Enum.random(75..97) / 100),
+        "relation" => choice(Enum.random(@relations))
+      }
+    })
+    |> then(&if(network_id, do: Map.put(&1, :network_id, network_id), else: &1))
+  end
+
+  defp new_accounts(feed, n),
+    do: for(_ <- 1..n, do: %{feed_id: feed, handle: "sim_#{System.unique_integer([:positive])}"})
+
+  defp noul(p), do: %{"type" => "noul", "noul" => p}
+
+  defp choice(label),
+    do: %{"type" => "choice", "choice" => label, "confidence" => Enum.random(55..95) / 100}
 
   @window_seconds 24 * 3_600
 

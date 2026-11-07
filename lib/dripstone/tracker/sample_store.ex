@@ -3,7 +3,8 @@ defmodule Dripstone.Tracker.SampleStore do
   In-memory holder of the tracker `State`, used until persistence exists.
 
   On start it loads the replayed sample data (unless started with `state:` or
-  `load: false`). All changes go through this process one at a time and are
+  `load: false`), or the showcase corpus with `load: :showcase`
+  (`Dripstone.Showcase`). All changes go through this process one at a time and are
   broadcast on the tracker PubSub topic after they are applied. Reads also run
   inside this process and return only their result. Restarting the app resets the
   state.
@@ -82,6 +83,7 @@ defmodule Dripstone.Tracker.SampleStore do
     state =
       cond do
         state = Keyword.get(opts, :state) -> state
+        Keyword.get(opts, :load, true) == :showcase -> showcase!()
         Keyword.get(opts, :load, true) -> SampleLoader.load()
         true -> %State{}
       end
@@ -126,6 +128,13 @@ defmodule Dripstone.Tracker.SampleStore do
   def handle_call(:get_state, _from, state), do: {:reply, state, state}
   def handle_call({:put_state, new_state}, _from, _state), do: {:reply, :ok, new_state}
   def handle_call(:reset, _from, _state), do: {:reply, :ok, SampleLoader.load()}
+
+  defp showcase! do
+    case Dripstone.Showcase.load() do
+      {:ok, state} -> state
+      {:error, reason} -> raise "could not load the showcase corpus: #{inspect(reason)}"
+    end
+  end
 
   defp report_messages(result) do
     alerts =

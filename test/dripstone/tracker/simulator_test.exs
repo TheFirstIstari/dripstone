@@ -101,4 +101,55 @@ defmodule Dripstone.Tracker.SimulatorTest do
     assert health["x"].items_24h == 1
     refute DateTime.diff(now, health["x"].window_started_at) >= 24 * 3_600
   end
+
+  describe "canned findings each tick" do
+    defp tick(kinds) do
+      :ok = Tracker.subscribe()
+
+      pid =
+        start_supervised!(
+          {Simulator,
+           interval: 60_000,
+           first_assess: 60_000,
+           enqueue: capture_jobs(),
+           kinds: kinds,
+           name: :test_simulator}
+        )
+
+      send(pid, :tick)
+      _ = :sys.get_state(pid)
+    end
+
+    test "a group of new accounts forms a network through the real rules" do
+      before = map_size(SampleStore.get_state().networks)
+      tick([:new])
+
+      assert_receive {:alert_raised, %{trigger_id: "new_network", model: "simulator"} = alert}
+      assert alert.finding_id
+      assert map_size(SampleStore.get_state().networks) == before + 1
+    end
+
+    test "new accounts joining a live network raise network growth" do
+      tick([:growth])
+
+      # A network that already has an open growth alert merges into it instead.
+      assert_receive {event, %{trigger_id: "network_growth", model: "simulator"}}
+                     when event in [:alert_raised, :alert_updated]
+    end
+
+    test "a trend finding records the network's trajectory" do
+      tick([:trend])
+
+      [%{kind: :trend, network_id: id}] =
+        Enum.take(SampleStore.get_state().findings, 1)
+
+      assert SampleStore.get_state().networks[id].assessment.trajectory in ~w(forming stable fading)
+    end
+
+    test "with no live network, it forms one whatever kinds allow" do
+      :ok = SampleStore.put_state(%Dripstone.Tracker.State{})
+      tick([:trend])
+      assert_receive {:alert_raised, %{trigger_id: "new_network"}}
+    end
+  end
 end
