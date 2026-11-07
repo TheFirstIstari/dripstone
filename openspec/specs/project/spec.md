@@ -77,3 +77,33 @@ scraped corpora, and the overview screen SHALL be able to run on it.
 #### Scenario: Loading the showcase renders linked networks
 - **WHEN** the overview screen loads the showcase corpus
 - **THEN** it renders linked networks with relation labels
+
+### Requirement: Temporal dataset rules
+Every dataset entity (accounts, edges, posts slices, decisions) SHALL carry
+`first_seen_at`, `last_true_at`, `last_checked_at` (all UTC); edges are
+immortal, labels versioned by timestamp; time-travel reads (graph as of date T)
+SHALL be supported by filtering on those fields.
+
+#### Scenario: Querying a network as of 30 days ago returns then-current edges
+- **WHEN** a network is queried as of 30 days ago
+- **THEN** it returns its then-current edges
+
+### Requirement: Edge provenance
+Every edge SHALL record the finding + question that produced it (finding id,
+question name, model, timestamp) to support AI-generated labeling and
+wrong-label tracing.
+
+#### Scenario: An edge renders its provenance chain
+- **WHEN** an edge is rendered
+- **THEN** it shows its provenance chain (finding id, question name, model, timestamp)
+
+### Requirement: Attention signals
+Burst activity on quiet accounts SHALL pin slices from pruning and prioritize
+Jev budget there; display confidence SHALL be computed at read time from
+probability + age since `last_true_at` (no decay writes); each dated corpus
+SHALL carry a manifest of what was true when, for reproducible eval.
+
+#### Scenario: A spike pins data and surfaces the account for review
+- **WHEN** a burst of activity occurs on a quiet account
+- **THEN** its slices are pinned from pruning, Jev budget is prioritized there,
+  and the account surfaces for review

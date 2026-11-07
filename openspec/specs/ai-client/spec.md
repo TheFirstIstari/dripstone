@@ -90,3 +90,13 @@ and public-data-only.
 #### Scenario: Two synced accounts return coordinated with relation label
 - **WHEN** `decide/2` is called with activity summaries of two timing-synced accounts
 - **THEN** it returns `coordinated=true` with a relation label and probability
+
+### Requirement: Trend questions
+`decide/2` SHALL accept time-series state (ordered activity summaries with
+timestamps) and trend questions: a `noul` (is coordination increasing?) and a
+`choice` trajectory label (e.g. forming, stable, fading, none). Same transport,
+caps, and error mapping as other questions.
+
+#### Scenario: Six weekly summaries return increasing with forming trajectory
+- **WHEN** `decide/2` is called with six ordered weekly activity summaries
+- **THEN** it returns `increasing=true` with trajectory `forming`
