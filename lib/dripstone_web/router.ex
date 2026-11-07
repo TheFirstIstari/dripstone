@@ -53,7 +53,6 @@ defmodule DripstoneWeb.Router do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
 
-      live "/", OverviewLive
       live "/alerts", AlertLive.Index
       live "/alerts/:id", AlertLive.Show
       live "/networks", NetworkLive.Index
@@ -66,8 +65,16 @@ defmodule DripstoneWeb.Router do
     post "/users/update-password", UserSessionController, :update_password
   end
 
+  # The root is public so deploy checks see a 200: logged-out visitors get a
+  # landing page, logged-in analysts get the overview dashboard (see
+  # OverviewLive). Everything else an analyst uses still requires login.
   scope "/", DripstoneWeb do
     pipe_through [:browser]
+
+    live_session :root,
+      on_mount: [{DripstoneWeb.UserAuth, :mount_current_scope}, DripstoneWeb.Nav] do
+      live "/", OverviewLive
+    end
 
     live_session :current_user,
       on_mount: [{DripstoneWeb.UserAuth, :mount_current_scope}] do
