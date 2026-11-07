@@ -2,9 +2,8 @@
 
 ## Purpose
 Botfarm social tracker built on Elixir Phoenix 1.8 with Postgres 17 and Oban.
-Hosted on a CachyOS x86_64 host fronted by Tailscale + Caddy. GPU inference
-runs on the `desktop` node (WSL2, RTX 3090) via vLLM with an OpenAI-compatible
-API on port 8000.
+Hosted on a CachyOS x86_64 host fronted by Tailscale + Caddy. AI decisions come
+from OpenCode Console (Jev); no self-hosted GPU anywhere.
 
 ## Requirements
 
@@ -18,18 +17,17 @@ background jobs, as declared in `mix.exs` and `docker-compose.yml`.
 
 ### Requirement: Host topology
 The deployment SHALL use a CachyOS x86_64 host fronted by Tailscale + Caddy,
-with GPU inference offloaded to the `desktop` node.
+with AI via OpenCode Console over HTTPS (no GPU node).
 
 #### Scenario: Topology documented
 - **WHEN** a contributor reads this spec
-- **THEN** the host (CachyOS x86_64), edge (Tailscale + Caddy), and GPU node
-  (`desktop`, WSL2, RTX 3090) are identified
+- **THEN** the host (CachyOS x86_64), edge (Tailscale + Caddy), and AI path
+  (OpenCode Console over HTTPS, no GPU node) are identified
 
-### Requirement: GPU inference endpoint
-The `desktop` node SHALL serve `Qwen/Qwen3-8B-AWQ` via vLLM with
-`max-model-len 16384`, `max-num-seqs 16`, prefix caching enabled, and an
-OpenAI-compatible API on port 8000.
+### Requirement: AI decisions endpoint
+The app SHALL call the Console systemone endpoint with
+`{model, state, questions}` using `jev-1.13-free` by default.
 
-#### Scenario: Endpoint reachable
-- **WHEN** the app calls the internal AI URL with a chat-completions payload
-- **THEN** the `desktop:8000` endpoint accepts the OpenAI-compatible request
+#### Scenario: Decision round-trip
+- **WHEN** the app posts `{model, state, questions}` to the systemone endpoint
+- **THEN** it receives an answers map for the typed questions
