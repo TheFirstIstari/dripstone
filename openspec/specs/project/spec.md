@@ -107,3 +107,56 @@ SHALL carry a manifest of what was true when, for reproducible eval.
 - **WHEN** a burst of activity occurs on a quiet account
 - **THEN** its slices are pinned from pruning, Jev budget is prioritized there,
   and the account surfaces for review
+
+### Requirement: Cleared state
+Accounts investigated and found false SHALL render as Cleared (distinct from
+unknown/uninvestigated) and SHALL stop consuming Jev budget and fetch cycles
+until new activity arrives.
+
+#### Scenario: Cleared account with fresh posts re-enters evaluation
+- **WHEN** a Cleared account publishes fresh posts
+- **THEN** it re-enters evaluation and consumes Jev budget again
+
+### Requirement: Watcher corroboration
+Accounts watched by multiple independent users SHALL get a small confidence
+bump and pruning protection, weighted low enough that brigading cannot
+manufacture truth.
+
+#### Scenario: Third watcher bumps confidence without flipping a label
+- **WHEN** a third independent user watches an already-watched account
+- **THEN** its confidence bumps slightly without flipping any label alone
+
+### Requirement: Circadian fingerprints
+Time-of-day activity histograms, derived from stored timestamps at read time
+(no new writes), SHALL feed the heuristics side as a bot signal before Jev
+is consulted.
+
+#### Scenario: Schedule-posting account outscores organic one at equal volume
+- **WHEN** a schedule-posting account and an organic account with equal volume
+  are scored by heuristics
+- **THEN** the schedule-posting account scores higher as a bot signal
+
+### Requirement: Change digest
+A periodic per-user digest of new edges, flipped labels, and re-alerts SHALL
+be produced from versioned history; the Jev-importance threshold decides
+digest inclusion vs silent update (same rule as notifications).
+
+#### Scenario: Week with one flipped label produces a one-item digest
+- **WHEN** a week yields a single flipped label
+- **THEN** the per-user digest contains that one item
+
+### Requirement: Adversarial ledger
+Evasion-shaped signals (synchronized renames, simultaneous quiet periods,
+cross-platform migration) SHALL be first-class trigger types in the catalog.
+
+#### Scenario: Three linked accounts renaming within an hour fires a trigger
+- **WHEN** three linked accounts rename within an hour
+- **THEN** an evasion trigger fires from the catalog
+
+### Requirement: Holdout eval
+One frozen corpus slice SHALL be excluded from all scorer tuning; metrics
+are reported against it.
+
+#### Scenario: Showcase gain with flat holdout reports the flat result
+- **WHEN** a scorer change improves showcase metrics but holdout stays flat
+- **THEN** the flat holdout result is the one reported
