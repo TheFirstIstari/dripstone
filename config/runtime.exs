@@ -23,6 +23,10 @@ end
 config :dripstone, DripstoneWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# AI decision endpoint key — re-read at boot in all envs so releases pick up
+# the secret from the host environment. Never commit a key value.
+config :dripstone, Dripstone.AIClient, api_key: System.get_env("OPENCODE_API_KEY")
+
 if config_env() == :dev do
   # Reload browser tabs when matching files change.
   config :dripstone, DripstoneWeb.Endpoint,
@@ -41,6 +45,15 @@ if config_env() == :dev do
 end
 
 if config_env() == :prod do
+  ai_base_url = System.get_env("INTERNAL_AI_URL", "https://opencode.ai/inference/systemone/v1")
+  ai_model = System.get_env("INTERNAL_AI_MODEL", "jev-1.13-free")
+
+  config :dripstone, Dripstone.AIClient, base_url: ai_base_url, model: ai_model
+
+  unless is_binary(ai_base_url) and String.starts_with?(ai_base_url, "https") do
+    IO.warn("AI decision base_url is not https — credentials would travel in cleartext")
+  end
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """
