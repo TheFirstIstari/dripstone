@@ -28,7 +28,7 @@ defmodule DripstoneWeb.UserLive.Settings do
         <.button variant="primary" phx-disable-with="Changing...">Change Email</.button>
       </.form>
 
-      <div class="divider" />
+      <hr class="my-8 border-line" />
 
       <.form
         for={@password_form}

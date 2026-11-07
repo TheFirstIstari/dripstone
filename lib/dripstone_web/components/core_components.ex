@@ -93,7 +93,7 @@ defmodule DripstoneWeb.CoreComponents do
   attr :rest, :global,
     include: ~w(href navigate patch method download name value disabled type form)
 
-  attr :class, :any
+  attr :class, :any, default: nil, doc: "extra classes added to the button's own"
   attr :variant, :string, values: ~w(primary secondary ghost danger)
   attr :size, :string, default: "md", values: ~w(sm md)
   slot :inner_block, required: true
@@ -111,16 +111,16 @@ defmodule DripstoneWeb.CoreComponents do
 
     sizes = %{"sm" => "h-8 px-2.5 text-xs gap-1.5", "md" => "h-9 px-3.5 text-sm gap-2"}
 
+    # `class` is added to the button's own styling (e.g. "w-full"), not a replacement.
     assigns =
-      assign_new(assigns, :class, fn ->
-        [
-          "inline-flex items-center justify-center rounded-lg border font-medium cursor-pointer",
-          "transition-colors duration-150 select-none whitespace-nowrap",
-          "disabled:cursor-not-allowed disabled:opacity-50 phx-submit-loading:opacity-70",
-          Map.fetch!(sizes, assigns.size),
-          Map.fetch!(variants, assigns[:variant] || "secondary")
-        ]
-      end)
+      assign(assigns, :class, [
+        "inline-flex items-center justify-center rounded-lg border font-medium cursor-pointer",
+        "transition-colors duration-150 select-none whitespace-nowrap",
+        "disabled:cursor-not-allowed disabled:opacity-50 phx-submit-loading:opacity-70",
+        Map.fetch!(sizes, assigns.size),
+        Map.fetch!(variants, assigns[:variant] || "secondary"),
+        assigns[:class]
+      ])
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
       ~H"""
