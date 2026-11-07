@@ -8,7 +8,7 @@ defmodule DripstoneWeb.UserLive.Settings do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <div class="text-center">
         <.header>
           Account Settings
@@ -28,7 +28,7 @@ defmodule DripstoneWeb.UserLive.Settings do
         <.button variant="primary" phx-disable-with="Changing...">Change Email</.button>
       </.form>
 
-      <div class="divider" />
+      <hr class="my-8 border-line" />
 
       <.form
         for={@password_form}

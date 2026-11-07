@@ -86,6 +86,7 @@ defmodule DripstoneWeb do
       import Phoenix.HTML
       # Core UI components
       import DripstoneWeb.CoreComponents
+      import DripstoneWeb.TrackerComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS
