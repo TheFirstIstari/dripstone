@@ -82,7 +82,8 @@ defmodule DripstoneWeb.AlertLive.ShowTest do
 
   describe "decisions" do
     test "confirming sets the alert and network to Confirmed and shows the decision", %{
-      conn: conn
+      conn: conn,
+      user: user
     } do
       alert = lone_alert("net-c0421")
       {:ok, view, _html} = live(conn, "/alerts/#{alert.id}")
@@ -90,7 +91,7 @@ defmodule DripstoneWeb.AlertLive.ShowTest do
       decide(view, "confirm", "Same copy everywhere.")
 
       assert has_element?(view, "#decision-made", "Confirmed")
-      assert has_element?(view, "#decision-made", "by Unattributed")
+      assert has_element?(view, "#decision-made", "by #{user.email}")
       assert has_element?(view, "#decision-note-text", "Same copy everywhere.")
       assert has_element?(view, "#network-card [data-status=confirmed]")
       refute has_element?(view, "#decision-form")

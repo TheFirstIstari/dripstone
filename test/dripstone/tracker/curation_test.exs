@@ -33,7 +33,7 @@ defmodule Dripstone.Tracker.CurationTest do
 
       assert %{
                actor: :analyst,
-               by: "Unattributed",
+               by: "Detection",
                summary: "Renamed Discount Spam Ring 2 → Rally Bots"
              } =
                latest_history("net-c0421")
@@ -90,10 +90,30 @@ defmodule Dripstone.Tracker.CurationTest do
       {:ok, _} = Tracker.add_note("net-c0421", %{"body" => "First look."})
       {:ok, note} = Tracker.add_note("net-c0421", %{"body" => "Second look."})
 
-      assert note.by == "Unattributed"
+      assert note.by == "Detection"
 
       assert [%{body: "Second look."}, %{body: "First look."}] =
                Tracker.get_network("net-c0421").notes
+    end
+
+    test "notes and renames are attributed to the acting analyst" do
+      {:ok, note} =
+        Tracker.add_note("net-c0421", %{"body" => "Looking."}, "analyst@example.com")
+
+      assert note.by == "analyst@example.com"
+
+      {:ok, _} =
+        Tracker.rename_network(
+          "net-c0421",
+          %{"name" => "Analyst Name"},
+          "analyst@example.com"
+        )
+
+      assert %{
+               actor: :analyst,
+               by: "analyst@example.com",
+               summary: "Renamed Cluster #0421 → Analyst Name"
+             } = latest_history("net-c0421")
     end
 
     test "empty and over-long notes are refused" do

@@ -15,7 +15,7 @@ defmodule Dripstone.Tracker.Curation do
 
   alias Dripstone.Tracker.{Network, Note, State}
 
-  @by "Unattributed"
+  @by "Detection"
   @max_tags 20
   @tag_format ~r/\A[a-z0-9-]{1,32}\z/
   @status_order [:confirmed, :suspected, :dismissed]
@@ -58,7 +58,7 @@ defmodule Dripstone.Tracker.Curation do
 
   ## Name, tags, notes
 
-  def rename(state, id, attrs, now) do
+  def rename(state, id, attrs, now, by \\ @by) do
     with {:ok, network} <- active(state, id),
          {:ok, %{name: name}} <- apply_action(name_changeset(attrs), :update) do
       if name == network.name do
@@ -68,13 +68,13 @@ defmodule Dripstone.Tracker.Curation do
 
         state
         |> put_network(updated)
-        |> history(id, "Renamed #{network.name} → #{name}", now)
+        |> history(id, "Renamed #{network.name} → #{name}", now, by)
         |> done(updated, [id])
       end
     end
   end
 
-  def add_tag(state, id, attrs, now) do
+  def add_tag(state, id, attrs, now, by \\ @by) do
     with {:ok, network} <- active(state, id),
          {:ok, %{tag: tag}} <- apply_action(tag_changeset(attrs), :insert) do
       cond do
@@ -91,20 +91,20 @@ defmodule Dripstone.Tracker.Curation do
 
           state
           |> put_network(updated)
-          |> history(id, "Tagged ##{tag}", now)
+          |> history(id, "Tagged ##{tag}", now, by)
           |> done(updated, [id])
       end
     end
   end
 
-  def remove_tag(state, id, tag, now) do
+  def remove_tag(state, id, tag, now, by \\ @by) do
     with {:ok, network} <- active(state, id) do
       if tag in network.tags do
         updated = %{network | tags: List.delete(network.tags, tag)}
 
         state
         |> put_network(updated)
-        |> history(id, "Removed tag ##{tag}", now)
+        |> history(id, "Removed tag ##{tag}", now, by)
         |> done(updated, [id])
       else
         {:ok, network, state, []}
@@ -112,21 +112,21 @@ defmodule Dripstone.Tracker.Curation do
     end
   end
 
-  def add_note(state, id, attrs, now) do
+  def add_note(state, id, attrs, now, by \\ @by) do
     with {:ok, _network} <- active(state, id),
          {:ok, %{body: body}} <- apply_action(note_changeset(attrs), :insert) do
       {note_id, state} = State.next_id(state, "note")
-      note = %Note{id: note_id, network_id: id, body: body, by: @by, at: now}
+      note = %Note{id: note_id, network_id: id, body: body, by: by, at: now}
 
       %{state | notes: Map.put(state.notes, note_id, note)}
-      |> history(id, "Added a note", now)
+      |> history(id, "Added a note", now, by)
       |> done(note, [id])
     end
   end
 
   ## Membership
 
-  def add_members(state, id, account_ids, now) do
+  def add_members(state, id, account_ids, now, by \\ @by) do
     with {:ok, network} <- active(state, id),
          :ok <- known_accounts(state, account_ids) do
       new_ids = Enum.uniq(account_ids) -- network.member_ids
@@ -138,25 +138,25 @@ defmodule Dripstone.Tracker.Curation do
 
         state
         |> put_network(updated)
-        |> history(id, "Added #{count(new_ids, "member")}", now)
+        |> history(id, "Added #{count(new_ids, "member")}", now, by)
         |> done(updated, [id])
       end
     end
   end
 
-  def remove_members(state, id, account_ids, now) do
+  def remove_members(state, id, account_ids, now, by \\ @by) do
     with {:ok, network} <- active(state, id),
          {:ok, ids} <- members(network, account_ids) do
       updated = leave(network, ids)
 
       state
       |> put_network(updated)
-      |> history(id, "Removed #{count(ids, "member")}", now)
+      |> history(id, "Removed #{count(ids, "member")}", now, by)
       |> done(updated, [id])
     end
   end
 
-  def move_members(state, from_id, to_id, account_ids, now) do
+  def move_members(state, from_id, to_id, account_ids, now, by \\ @by) do
     with :ok <- distinct(from_id, to_id),
          {:ok, from} <- active(state, from_id),
          {:ok, to} <- active(state, to_id),
@@ -168,15 +168,15 @@ defmodule Dripstone.Tracker.Curation do
       state
       |> put_network(from)
       |> put_network(to)
-      |> history(from_id, "Moved #{moved} to #{to.name}", now)
-      |> history(to_id, "Received #{moved} from #{from.name}", now)
+      |> history(from_id, "Moved #{moved} to #{to.name}", now, by)
+      |> history(to_id, "Received #{moved} from #{from.name}", now, by)
       |> done(%{from: from, to: to}, [from_id, to_id])
     end
   end
 
   ## Merge, split, relate
 
-  def merge(state, source_id, target_id, now) do
+  def merge(state, source_id, target_id, now, by \\ @by) do
     with :ok <- distinct(source_id, target_id),
          {:ok, source} <- active(state, source_id),
          {:ok, target} <- active(state, target_id) do
@@ -204,13 +204,13 @@ defmodule Dripstone.Tracker.Curation do
       |> put_network(merged)
       |> put_network(retired)
       |> reassign(source_id, target_id)
-      |> history(target_id, "Merged in #{source.name}", now)
-      |> history(source_id, "Merged into #{target.name}", now)
+      |> history(target_id, "Merged in #{source.name}", now, by)
+      |> history(source_id, "Merged into #{target.name}", now, by)
       |> done(merged, [target_id, source_id | source.related_ids])
     end
   end
 
-  def split(state, id, account_ids, attrs, now) do
+  def split(state, id, account_ids, attrs, now, by \\ @by) do
     with {:ok, network} <- active(state, id),
          {:ok, ids} <- members(network, account_ids),
          :ok <-
@@ -238,13 +238,13 @@ defmodule Dripstone.Tracker.Curation do
       state
       |> put_network(leave(network, ids))
       |> put_network(split)
-      |> history(id, "Split #{count(ids, "member")} into #{name}", now)
-      |> history(new_id, "Split from #{network.name} with #{count(ids, "member")}", now)
+      |> history(id, "Split #{count(ids, "member")} into #{name}", now, by)
+      |> history(new_id, "Split from #{network.name} with #{count(ids, "member")}", now, by)
       |> done(split, [id, new_id])
     end
   end
 
-  def relate(state, a_id, b_id, note, now) do
+  def relate(state, a_id, b_id, note, now, by \\ @by) do
     with :ok <- distinct(a_id, b_id),
          {:ok, a} <- active(state, a_id),
          {:ok, b} <- active(state, b_id) do
@@ -257,13 +257,13 @@ defmodule Dripstone.Tracker.Curation do
       state
       |> put_network(a)
       |> put_network(b)
-      |> history(a_id, "Marked related to #{b.name}#{suffix}", now)
-      |> history(b_id, "Marked related to #{a.name}#{suffix}", now)
+      |> history(a_id, "Marked related to #{b.name}#{suffix}", now, by)
+      |> history(b_id, "Marked related to #{a.name}#{suffix}", now, by)
       |> done(a, [a_id, b_id])
     end
   end
 
-  def unrelate(state, a_id, b_id, now) do
+  def unrelate(state, a_id, b_id, now, by \\ @by) do
     with {:ok, a} <- active(state, a_id),
          {:ok, b} <- active(state, b_id) do
       a = %{a | related_ids: List.delete(a.related_ids, b_id)}
@@ -272,8 +272,8 @@ defmodule Dripstone.Tracker.Curation do
       state
       |> put_network(a)
       |> put_network(b)
-      |> history(a_id, "No longer related to #{b.name}", now)
-      |> history(b_id, "No longer related to #{a.name}", now)
+      |> history(a_id, "No longer related to #{b.name}", now, by)
+      |> history(b_id, "No longer related to #{a.name}", now, by)
       |> done(a, [a_id, b_id])
     end
   end
@@ -346,8 +346,8 @@ defmodule Dripstone.Tracker.Curation do
   defp put_network(state, network),
     do: %{state | networks: Map.put(state.networks, network.id, network)}
 
-  defp history(state, id, summary, now),
-    do: State.add_history(state, id, :analyst, @by, summary, now)
+  defp history(state, id, summary, now, by),
+    do: State.add_history(state, id, :analyst, by, summary, now)
 
   defp done(state, reply, network_ids),
     do: {:ok, reply, state, network_ids |> Enum.uniq() |> Enum.map(&{:network_updated, &1})}

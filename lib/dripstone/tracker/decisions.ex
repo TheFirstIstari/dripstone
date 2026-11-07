@@ -12,7 +12,7 @@ defmodule Dripstone.Tracker.Decisions do
 
   alias Dripstone.Tracker.{Alert, Decision, State}
 
-  @reviewer "Unattributed"
+  @reviewer "Detection"
   @max_note 500
 
   @doc "Changeset for the optional decision note (max #{@max_note} characters)."
@@ -24,16 +24,18 @@ defmodule Dripstone.Tracker.Decisions do
   end
 
   @doc "Confirms an open alert: the alert and its network become Confirmed."
-  def confirm(state, alert_id, attrs, now), do: decide(state, alert_id, attrs, :confirm, now)
+  def confirm(state, alert_id, attrs, now, by \\ @reviewer),
+    do: decide(state, alert_id, attrs, :confirm, now, by)
 
   @doc """
   Dismisses an open alert as a false positive. The network becomes Dismissed unless
   it has a Confirmed alert. Future findings can still re-alert it.
   """
-  def dismiss(state, alert_id, attrs, now), do: decide(state, alert_id, attrs, :dismiss, now)
+  def dismiss(state, alert_id, attrs, now, by \\ @reviewer),
+    do: decide(state, alert_id, attrs, :dismiss, now, by)
 
   @doc "Undoes a decision, restoring the alert's and network's previous statuses."
-  def undo(%State{} = state, decision_id, now) do
+  def undo(%State{} = state, decision_id, now, by \\ @reviewer) do
     with {:ok, decision} <- fetch(state.decisions, decision_id),
          %Alert{decision_id: ^decision_id} = alert <- state.alerts[decision.alert_id] do
       alert = %{alert | status: decision.previous_alert_status, decision_id: nil, updated_at: now}
@@ -49,7 +51,7 @@ defmodule Dripstone.Tracker.Decisions do
         |> State.add_history(
           network.id,
           :analyst,
-          @reviewer,
+          by,
           "Undid #{verb(decision.action)} of “#{alert.title}”",
           now
         )
@@ -62,7 +64,7 @@ defmodule Dripstone.Tracker.Decisions do
     end
   end
 
-  defp decide(%State{} = state, alert_id, attrs, action, now) do
+  defp decide(%State{} = state, alert_id, attrs, action, now, by) do
     with {:ok, alert} <- fetch(state.alerts, alert_id),
          :ok <- if(alert.status == :open, do: :ok, else: {:error, :not_open}),
          {:ok, params} <- apply_action(note_changeset(attrs), :insert) do
@@ -74,7 +76,7 @@ defmodule Dripstone.Tracker.Decisions do
         alert_id: alert.id,
         network_id: network.id,
         action: action,
-        by: @reviewer,
+        by: by,
         at: now,
         note: blank_to_nil(params[:note]),
         previous_alert_status: alert.status,
@@ -94,7 +96,7 @@ defmodule Dripstone.Tracker.Decisions do
         |> State.add_history(
           network.id,
           :analyst,
-          @reviewer,
+          by,
           "#{String.capitalize(past(action))} alert “#{alert.title}”",
           now
         )
