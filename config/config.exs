@@ -61,12 +61,23 @@ config :dripstone, Dripstone.Alerts,
       description: "A network has changed the domain or promotion it spreads."
     ],
     [
-      id: "scorer_assessment",
-      name: "Scorer assessment",
-      description:
-        "Placeholder: the scorer's raw output for one account, until the intake format is agreed."
+      id: "coordination_rising",
+      name: "Coordination rising",
+      description: "An active network's coordination is increasing."
     ]
   ]
+
+# Alert rules for detection findings (see openspec/docs/DETECTION_INTERFACE.md).
+# Probabilities are 0–1: `yes` is the threshold for a yes answer; `severity` and
+# `strength` are lower bounds of the bands (below the last band is Low / Weak).
+# The caps bound what findings add to the in-memory store.
+config :dripstone, Dripstone.Tracker.Rules,
+  yes: 0.7,
+  severity: [high: 0.9, medium: 0.8],
+  strength: [strong: 0.85, moderate: 0.7],
+  posts_per_account: 200,
+  provenance_per_link: 20,
+  findings_log: 500
 
 # Configure the endpoint
 config :dripstone, DripstoneWeb.Endpoint,

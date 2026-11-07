@@ -5,13 +5,13 @@ defmodule Dripstone.AlertsTest do
   alias Dripstone.Alerts.TriggerType
 
   describe "trigger catalog" do
-    test "contains the initial trigger types in order, then the interim scorer one" do
+    test "contains the five initial trigger types in order" do
       assert [
                %TriggerType{id: "new_network", name: "New network"},
                %TriggerType{id: "network_growth", name: "Network growth"},
                %TriggerType{id: "network_reactivation", name: "Network reactivation"},
                %TriggerType{id: "promotion_shift", name: "Promotion shift"},
-               %TriggerType{id: "scorer_assessment", name: "Scorer assessment"}
+               %TriggerType{id: "coordination_rising", name: "Coordination rising"}
              ] = Alerts.trigger_types()
     end
 

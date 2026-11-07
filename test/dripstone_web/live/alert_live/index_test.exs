@@ -152,7 +152,7 @@ defmodule DripstoneWeb.AlertLive.IndexTest do
   describe "live arrival" do
     test "a matching new alert appears at the top, highlighted", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/alerts")
-      {:ok, %{alert: alert}} = Tracker.report_finding(finding("medium"))
+      {:ok, %{alert: alert}} = SampleStore.apply_finding(finding("medium"))
 
       assert [first | _] = row_ids(view)
       assert first == "alert-row-#{alert.id}"
@@ -164,7 +164,7 @@ defmodule DripstoneWeb.AlertLive.IndexTest do
       {:ok, view, _html} = live(conn, "/alerts?severity=high")
       before = row_ids(view)
 
-      {:ok, %{alert: alert}} = Tracker.report_finding(finding("low"))
+      {:ok, %{alert: alert}} = SampleStore.apply_finding(finding("low"))
 
       assert row_ids(view) == before
       refute has_element?(view, "#alert-row-#{alert.id}")
@@ -182,7 +182,7 @@ defmodule DripstoneWeb.AlertLive.IndexTest do
 
     test "the highlight clears when the filters change", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/alerts")
-      {:ok, %{alert: alert}} = Tracker.report_finding(finding("high"))
+      {:ok, %{alert: alert}} = SampleStore.apply_finding(finding("high"))
       assert has_element?(view, "#alert-row-#{alert.id}[data-new]")
 
       view |> form("#alert-filters", filters: %{severity: "high"}) |> render_change()

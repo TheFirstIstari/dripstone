@@ -134,7 +134,7 @@ defmodule Dripstone.Tracker.CurationTest do
       assert latest_history("net-c0421").summary == "Removed 1 member"
 
       {:ok, %{skipped: [%{account_id: ^member}]}} =
-        Tracker.report_finding(%{
+        SampleStore.apply_finding(%{
           trigger: "network_growth",
           severity: "low",
           title: "Grew",
@@ -268,7 +268,7 @@ defmodule Dripstone.Tracker.CurationTest do
     {:ok, _} = Tracker.rename_network("net-c0421", %{"name" => "Renamed"})
 
     {:ok, _} =
-      Tracker.report_finding(%{
+      SampleStore.apply_finding(%{
         trigger: "network_growth",
         severity: "low",
         title: "Grew",

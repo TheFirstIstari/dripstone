@@ -585,7 +585,7 @@ defmodule Dripstone.Tracker.SampleData do
         network_id: plan.id,
         evidence: [
           evidence(
-            "synced_posting",
+            "timing_sync",
             "strong",
             "5 accounts posted within 3 hours after 20 days of silence.",
             woke

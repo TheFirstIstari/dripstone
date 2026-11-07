@@ -1,6 +1,10 @@
 defmodule Dripstone.Tracker.Finding do
   @moduledoc """
-  A validated finding reported by detection (see `openspec/docs/DETECTION_INTERFACE.md`).
+  The app's **internal** finding: "trigger X fired for network Y with this evidence".
+  Detection no longer sends these. It reports account, group and trend findings
+  (`Dripstone.Tracker.Report`), and `Dripstone.Tracker.Rules` turns those into
+  internal findings for `Dripstone.Tracker.Intake`. The sample data also replays
+  internal findings directly.
 
   `cast/2` accepts a plain map with all-atom or all-string keys (so a decoded JSON
   payload works as-is) and validates it against the trigger catalog and the known
@@ -45,7 +49,15 @@ defmodule Dripstone.Tracker.Finding do
   @severities %{"low" => :low, "medium" => :medium, "high" => :high}
   @strengths %{"weak" => :weak, "moderate" => :moderate, "strong" => :strong}
   @kinds Map.new(
-           [:shared_link, :near_duplicate, :synced_posting, :created_together, :other],
+           [
+             :shared_link,
+             :repost_ring,
+             :timing_sync,
+             :audience_overlap,
+             :near_duplicate,
+             :created_together,
+             :other
+           ],
            &{Atom.to_string(&1), &1}
          )
 
@@ -162,7 +174,8 @@ defmodule Dripstone.Tracker.Finding do
            explanation: explanation,
            strength: Map.fetch!(@strengths, get(item, :strength)),
            kind: Map.get(@kinds, get(item, :kind), :other),
-           account_ids: account_ids
+           account_ids: account_ids,
+           source: if(get(item, :source) in [:answers, "answers"], do: :answers)
          }}
     end
   end

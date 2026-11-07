@@ -45,6 +45,9 @@ defmodule DripstoneWeb.AccountLive.Show do
   def handle_tracker_event({:network_updated, _id}, %{assigns: %{account: %{}}} = socket),
     do: load(socket)
 
+  def handle_tracker_event({:account_updated, id}, %{assigns: %{account: %{id: id}}} = socket),
+    do: load(socket)
+
   def handle_tracker_event(_message, socket), do: socket
 
   @impl true

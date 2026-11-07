@@ -248,7 +248,17 @@ defmodule Dripstone.Tracker.Intake do
 
   defp max_severity(a, b), do: if(@severity_rank[b] > @severity_rank[a], do: b, else: a)
 
-  defp merge_evidence(old, new), do: Enum.take(Enum.uniq(old ++ new), -@max_evidence)
+  # Evidence written from decision-model answers (`source: :answers`) describes the
+  # latest assessment, so a newer finding's answer evidence replaces the older one's
+  # instead of piling up. Everything else is combined.
+  defp merge_evidence(old, new) do
+    old =
+      if Enum.any?(new, &(&1.source == :answers)),
+        do: Enum.reject(old, &(&1.source == :answers)),
+        else: old
+
+    Enum.take(Enum.uniq(old ++ new), -@max_evidence)
+  end
 
   defp latest(nil, at), do: at
   defp latest(a, b), do: if(DateTime.after?(b, a), do: b, else: a)

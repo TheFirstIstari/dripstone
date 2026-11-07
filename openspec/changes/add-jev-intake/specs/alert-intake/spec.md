@@ -34,8 +34,8 @@ answers SHALL be replaced by the newer finding's, and each alert SHALL keep at m
 - **THEN** there is one Open growth alert containing the evidence from both
 
 #### Scenario: Re-assessed answers replace earlier ones
-- **WHEN** an open `New network` alert was raised from `coordinated` 0.88, and a later
-  group finding for the same network has `coordinated` 0.91
+- **WHEN** an open `Network growth` alert was raised from `coordinated` 0.88, and a later
+  group finding adds another account to the same network with `coordinated` 0.91
 - **THEN** the alert shows the evidence from the 0.91 answer and no longer lists the
   0.88 one
 
