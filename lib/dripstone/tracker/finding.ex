@@ -8,7 +8,7 @@ defmodule Dripstone.Tracker.Finding do
   a map of field => list of messages.
   """
 
-  import Ecto.Changeset
+  import Ecto.Changeset, except: [cast: 3]
 
   alias Dripstone.Alerts
   alias Dripstone.Tracker.Evidence
@@ -50,14 +50,16 @@ defmodule Dripstone.Tracker.Finding do
          )
 
   @doc """
-  Validates `attrs` against the trigger catalog and `networks` (a map of known
-  network ids). Never raises on bad input.
+  Validates `attrs` against the trigger catalog, `networks` (a map of known
+  network ids) and `accounts` (a map of known account ids). Never raises on bad input.
   """
-  @spec cast(map(), map()) :: {:ok, t()} | {:error, %{atom() => [String.t()]}}
-  def cast(attrs, networks) when is_map(attrs) do
+  @spec cast(map(), map(), map()) :: {:ok, t()} | {:error, %{atom() => [String.t()]}}
+  def cast(attrs, networks, accounts \\ %{})
+
+  def cast(attrs, networks, accounts) when is_map(attrs) do
     changeset =
       {%{}, @types}
-      |> cast(attrs, Map.keys(@types))
+      |> Ecto.Changeset.cast(attrs, Map.keys(@types))
       |> validate_required([:trigger, :severity, :title, :observed_at])
       |> validate_length(:title, max: 200)
       |> validate_inclusion(:severity, Map.keys(@severities),
@@ -65,7 +67,7 @@ defmodule Dripstone.Tracker.Finding do
       )
       |> validate_trigger()
       |> validate_evidence()
-      |> validate_network(networks)
+      |> validate_network(networks, accounts)
       |> validate_nested(:ai_rationale, &rationale/1)
       |> validate_nested(:comparison, &comparison/1)
 
@@ -74,7 +76,7 @@ defmodule Dripstone.Tracker.Finding do
     Ecto.CastError -> {:error, %{base: ["keys must be all atoms or all strings"]}}
   end
 
-  def cast(_attrs, _networks), do: {:error, %{base: ["a finding must be a map"]}}
+  def cast(_attrs, _networks, _accounts), do: {:error, %{base: ["a finding must be a map"]}}
 
   ## Field validation
 
@@ -97,14 +99,14 @@ defmodule Dripstone.Tracker.Finding do
     end
   end
 
-  defp validate_network(changeset, networks) do
+  defp validate_network(changeset, networks, accounts) do
     case {get_field(changeset, :network_id), get_field(changeset, :new_network)} do
       {nil, nil} ->
         add_error(changeset, :network_id, "give network_id or new_network")
 
       {id, nil} ->
         if Map.has_key?(networks, id) do
-          validate_nested(changeset, :network_updates, &network_updates/1)
+          validate_nested(changeset, :network_updates, &network_updates(&1, accounts))
         else
           add_error(changeset, :network_id, "unknown network #{inspect(id)}")
         end
@@ -115,7 +117,7 @@ defmodule Dripstone.Tracker.Finding do
             do: add_error(changeset, :network_updates, "only apply to an existing network_id"),
             else: changeset
 
-        case new_network(new, networks) do
+        case new_network(new, networks, accounts) do
           {:ok, network} -> put_change(changeset, :new_network, network)
           {:error, message} -> add_error(changeset, :new_network, message)
         end
@@ -167,7 +169,7 @@ defmodule Dripstone.Tracker.Finding do
 
   defp evidence(_item), do: {:error, "each item must be a map"}
 
-  defp new_network(new, networks) when is_map(new) do
+  defp new_network(new, networks, accounts) when is_map(new) do
     id = get(new, :id)
     member_ids = get(new, :member_ids)
     confidence = get(new, :confidence)
@@ -180,6 +182,11 @@ defmodule Dripstone.Tracker.Finding do
            check(
              strings?(member_ids) and member_ids != [],
              "member_ids must be a non-empty list of strings"
+           ),
+         :ok <-
+           check(
+             known?(member_ids, accounts),
+             "unknown account #{inspect(unknown(member_ids, accounts))}"
            ),
          :ok <- check(percent?(confidence), "confidence must be an integer from 0 to 100"),
          :ok <- check(strings?(platforms), "platforms must be a list of strings"),
@@ -201,13 +208,14 @@ defmodule Dripstone.Tracker.Finding do
     end
   end
 
-  defp new_network(_new, _networks), do: {:error, "must be a map"}
+  defp new_network(_new, _networks, _accounts), do: {:error, "must be a map"}
 
-  defp network_updates(updates) when is_map(updates) do
+  defp network_updates(updates, accounts) when is_map(updates) do
     add = get(updates, :add_member_ids) || []
     confidence = get(updates, :confidence)
 
     with :ok <- check(strings?(add), "add_member_ids must be a list of strings"),
+         :ok <- check(known?(add, accounts), "unknown account #{inspect(unknown(add, accounts))}"),
          :ok <-
            check(
              is_nil(confidence) or percent?(confidence),
@@ -227,7 +235,7 @@ defmodule Dripstone.Tracker.Finding do
     end
   end
 
-  defp network_updates(_updates), do: {:error, "must be a map"}
+  defp network_updates(_updates, _accounts), do: {:error, "must be a map"}
 
   defp rationale(value) when is_map(value) do
     with :ok <- check(text?(get(value, :text)), "text can't be blank"),
@@ -316,4 +324,12 @@ defmodule Dripstone.Tracker.Finding do
   defp optional_text?(value), do: is_nil(value) or text?(value)
   defp strings?(value), do: is_list(value) and Enum.all?(value, &is_binary/1)
   defp percent?(value), do: is_integer(value) and value in 0..100
+
+  # Unknown member ids are rejected at cast time so a later split never
+  # crashes on `state.accounts[&1].feed_id`. Empty accounts (e.g. a fresh
+  # state in tests) means "nothing known yet", so anything goes.
+  defp known?(_ids, accounts) when map_size(accounts) == 0, do: true
+  defp known?(ids, accounts), do: Enum.all?(ids, &Map.has_key?(accounts, &1))
+
+  defp unknown(ids, accounts), do: Enum.find(ids, &(not Map.has_key?(accounts, &1)))
 end

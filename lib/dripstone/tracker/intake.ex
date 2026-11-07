@@ -34,7 +34,7 @@ defmodule Dripstone.Tracker.Intake do
   @spec run(State.t(), map(), DateTime.t()) ::
           {:ok, result(), State.t()} | {:error, %{atom() => [String.t()]}}
   def run(%State{} = state, attrs, %DateTime{} = now) do
-    with {:ok, finding} <- Finding.cast(attrs, state.networks) do
+    with {:ok, finding} <- Finding.cast(attrs, state.networks, state.accounts) do
       apply_finding(state, finding, DateTime.truncate(now, :second))
     end
   end

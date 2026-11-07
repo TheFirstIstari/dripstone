@@ -111,6 +111,30 @@ defmodule Dripstone.Tracker.FindingTest do
                cast(bad_confidence)
     end
 
+    test "unknown member ids are rejected when accounts are known" do
+      accounts = %{"a1" => :known}
+
+      new_attrs =
+        new_network_finding(%{
+          new_network: %{id: "n", name: "x", member_ids: ["a1", "ghost"], confidence: 50}
+        })
+
+      assert {:error, %{new_network: ["unknown account \"ghost\""]}} =
+               Finding.cast(new_attrs, @networks, accounts)
+
+      update_attrs = finding("net-known", %{network_updates: %{add_member_ids: ["ghost"]}})
+
+      assert {:error, %{network_updates: ["unknown account \"ghost\""]}} =
+               Finding.cast(update_attrs, @networks, accounts)
+
+      known_attrs =
+        new_network_finding(%{
+          new_network: %{id: "n", name: "x", member_ids: ["a1"], confidence: 50}
+        })
+
+      assert {:ok, _} = Finding.cast(known_attrs, @networks, accounts)
+    end
+
     test "network_updates are only allowed for an existing network" do
       attrs = new_network_finding(%{network_updates: %{confidence: 90}})
       assert {:error, %{network_updates: ["only apply to an existing network_id"]}} = cast(attrs)
