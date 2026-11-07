@@ -3,14 +3,17 @@
 ## Why
 
 Dripstone is the team's analysis platform for finding bot farms on social platforms.
-Detection (a live AI model on the `desktop` node, combined with heuristics) finds linked
+Detection (Jev `decide/2` via OpenCode Console — `noul`/`choice`/`score` questions,
+including relation and trend questions — combined with heuristics) finds linked
 accounts and suspected networks and raises alerts. Analysts review the evidence, confirm
 or dismiss, and curate the networks. The team decides what to do next.
 
-The detection side is owned separately and its interface isn't settled yet. This change
-builds the analyst-facing app as a working mockup on sample data, plus the **thin backend
-seams** detection will plug into later, so that the UI and workflow can be agreed now and
-adapted cheaply once the AI side is concrete.
+The detection interface is the settled `ai-client` contract
+(`Dripstone.AIClient.decide/2`). This change builds the analyst-facing app as a working
+mockup on sample data, plus the **thin backend seams** detection plugs into, so that the
+UI and workflow can be agreed now: the findings intake carries decide-answers-shaped
+data, and sample findings stand in for live answers until detection calls the intake
+for real.
 
 ## What Changes
 
@@ -35,9 +38,11 @@ adapted cheaply once the AI side is concrete.
   - **`Dripstone.Tracker`**: the one interface the UI uses, for reads, decisions and
     curation. Sample data sits behind it now and real storage later.
   - **Findings intake**: the single entry point detection will call to report "trigger X
-    fired for network Y with this evidence". The app owns validation, de-duplication,
-    re-alerting after dismissal, respecting analyst changes, and live updates. The contract
-    is documented for the detection owner.
+    fired for network Y with this evidence", where the evidence payload matches the
+    `decide/2` answers shape (`noul`/`choice`/`score` answers, including relation and
+    trend labels). The app owns validation, de-duplication, re-alerting after
+    dismissal, respecting analyst changes, and live updates. The contract is documented
+    for the detection owner.
   - **Trigger catalog**: trigger types (id, name, description) used for labels and
     filters. It starts with New network, Network growth, Network reactivation and Promotion
     shift, and adding one is a single entry. *Detection logic is not part of this change.*
@@ -67,8 +72,10 @@ adapted cheaply once the AI side is concrete.
 - `feeds`: the pluggable feed registry and the Feeds health screen.
 
 ### Modified Capabilities
-- None. The `project`, `ai-client` and `ci` requirements are unchanged. The UI never
-  calls `Dripstone.AIClient`; AI output arrives as data through the intake.
+- `ai-client`: the `Dripstone.AIClient.decide/2` contract (Jev via OpenCode Console) is
+  the detection interface for this change; the UI never calls it directly — decide
+  answers arrive as data through the intake, whose shape matches the answers shape. The
+  `project` and `ci` requirements are unchanged.
 
 ## Impact
 
@@ -78,10 +85,17 @@ adapted cheaply once the AI side is concrete.
 - **New domain code:** `lib/dripstone/tracker*` (context, structs, intake, sample store,
   sample data, dev simulator), `lib/dripstone/alerts/*` (trigger catalog), and
   `lib/dripstone/feeds/*` (feed registry and six platform modules).
-- **Docs:** `docs/DETECTION_INTERFACE.md` (the intake contract), `docs/FEEDS.md`
-  (adding a platform) and `docs/TRIGGERS.md` (adding a trigger type).
+- **Docs:** `docs/DETECTION_INTERFACE.md` (the intake contract, shaped to match the
+  `decide/2` answers shape), `docs/FEEDS.md` (adding a platform) and `docs/TRIGGERS.md`
+  (adding a trigger type).
 - **Dependencies:** remove `:daisyui`. No new dependencies.
 - **Out of scope:** detection logic and thresholds, real ingestion, Ecto schemas and
-  migrations, authentication and attribution, live LLM calls, actions beyond
-  confirm/dismiss, bulk actions, notifications outside the app, translation, presence
-  indicators, and merge/split alerts.
+  migrations, attribution (authentication is the login page, #40, the app gate), live
+  LLM calls, actions beyond confirm/dismiss, bulk actions, notifications outside the
+  app, translation, presence indicators, and merge/split alerts.
+
+## Open Points (deferred UI-spec items, for follow-ups)
+
+- Timeline scrubber, degrees-of-separation paths, relation-label rendering,
+  escape-on-render rule, and graph-cache bound — deferred out of this change, to be
+  specified separately.
