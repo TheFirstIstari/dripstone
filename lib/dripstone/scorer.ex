@@ -37,8 +37,8 @@ defmodule Dripstone.Scorer do
   def score(_posts), do: {:error, {:invalid_args, "posts must be a list"}}
 
   @doc """
-  Heuristics plus `AIClient.decide/3` (is_bot noul, topic choice, spam score).
-  On `{:error, _}` returns heuristics-only.
+  Heuristics plus `AIClient.decide/3` with the account question set (`is_bot`
+  noul, `topic` choice, `spam` score). On `{:error, _}` returns heuristics-only.
   """
   def assess(posts, opts \\ [])
 
@@ -47,17 +47,33 @@ defmodule Dripstone.Scorer do
 
   def assess(posts, opts) when is_list(posts) do
     %{score: s, labels: l} = score(posts)
-
-    case AIClient.decide(summarize(posts), questions(), Keyword.take(opts, [:plug, :model])) do
-      {:ok, answers} ->
-        %{score: s, labels: l, ai_answers: answers, source: :heuristics_plus_ai}
-
-      {:error, _} ->
-        %{score: s, labels: l, ai_answers: nil, source: :heuristics_only}
-    end
+    run_decision(summarize(posts), account_questions(), %{score: s, labels: l}, opts)
   end
 
-  defp questions do
+  @doc """
+  Heuristics plus `AIClient.decide/3` with the group question set (`coordinated`
+  noul, `relation` choice, one `member:<feed>:<handle>` noul per member).
+  Each member is `%{feed_id:, handle:, posts:}` (atom or string keys).
+  On `{:error, _}` returns heuristics-only.
+  """
+  def assess_group(members, opts \\ []) when is_list(members) do
+    %{score: s, labels: l} = members |> Enum.flat_map(&member_posts/1) |> score()
+    run_decision(group_state(members), group_questions(members), %{score: s, labels: l}, opts)
+  end
+
+  @doc """
+  Heuristics plus `AIClient.decide/3` with the trend question set (`increasing`
+  noul, `trajectory` choice) over the network's recent posts.
+  On `{:error, _}` returns heuristics-only.
+  """
+  def assess_trend(posts, opts \\ []) when is_list(posts) do
+    %{score: s, labels: l} = score(posts)
+    run_decision(summarize(posts), trend_questions(), %{score: s, labels: l}, opts)
+  end
+
+  # Every choice/score question carries `criteria` with the exact labels the
+  # intake expects (Jev rejects `choices:` and level-less scores, HTTP 422).
+  defp account_questions do
     %{
       is_bot: %{
         type: :noul,
@@ -66,13 +82,95 @@ defmodule Dripstone.Scorer do
       topic: %{
         type: :choice,
         instructions: "What topic best describes these posts?",
-        choices: ["crypto", "politics", "tech", "sports", "entertainment", "other"]
+        criteria: %{
+          "crypto" => "Cryptocurrency, trading, or token promotion.",
+          "politics" => "Political news, campaigns, or activism.",
+          "tech" => "Technology, gadgets, or software.",
+          "sports" => "Sports news, teams, or betting.",
+          "entertainment" => "Celebrities, movies, music, or gossip.",
+          "other" => "Anything else."
+        }
       },
       spam: %{
         type: :score,
-        instructions: "Rate spamminess 0-1: repetitive links, promo text, machine-like timing."
+        instructions: "Rate spamminess 0-1: repetitive links, promo text, machine-like timing.",
+        criteria: ["not spam", "somewhat spammy", "heavy spam"]
       }
     }
+  end
+
+  defp group_questions(members) do
+    member_questions =
+      Map.new(members, fn member ->
+        {"member:#{fetch(member, :feed_id)}:#{fetch(member, :handle)}",
+         %{
+           type: :noul,
+           instructions: "Does this account take part in the coordinated activity?"
+         }}
+      end)
+
+    Map.merge(
+      %{
+        coordinated: %{
+          type: :noul,
+          instructions:
+            "Do these accounts post in a coordinated way (synced timing, shared links)?"
+        },
+        relation: %{
+          type: :choice,
+          instructions: "Classify the relation between these accounts.",
+          criteria: %{
+            "repost-ring" => "Accounts amplify each other by reposting the same content.",
+            "shared-link" => "Accounts promote the same links or domains together.",
+            "timing-sync" => "Accounts post in synchronized timing patterns.",
+            "audience-overlap" => "Accounts target or reach the same audience.",
+            "none" => "No coordination relation between these accounts."
+          }
+        }
+      },
+      member_questions
+    )
+  end
+
+  # shortcut: trajectory options are the three the trend rules read (forming,
+  # stable, fading); extend when the intake learns new ones.
+  defp trend_questions do
+    %{
+      increasing: %{
+        type: :noul,
+        instructions: "Is coordination in this network increasing?"
+      },
+      trajectory: %{
+        type: :choice,
+        instructions: "What is the trajectory of this network's coordinated activity?",
+        criteria: %{
+          "forming" => "Coordination is forming and ramping up.",
+          "stable" => "Activity is steady with no clear change.",
+          "fading" => "Activity is fading; the network is going quiet."
+        }
+      }
+    }
+  end
+
+  defp run_decision(state, questions, heuristics, opts) do
+    case AIClient.decide(state, questions, Keyword.take(opts, [:plug, :model])) do
+      {:ok, answers} ->
+        Map.merge(heuristics, %{ai_answers: answers, source: :heuristics_plus_ai})
+
+      {:error, _} ->
+        Map.merge(heuristics, %{ai_answers: nil, source: :heuristics_only})
+    end
+  end
+
+  defp member_posts(member), do: member |> fetch(:posts) |> List.wrap() |> Enum.filter(&is_map/1)
+
+  defp group_state(members) do
+    members
+    |> Enum.map(fn m ->
+      "#{fetch(m, :handle)} (#{fetch(m, :feed_id)}):\n#{m |> member_posts() |> summarize()}"
+    end)
+    |> Enum.join("\n---\n")
+    |> String.slice(0, @state_cap)
   end
 
   defp summarize(posts) do

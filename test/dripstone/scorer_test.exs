@@ -85,15 +85,23 @@ defmodule Dripstone.ScorerTest do
     assert r > j
   end
 
-  test "assess/2 merges heuristics with AI answers" do
+  test "assess/2 asks the account set with criteria (spec: Score question carries its levels)" do
     Req.Test.stub(@stub, fn conn ->
       {:ok, raw, conn} = Plug.Conn.read_body(conn)
       body = Jason.decode!(raw)
       assert Map.has_key?(body["questions"], "is_bot")
-      assert Map.has_key?(body["questions"], "topic")
-      assert Map.has_key?(body["questions"], "spam")
       refute Map.has_key?(body["questions"], "coordinated")
       refute Map.has_key?(body["questions"], "relation")
+
+      topic = body["questions"]["topic"]
+      assert topic["type"] == "choice"
+
+      assert Map.keys(topic["criteria"]) |> Enum.sort() ==
+               ["crypto", "entertainment", "other", "politics", "sports", "tech"]
+
+      spam = body["questions"]["spam"]
+      assert spam["type"] == "score"
+      assert spam["criteria"] == ["not spam", "somewhat spammy", "heavy spam"]
 
       Req.Test.json(conn, %{
         "answers" => %{
@@ -125,6 +133,77 @@ defmodule Dripstone.ScorerTest do
     assert %{score: s1} = Dripstone.Scorer.score(posts)
     assert %{score: s2} = Dripstone.Scorer.score(posts)
     assert s1 == s2
+  end
+
+  test "assess_group/2 asks coordinated, relation with criteria, and member questions" do
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      body = Jason.decode!(raw)
+      assert Map.has_key?(body["questions"], "coordinated")
+      assert Map.has_key?(body["questions"], "member:x:@a")
+      assert Map.has_key?(body["questions"], "member:reddit:@b")
+
+      relation = body["questions"]["relation"]
+      assert relation["type"] == "choice"
+
+      assert Map.keys(relation["criteria"]) |> Enum.sort() ==
+               ["audience-overlap", "none", "repost-ring", "shared-link", "timing-sync"]
+
+      Req.Test.json(conn, %{
+        "answers" => %{
+          "coordinated" => %{"type" => "noul", "noul" => 0.6},
+          "relation" => %{"type" => "choice", "choice" => "shared-link"},
+          "member:x:@a" => %{"type" => "noul", "noul" => 0.9},
+          "member:reddit:@b" => %{"type" => "noul", "noul" => 0.2}
+        }
+      })
+    end)
+
+    members = [
+      %{feed_id: "x", handle: "@a", posts: [post(1)]},
+      %{"feed_id" => "reddit", "handle" => "@b", "posts" => [post(2)]}
+    ]
+
+    result = Dripstone.Scorer.assess_group(members, plug: {Req.Test, @stub})
+    assert result.source == :heuristics_plus_ai
+    assert result.ai_answers["relation"]["choice"] == "shared-link"
+  end
+
+  test "assess_group/2 falls back to heuristics-only on AI error" do
+    Req.Test.stub(@stub, fn conn -> Req.Test.transport_error(conn, :timeout) end)
+    members = [%{feed_id: "x", handle: "@a", posts: [post(1)]}]
+
+    assert capture_log(fn ->
+             result = Dripstone.Scorer.assess_group(members, plug: {Req.Test, @stub})
+             assert result.source == :heuristics_only
+             assert result.ai_answers == nil
+             send(self(), {:assess_result, result})
+           end) =~ "AIClient"
+
+    assert_received {:assess_result, %{source: :heuristics_only}}
+  end
+
+  test "assess_trend/2 asks increasing and trajectory with criteria" do
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      body = Jason.decode!(raw)
+      assert Map.has_key?(body["questions"], "increasing")
+
+      trajectory = body["questions"]["trajectory"]
+      assert trajectory["type"] == "choice"
+      assert Map.keys(trajectory["criteria"]) |> Enum.sort() == ["fading", "forming", "stable"]
+
+      Req.Test.json(conn, %{
+        "answers" => %{
+          "increasing" => %{"type" => "noul", "noul" => 0.82},
+          "trajectory" => %{"type" => "choice", "choice" => "forming"}
+        }
+      })
+    end)
+
+    result = Dripstone.Scorer.assess_trend([post(1)], plug: {Req.Test, @stub})
+    assert result.source == :heuristics_plus_ai
+    assert result.ai_answers["trajectory"]["choice"] == "forming"
   end
 
   test "assess/2 falls back to heuristics-only on AI error" do
