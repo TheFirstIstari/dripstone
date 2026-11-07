@@ -9,3 +9,51 @@ DATABASE_URL = "ecto://postgres:postgres@localhost/dripstone_dev"
 PHX_HOST = "localhost"
 INTERNAL_AI_URL = "http://desktop:8000/v1"
 INTERNAL_AI_MODEL = "Qwen/Qwen3-8B-AWQ"
+
+[tasks.dev]
+run = "mix phx.server"
+description = "Start dev server"
+
+[tasks.console]
+run = "iex -S mix phx.server"
+description = "Start dev server with IEx console"
+
+[tasks.test]
+run = "mix test"
+description = "Run tests (alias includes ecto create+migrate)"
+
+[tasks.lint]
+run = "mix format --check-formatted"
+description = "Check formatting"
+
+[tasks.format]
+run = "mix format"
+description = "Format code"
+
+[tasks.build]
+run = "mix compile --warnings-as-errors"
+description = "Compile with warnings as errors"
+
+[tasks.ci]
+depends = ["lint", "build", "test"]
+description = "Mirror CI: lint + build + test"
+
+[tasks.db-up]
+run = "docker compose up -d db"
+description = "Start postgres via docker compose"
+
+[tasks.db-setup]
+run = "mix ecto.setup"
+description = "Setup database"
+
+[tasks.db-migrate]
+run = "mix ecto.migrate"
+description = "Migrate database"
+
+[tasks.db-reset]
+run = "mix ecto.reset"
+description = "Reset database"
+
+[tasks.assets]
+run = "mix assets.build"
+description = "Build assets"
