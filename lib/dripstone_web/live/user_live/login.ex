@@ -11,16 +11,8 @@ defmodule DripstoneWeb.UserLive.Login do
         <div class="text-center">
           <.header>
             <p>Log in</p>
-            <:subtitle>
-              <%= if @current_scope do %>
-                You need to reauthenticate to perform sensitive actions on your account.
-              <% else %>
-                Don't have an account? <.link
-                  navigate={~p"/users/register"}
-                  class="font-semibold text-accent hover:underline"
-                  phx-no-format
-                >Sign up</.link> for an account now.
-              <% end %>
+            <:subtitle :if={@current_scope}>
+              You need to reauthenticate to perform sensitive actions on your account.
             </:subtitle>
           </.header>
         </div>
@@ -117,11 +109,17 @@ defmodule DripstoneWeb.UserLive.Login do
   end
 
   def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
-    if user = Accounts.get_user_by_email(email) do
-      Accounts.deliver_login_instructions(
-        user,
-        &url(~p"/users/log-in/#{&1}")
-      )
+    key = DripstoneWeb.LoginThrottle.key(email || "")
+
+    if DripstoneWeb.LoginThrottle.allowed?(key) do
+      DripstoneWeb.LoginThrottle.record(key)
+
+      if user = Accounts.get_user_by_email(email) do
+        Accounts.deliver_login_instructions(
+          user,
+          &url(~p"/users/log-in/#{&1}")
+        )
+      end
     end
 
     info =

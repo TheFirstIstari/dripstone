@@ -17,6 +17,7 @@ defmodule DripstoneWeb.UserSessionController do
     case Accounts.login_user_by_magic_link(token) do
       {:ok, {user, tokens_to_disconnect}} ->
         UserAuth.disconnect_sessions(tokens_to_disconnect)
+        DripstoneWeb.LoginThrottle.reset(DripstoneWeb.LoginThrottle.key(user.email))
 
         conn
         |> put_flash(:info, info)
@@ -29,20 +30,31 @@ defmodule DripstoneWeb.UserSessionController do
     end
   end
 
-  # email + password login
-  defp create(conn, %{"user" => user_params}, info) do
-    %{"email" => email, "password" => password} = user_params
+  defp create(conn, %{"user" => %{"email" => email, "password" => password} = user_params}, info) do
+    key = DripstoneWeb.LoginThrottle.key(email || "")
 
-    if user = Accounts.get_user_by_email_and_password(email, password) do
-      conn
-      |> put_flash(:info, info)
-      |> UserAuth.log_in_user(user, user_params)
-    else
-      # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
-      conn
-      |> put_flash(:error, "Invalid email or password")
-      |> put_flash(:email, String.slice(email, 0, 160))
-      |> redirect(to: ~p"/users/log-in")
+    cond do
+      not DripstoneWeb.LoginThrottle.allowed?(key) ->
+        conn
+        |> put_flash(:error, "Too many login attempts. Try again in a minute.")
+        |> put_flash(:email, String.slice(email || "", 0, 160))
+        |> redirect(to: ~p"/users/log-in")
+
+      user = Accounts.get_user_by_email_and_password(email, password) ->
+        DripstoneWeb.LoginThrottle.reset(key)
+
+        conn
+        |> put_flash(:info, info)
+        |> UserAuth.log_in_user(user, user_params)
+
+      true ->
+        DripstoneWeb.LoginThrottle.record(key)
+
+        # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
+        conn
+        |> put_flash(:error, "Invalid email or password")
+        |> put_flash(:email, String.slice(email, 0, 160))
+        |> redirect(to: ~p"/users/log-in")
     end
   end
 

@@ -70,6 +70,22 @@ defmodule DripstoneWeb.UserSessionControllerTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
       assert redirected_to(conn) == ~p"/users/log-in"
     end
+
+    test "throttles repeated password attempts" do
+      email = unique_user_email()
+      password_params = %{"user" => %{"email" => email, "password" => "wrong-password"}}
+
+      for _ <- 1..5 do
+        post(build_conn(), ~p"/users/log-in", password_params)
+      end
+
+      conn = post(build_conn(), ~p"/users/log-in", password_params)
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+               "Too many login attempts. Try again in a minute."
+
+      assert redirected_to(conn) == ~p"/users/log-in"
+    end
   end
 
   describe "POST /users/log-in - magic link" do

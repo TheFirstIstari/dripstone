@@ -14,6 +14,7 @@ defmodule Dripstone.Application do
         {DNSCluster, query: Application.get_env(:dripstone, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Dripstone.PubSub},
         {Oban, Application.fetch_env!(:dripstone, Oban)},
+        DripstoneWeb.LoginThrottle,
         Dripstone.Tracker.SampleStore
       ] ++
         simulator() ++

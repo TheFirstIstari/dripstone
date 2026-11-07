@@ -172,12 +172,6 @@ defmodule DripstoneWeb.Layouts do
         </.link>
       <% else %>
         <.link
-          href={~p"/users/register"}
-          class="hidden rounded-lg px-2 py-1.5 text-ink-muted hover:bg-surface-raised hover:text-ink sm:inline"
-        >
-          Register
-        </.link>
-        <.link
           href={~p"/users/log-in"}
           class="rounded-lg bg-accent px-3 py-1.5 font-medium text-accent-ink hover:bg-accent-strong"
         >
