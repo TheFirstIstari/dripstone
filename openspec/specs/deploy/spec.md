@@ -71,13 +71,17 @@ and `rel/` (phx.gen.release output) so any checkout builds the same image.
   no extra host-side files needed
 
 ### Requirement: Redeploy
-Redeploy SHALL be `git pull`, `docker build -t dripstone:latest .`, migrate
-eval, `docker restart dripstone-app` — no image registry, no orchestrator.
+Redeploy SHALL go through the `deploy` GitHub workflow — automatically after a
+green `ci` run on `main`, or via manual dispatch — which builds
+`dripstone:latest`, runs the migrate eval, recreates the `dripstone-app`
+container, and health-gates local `/` for a 200; hand-run SSH (`git pull`,
+rebuild, migrate, restart — no image registry, no orchestrator) remains as the
+documented fallback.
 
 #### Scenario: Routine redeploy
-- **WHEN** new commits land on `main`
-- **THEN** the operator pulls, rebuilds the image, runs migrations, and restarts
-  the app container with no registry or orchestrator involved
+- **WHEN** new commits land on `main` or an operator dispatches the workflow
+- **THEN** the `deploy` workflow builds the image, migrates, recreates the app
+  container, and gates on a local 200, with hand-run SSH available as fallback
 
 ### Requirement: Boot survival
 The Docker service SHALL be enabled at boot, and the `unless-stopped` policies
