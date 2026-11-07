@@ -7,8 +7,8 @@ python = "3.12.12"
 [env]
 DATABASE_URL = "ecto://postgres:postgres@localhost/dripstone_dev"
 PHX_HOST = "localhost"
-INTERNAL_AI_URL = "http://desktop:8000/v1"
-INTERNAL_AI_MODEL = "Qwen/Qwen3-8B-AWQ"
+INTERNAL_AI_URL = "https://opencode.ai/inference/systemone/v1"
+INTERNAL_AI_MODEL = "jev-1.13-free"
 
 [tasks.dev]
 run = "mix phx.server"
@@ -39,7 +39,7 @@ depends = ["lint", "build", "test"]
 description = "Mirror CI: lint + build + test"
 
 [tasks.db-up]
-run = "docker compose up -d db"
+run = "docker compose up -d db 2>/dev/null || docker-compose up -d db 2>/dev/null || (echo \"db-up needs the docker compose plugin: https://docs.docker.com/compose/install/\" >&2; exit 1)"
 description = "Start postgres via docker compose"
 
 [tasks.db-setup]
