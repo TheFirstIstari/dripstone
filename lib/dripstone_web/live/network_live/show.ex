@@ -114,7 +114,11 @@ defmodule DripstoneWeb.NetworkLive.Show do
     do: {:noreply, assign(socket, :rename_form, nil)}
 
   def handle_event("save_name", %{"network" => params}, socket) do
-    case Tracker.rename_network(socket.assigns.network_id, params) do
+    case Tracker.rename_network(
+           socket.assigns.network_id,
+           params,
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, _network} ->
         {:noreply, socket |> assign(:rename_form, nil) |> load()}
 
@@ -141,7 +145,9 @@ defmodule DripstoneWeb.NetworkLive.Show do
   def handle_event("use_tag", %{"tag" => tag}, socket), do: add_tag(socket, %{"tag" => tag})
 
   def handle_event("remove_tag", %{"tag" => tag}, socket) do
-    {:ok, _} = Tracker.remove_tag(socket.assigns.network_id, tag)
+    {:ok, _} =
+      Tracker.remove_tag(socket.assigns.network_id, tag, socket.assigns.current_scope.user.email)
+
     {:noreply, load(socket)}
   end
 
@@ -155,7 +161,11 @@ defmodule DripstoneWeb.NetworkLive.Show do
   end
 
   def handle_event("add_note", %{"note" => params}, socket) do
-    case Tracker.add_note(socket.assigns.network_id, params) do
+    case Tracker.add_note(
+           socket.assigns.network_id,
+           params,
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, _note} ->
         {:noreply, socket |> assign(:note_form, note_form()) |> load()}
 
@@ -243,7 +253,11 @@ defmodule DripstoneWeb.NetworkLive.Show do
   def handle_event("pending_change", _params, socket), do: {:noreply, socket}
 
   def handle_event("add_member", %{"id" => account_id}, socket) do
-    case Tracker.add_members(socket.assigns.network_id, [account_id]) do
+    case Tracker.add_members(
+           socket.assigns.network_id,
+           [account_id],
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, _} ->
         socket = load(socket)
 
@@ -266,7 +280,11 @@ defmodule DripstoneWeb.NetworkLive.Show do
   def handle_event("confirm_pending", _params, socket), do: {:noreply, socket}
 
   defp add_tag(socket, params) do
-    case Tracker.add_tag(socket.assigns.network_id, params) do
+    case Tracker.add_tag(
+           socket.assigns.network_id,
+           params,
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, _} ->
         {:noreply, socket |> assign(tag_form: tag_form(), tag_suggestions: []) |> load()}
 
@@ -355,7 +373,11 @@ defmodule DripstoneWeb.NetworkLive.Show do
   defp search_accounts(_q, _assigns), do: []
 
   defp run_pending(%{type: :merge, params: %{"target" => target}} = pending, socket) do
-    case Tracker.merge_networks(socket.assigns.network_id, target) do
+    case Tracker.merge_networks(
+           socket.assigns.network_id,
+           target,
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, merged} ->
         {:noreply,
          socket
@@ -370,7 +392,12 @@ defmodule DripstoneWeb.NetworkLive.Show do
   defp run_pending(%{type: :move, params: %{"target" => target}} = pending, socket) do
     ids = MapSet.to_list(socket.assigns.selected)
 
-    case Tracker.move_members(socket.assigns.network_id, target, ids) do
+    case Tracker.move_members(
+           socket.assigns.network_id,
+           target,
+           ids,
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, %{to: to}} ->
         {:noreply, done(socket, "Moved #{plural(length(ids), "member")} to #{to.name}.")}
 
@@ -382,7 +409,12 @@ defmodule DripstoneWeb.NetworkLive.Show do
   defp run_pending(%{type: :split, params: params} = pending, socket) do
     ids = MapSet.to_list(socket.assigns.selected)
 
-    case Tracker.split_network(socket.assigns.network_id, ids, params) do
+    case Tracker.split_network(
+           socket.assigns.network_id,
+           ids,
+           params,
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, split} ->
         {:noreply, done(socket, "Split #{plural(length(ids), "member")} into #{split.name}.")}
 
@@ -397,7 +429,11 @@ defmodule DripstoneWeb.NetworkLive.Show do
   defp run_pending(%{type: :remove} = pending, socket) do
     ids = MapSet.to_list(socket.assigns.selected)
 
-    case Tracker.remove_members(socket.assigns.network_id, ids) do
+    case Tracker.remove_members(
+           socket.assigns.network_id,
+           ids,
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, _} ->
         {:noreply, done(socket, "Removed #{plural(length(ids), "member")}.")}
 
@@ -407,7 +443,12 @@ defmodule DripstoneWeb.NetworkLive.Show do
   end
 
   defp run_pending(%{type: :relate, params: %{"target" => target} = params} = pending, socket) do
-    case Tracker.relate_networks(socket.assigns.network_id, target, params["note"]) do
+    case Tracker.relate_networks(
+           socket.assigns.network_id,
+           target,
+           params["note"],
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, _} ->
         {:noreply, socket |> assign(:pending, nil) |> load()}
 

@@ -86,7 +86,7 @@ defmodule DripstoneWeb.NetworkLive.CurationTest do
     end
   end
 
-  test "notes appear newest first with author and time", %{conn: conn} do
+  test "notes appear newest first with author and time", %{conn: conn, user: user} do
     {:ok, view, _html} = live(conn, "/networks/net-c0421?view=notes")
 
     view |> form("#note-form", note: %{body: "First look."}) |> render_submit()
@@ -101,7 +101,7 @@ defmodule DripstoneWeb.NetworkLive.CurationTest do
       |> Enum.map(&String.trim/1)
 
     assert bodies == ["Second look.", "First look."]
-    assert has_element?(view, "#notes", "Unattributed")
+    assert has_element?(view, "#notes", user.email)
     assert has_element?(view, "#tab-notes", "Notes (2)")
   end
 

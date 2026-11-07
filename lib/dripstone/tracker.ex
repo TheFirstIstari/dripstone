@@ -17,6 +17,8 @@ defmodule Dripstone.Tracker do
 
   alias Dripstone.Tracker.{Curation, Decisions, Queries, SampleStore}
 
+  @default_by "Detection"
+
   @topic "tracker"
 
   ## Detection
@@ -59,9 +61,14 @@ defmodule Dripstone.Tracker do
   @doc "Changeset for the optional decision note."
   defdelegate decision_note_changeset(attrs \\ %{}), to: Decisions, as: :note_changeset
 
-  def confirm_alert(id, attrs \\ %{}), do: change(&Decisions.confirm(&1, id, attrs, now()))
-  def dismiss_alert(id, attrs \\ %{}), do: change(&Decisions.dismiss(&1, id, attrs, now()))
-  def undo_decision(decision_id), do: change(&Decisions.undo(&1, decision_id, now()))
+  def confirm_alert(id, attrs \\ %{}, by \\ @default_by),
+    do: change(&Decisions.confirm(&1, id, attrs, now(), by))
+
+  def dismiss_alert(id, attrs \\ %{}, by \\ @default_by),
+    do: change(&Decisions.dismiss(&1, id, attrs, now(), by))
+
+  def undo_decision(decision_id, by \\ @default_by),
+    do: change(&Decisions.undo(&1, decision_id, now(), by))
 
   ## Curation
 
@@ -69,28 +76,38 @@ defmodule Dripstone.Tracker do
   defdelegate tag_changeset(attrs \\ %{}), to: Curation
   defdelegate note_changeset(attrs \\ %{}), to: Curation
 
-  def rename_network(id, attrs), do: change(&Curation.rename(&1, id, attrs, now()))
-  def add_tag(id, attrs), do: change(&Curation.add_tag(&1, id, attrs, now()))
-  def remove_tag(id, tag), do: change(&Curation.remove_tag(&1, id, tag, now()))
-  def add_note(id, attrs), do: change(&Curation.add_note(&1, id, attrs, now()))
-  def add_members(id, account_ids), do: change(&Curation.add_members(&1, id, account_ids, now()))
+  def rename_network(id, attrs, by \\ @default_by),
+    do: change(&Curation.rename(&1, id, attrs, now(), by))
 
-  def remove_members(id, account_ids),
-    do: change(&Curation.remove_members(&1, id, account_ids, now()))
+  def add_tag(id, attrs, by \\ @default_by),
+    do: change(&Curation.add_tag(&1, id, attrs, now(), by))
 
-  def move_members(from_id, to_id, account_ids),
-    do: change(&Curation.move_members(&1, from_id, to_id, account_ids, now()))
+  def remove_tag(id, tag, by \\ @default_by),
+    do: change(&Curation.remove_tag(&1, id, tag, now(), by))
 
-  def merge_networks(source_id, target_id),
-    do: change(&Curation.merge(&1, source_id, target_id, now()))
+  def add_note(id, attrs, by \\ @default_by),
+    do: change(&Curation.add_note(&1, id, attrs, now(), by))
 
-  def split_network(id, account_ids, attrs),
-    do: change(&Curation.split(&1, id, account_ids, attrs, now()))
+  def add_members(id, account_ids, by \\ @default_by),
+    do: change(&Curation.add_members(&1, id, account_ids, now(), by))
 
-  def relate_networks(a_id, b_id, note \\ nil),
-    do: change(&Curation.relate(&1, a_id, b_id, note, now()))
+  def remove_members(id, account_ids, by \\ @default_by),
+    do: change(&Curation.remove_members(&1, id, account_ids, now(), by))
 
-  def unrelate_networks(a_id, b_id), do: change(&Curation.unrelate(&1, a_id, b_id, now()))
+  def move_members(from_id, to_id, account_ids, by \\ @default_by),
+    do: change(&Curation.move_members(&1, from_id, to_id, account_ids, now(), by))
+
+  def merge_networks(source_id, target_id, by \\ @default_by),
+    do: change(&Curation.merge(&1, source_id, target_id, now(), by))
+
+  def split_network(id, account_ids, attrs, by \\ @default_by),
+    do: change(&Curation.split(&1, id, account_ids, attrs, now(), by))
+
+  def relate_networks(a_id, b_id, note \\ nil, by \\ @default_by),
+    do: change(&Curation.relate(&1, a_id, b_id, note, now(), by))
+
+  def unrelate_networks(a_id, b_id, by \\ @default_by),
+    do: change(&Curation.unrelate(&1, a_id, b_id, now(), by))
 
   ## Sample data
 

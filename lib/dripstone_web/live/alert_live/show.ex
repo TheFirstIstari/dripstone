@@ -58,11 +58,12 @@ defmodule DripstoneWeb.AlertLive.Show do
   def handle_event("decide", %{"action" => action} = params, socket)
       when action in ["confirm", "dismiss"] do
     note = Map.get(params, "decision", %{})
+    by = socket.assigns.current_scope.user.email
 
     result =
       case action do
-        "confirm" -> Tracker.confirm_alert(socket.assigns.alert_id, note)
-        "dismiss" -> Tracker.dismiss_alert(socket.assigns.alert_id, note)
+        "confirm" -> Tracker.confirm_alert(socket.assigns.alert_id, note, by)
+        "dismiss" -> Tracker.dismiss_alert(socket.assigns.alert_id, note, by)
       end
 
     case result do
@@ -81,7 +82,7 @@ defmodule DripstoneWeb.AlertLive.Show do
   end
 
   def handle_event("undo", _params, %{assigns: %{last_decision: %{id: id}}} = socket) do
-    case Tracker.undo_decision(id) do
+    case Tracker.undo_decision(id, socket.assigns.current_scope.user.email) do
       {:ok, _} ->
         {:noreply, socket |> assign(:last_decision, nil) |> load()}
 

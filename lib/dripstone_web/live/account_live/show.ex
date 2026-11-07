@@ -55,7 +55,11 @@ defmodule DripstoneWeb.AccountLive.Show do
   def handle_event("cancel_picker", _params, socket), do: {:noreply, assign(socket, :picker, nil)}
 
   def handle_event("add_to_network", %{"picker" => %{"network" => id}}, socket) when id != "" do
-    case Tracker.add_members(id, [socket.assigns.account_id]) do
+    case Tracker.add_members(
+           id,
+           [socket.assigns.account_id],
+           socket.assigns.current_scope.user.email
+         ) do
       {:ok, network} ->
         {:noreply,
          socket

@@ -27,7 +27,7 @@ defmodule Dripstone.Tracker.DecisionsTest do
 
     assert confirmed.status == :confirmed
     assert network.status == :confirmed
-    assert decision.by == "Unattributed"
+    assert decision.by == "Detection"
     assert decision.note == "Same copy everywhere."
     assert decision.action == :confirm
 
@@ -84,6 +84,27 @@ defmodule Dripstone.Tracker.DecisionsTest do
     assert {"should be at most %{count} character(s)", _} = changeset.errors[:note]
     assert SampleStore.get_state() == before
     assert {:ok, _} = Tracker.confirm_alert(alert.id, %{"note" => String.duplicate("x", 500)})
+  end
+
+  test "decisions and undo are attributed to the acting analyst" do
+    alert = lone_alert("net-c0421")
+
+    assert {:ok, %{decision: decision}} =
+             Tracker.confirm_alert(alert.id, %{}, "analyst@example.com")
+
+    assert decision.by == "analyst@example.com"
+
+    assert Enum.any?(
+             Tracker.get_network("net-c0421").history,
+             &(&1.by == "analyst@example.com" and &1.actor == :analyst)
+           )
+
+    assert {:ok, _} = Tracker.undo_decision(decision.id, "analyst@example.com")
+
+    assert Enum.any?(
+             Tracker.get_network("net-c0421").history,
+             &(&1.by == "analyst@example.com" and &1.summary =~ "Undid")
+           )
   end
 
   test "decided alerts can't be decided again" do
