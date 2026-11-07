@@ -9,6 +9,7 @@ defmodule Dripstone.Release do
     load_app()
 
     for repo <- repos() do
+      _ = repo.__adapter__().storage_up(repo.config())
       {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
     end
   end
