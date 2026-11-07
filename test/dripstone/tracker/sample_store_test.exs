@@ -110,4 +110,10 @@ defmodule Dripstone.Tracker.SampleStoreTest do
     now = ~U[2026-11-07 17:00:00Z]
     assert SampleLoader.load(now) == SampleLoader.load(now)
   end
+
+  test "load: false boots empty (prod gate, #50)" do
+    {:ok, pid} = SampleStore.start_link(load: false, name: :sample_store_empty_check)
+    assert SampleStore.get_state(:sample_store_empty_check).alerts == %{}
+    GenServer.stop(pid)
+  end
 end
