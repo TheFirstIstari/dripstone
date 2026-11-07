@@ -7,7 +7,7 @@ defmodule Dripstone.Workers.FetchWorkerTest do
   test "enqueues a fetch job for a handle" do
     assert {:ok, _job} = FetchWorker.new(%{"handle" => "alice"}) |> Oban.insert()
 
-    assert_enqueued worker: FetchWorker, args: %{"handle" => "alice"}
+    assert_enqueued(worker: FetchWorker, args: %{"handle" => "alice"})
   end
 
   test "performs successfully" do
