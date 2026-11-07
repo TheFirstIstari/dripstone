@@ -76,8 +76,8 @@
 
 ## 8. Integration checks
 
-- [ ] 8.1 Run `mix precommit`. Verify it exits 0 with no warnings.
-- [ ] 8.2 With `DRIPSTONE_SIMULATE=1`, run the app and click through every screen in light and dark mode:
+- [x] 8.1 Run `mix precommit`. Verify it exits 0 with no warnings.
+- [x] 8.2 With `DRIPSTONE_SIMULATE=1`, run the app and click through every screen in light and dark mode:
   - a live group or trend alert arrives, with a toast and a badge update;
   - an account finding updates an account;
   - an alert shows its answers;

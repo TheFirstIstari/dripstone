@@ -3,7 +3,7 @@ defmodule Dripstone.Tracker.IntakeTest do
 
   import Dripstone.TrackerFixtures
 
-  alias Dripstone.Tracker.{Alert, Evidence, HistoryEntry, Intake, Network, State}
+  alias Dripstone.Tracker.{Alert, Evidence, HistoryEntry, Intake, Network}
 
   defp run!(state, attrs, now) do
     assert {:ok, result, state} = Intake.run(state, attrs, now)

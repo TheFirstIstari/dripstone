@@ -466,7 +466,8 @@ defmodule Dripstone.Tracker.Rules do
           before: previous || "unknown",
           after: trajectory || "unknown"
         },
-        evidence: trend_evidence(network.member_ids, increasing, trajectory, confidence, cfg)
+        evidence:
+          trend_evidence(network.member_ids, increasing, trajectory, confidence, cfg, who(ctx))
       }
 
       with {:ok, state, alerts, skipped, ignored} <- intake(state, finding, ctx) do
@@ -485,7 +486,7 @@ defmodule Dripstone.Tracker.Rules do
   defp group_evidence(members, coordinated, ctx) do
     [
       answer_evidence(
-        "Jev: these #{length(members)} accounts post in a coordinated way " <>
+        "#{who(ctx)}: these #{length(members)} accounts post in a coordinated way " <>
           "(#{percent(coordinated)}%).",
         strength(coordinated, ctx.cfg),
         relation_kind(ctx),
@@ -498,7 +499,7 @@ defmodule Dripstone.Tracker.Rules do
   defp growth_evidence(added, coordinated, ctx) do
     [
       answer_evidence(
-        "Jev: #{accounts_text(length(added))} outside the network post in a " <>
+        "#{who(ctx)}: #{accounts_text(length(added))} outside the network post in a " <>
           "coordinated way with it (#{percent(coordinated)}%).",
         strength(coordinated, ctx.cfg),
         relation_kind(ctx),
@@ -507,14 +508,14 @@ defmodule Dripstone.Tracker.Rules do
     ]
   end
 
-  defp relation_evidence(account_ids, %{report: report, cfg: cfg}) do
+  defp relation_evidence(account_ids, %{report: report, cfg: cfg} = ctx) do
     case Answers.relation(report.answers) do
       {kind, label, confidence} when kind != :none ->
         suffix = if confidence, do: " (confidence #{percent(confidence)}%)", else: ""
 
         [
           answer_evidence(
-            "Jev: the relation between them is #{label}#{suffix}.",
+            "#{who(ctx)}: the relation between them is #{label}#{suffix}.",
             strength(confidence || 0, cfg),
             Atom.to_string(kind),
             account_ids
@@ -526,12 +527,12 @@ defmodule Dripstone.Tracker.Rules do
     end
   end
 
-  defp trend_evidence(account_ids, increasing, trajectory, confidence, cfg) do
+  defp trend_evidence(account_ids, increasing, trajectory, confidence, cfg, who) do
     increasing_item =
       if is_number(increasing),
         do: [
           answer_evidence(
-            "Jev: coordination in this network is increasing (#{percent(increasing)}%).",
+            "#{who}: coordination in this network is increasing (#{percent(increasing)}%).",
             strength(increasing, cfg),
             "other",
             account_ids
@@ -543,7 +544,7 @@ defmodule Dripstone.Tracker.Rules do
       if trajectory,
         do: [
           answer_evidence(
-            "Jev: the network's trajectory is #{trajectory}" <>
+            "#{who}: the network's trajectory is #{trajectory}" <>
               if(confidence, do: " (confidence #{percent(confidence)}%).", else: "."),
             strength(confidence || 0, cfg),
             "other",
@@ -554,6 +555,11 @@ defmodule Dripstone.Tracker.Rules do
 
     increasing_item ++ trajectory_item
   end
+
+  # Evidence names the model that answered (e.g. "jev-1.13", or "simulator" for the
+  # dev simulator's canned answers), never assuming it was Jev.
+  defp who(%{report: %{model: model}}) when is_binary(model) and model != "", do: model
+  defp who(_ctx), do: "The model"
 
   defp answer_evidence(explanation, strength, kind, account_ids),
     do: %{
