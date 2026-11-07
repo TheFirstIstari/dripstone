@@ -4,6 +4,8 @@ defmodule DripstoneWeb.AlertLive.IndexTest do
 
   import Phoenix.LiveViewTest
 
+  setup :register_and_log_in_user
+
   alias Dripstone.Alerts
   alias Dripstone.Tracker
   alias Dripstone.Tracker.SampleStore

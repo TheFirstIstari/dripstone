@@ -17,22 +17,6 @@ defmodule DripstoneWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", DripstoneWeb do
-    pipe_through :browser
-
-    live_session :tracker,
-      on_mount: [{DripstoneWeb.UserAuth, :mount_current_scope}, DripstoneWeb.Nav] do
-      live "/", OverviewLive
-      live "/alerts", AlertLive.Index
-      live "/alerts/:id", AlertLive.Show
-      live "/networks", NetworkLive.Index
-      live "/networks/:id", NetworkLive.Show
-      live "/accounts", AccountLive.Index
-      live "/accounts/:id", AccountLive.Show
-      live "/feeds", FeedLive.Index
-    end
-  end
-
   # Other scopes may use custom stacks.
   # scope "/api", DripstoneWeb do
   #   pipe_through :api
@@ -57,13 +41,26 @@ defmodule DripstoneWeb.Router do
 
   ## Authentication routes
 
+  # Everything an analyst uses requires login (project spec, "Analyst login").
+  # The tracker screens share this live_session with the account settings pages,
+  # so moving between them is a live navigation. DripstoneWeb.Nav provides the
+  # shell's navigation state; it runs after the login check.
   scope "/", DripstoneWeb do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :require_authenticated_user,
-      on_mount: [{DripstoneWeb.UserAuth, :require_authenticated}] do
+      on_mount: [{DripstoneWeb.UserAuth, :require_authenticated}, DripstoneWeb.Nav] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+
+      live "/", OverviewLive
+      live "/alerts", AlertLive.Index
+      live "/alerts/:id", AlertLive.Show
+      live "/networks", NetworkLive.Index
+      live "/networks/:id", NetworkLive.Show
+      live "/accounts", AccountLive.Index
+      live "/accounts/:id", AccountLive.Show
+      live "/feeds", FeedLive.Index
     end
 
     post "/users/update-password", UserSessionController, :update_password
