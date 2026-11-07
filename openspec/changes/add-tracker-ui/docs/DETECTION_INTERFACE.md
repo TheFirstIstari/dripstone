@@ -145,12 +145,14 @@ Rejection, with nothing changed. `errors` maps each field to its messages:
 | Neither or both of `network_id`/`new_network` | `network_id: give network_id or new_network[, not both]` |
 | `new_network` id already used | `new_network: network "…" already exists` |
 | `network_updates` with `new_network` | `network_updates: only apply to an existing network_id` |
+| Unknown member `new_network.member_ids` / `network_updates.add_member_ids` | `new_network: unknown account "…"` / `network_updates: unknown account "…"` |
 | Mixed atom and string keys | `base: keys must be all atoms or all strings` |
 
 ## Examples
 
-One per initial trigger type, as JSON. They run in order against an empty app: the
-first creates `net-example`, and the others refer to it.
+One per initial trigger type, as JSON. They run in order against an empty app
+pre-seeded with tracked accounts acc-0001..acc-0006: the first creates
+`net-example`, and the others refer to it.
 
 ### `new_network`
 

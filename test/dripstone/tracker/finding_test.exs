@@ -6,8 +6,9 @@ defmodule Dripstone.Tracker.FindingTest do
   alias Dripstone.Tracker.{Evidence, Finding, Intake}
 
   @networks %{"net-known" => :exists}
+  @accounts %{"a1" => :known, "a2" => :known, "a3" => :known, "a9" => :known}
 
-  defp cast(attrs), do: Finding.cast(attrs, @networks)
+  defp cast(attrs, accounts \\ @accounts), do: Finding.cast(attrs, @networks, accounts)
 
   describe "valid findings" do
     test "a new network finding with atom keys" do
@@ -91,7 +92,7 @@ defmodule Dripstone.Tracker.FindingTest do
     test "a new network must not reuse an existing id and needs members and confidence" do
       taken =
         new_network_finding(%{
-          new_network: %{id: "net-known", name: "x", member_ids: ["a"], confidence: 50}
+          new_network: %{id: "net-known", name: "x", member_ids: ["a1"], confidence: 50}
         })
 
       assert {:error, %{new_network: ["network \"net-known\" already exists"]}} = cast(taken)
@@ -104,11 +105,35 @@ defmodule Dripstone.Tracker.FindingTest do
 
       bad_confidence =
         new_network_finding(%{
-          new_network: %{id: "n", name: "x", member_ids: ["a"], confidence: 150}
+          new_network: %{id: "n", name: "x", member_ids: ["a1"], confidence: 150}
         })
 
       assert {:error, %{new_network: ["confidence must be an integer from 0 to 100"]}} =
                cast(bad_confidence)
+    end
+
+    test "unknown member ids are rejected when accounts are known" do
+      accounts = %{"a1" => :known}
+
+      new_attrs =
+        new_network_finding(%{
+          new_network: %{id: "n", name: "x", member_ids: ["a1", "ghost"], confidence: 50}
+        })
+
+      assert {:error, %{new_network: ["unknown account \"ghost\""]}} =
+               Finding.cast(new_attrs, @networks, accounts)
+
+      update_attrs = finding("net-known", %{network_updates: %{add_member_ids: ["ghost"]}})
+
+      assert {:error, %{network_updates: ["unknown account \"ghost\""]}} =
+               Finding.cast(update_attrs, @networks, accounts)
+
+      known_attrs =
+        new_network_finding(%{
+          new_network: %{id: "n", name: "x", member_ids: ["a1"], confidence: 50}
+        })
+
+      assert {:ok, _} = Finding.cast(known_attrs, @networks, accounts)
     end
 
     test "network_updates are only allowed for an existing network" do
