@@ -70,4 +70,35 @@ defmodule Dripstone.Tracker.SimulatorTest do
     assert health["facebook"].last_item_at == stale
     assert Enum.find(Tracker.feed_health(), &(&1.feed.id() == "x")).health.status == :healthy
   end
+
+  test "resets items_24h once the rolling window expires" do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    state = SampleStore.get_state()
+
+    :ok =
+      SampleStore.put_state(%{
+        state
+        | feed_health:
+            Enum.map(state.feed_health, fn
+              %{status: :healthy} = health ->
+                %{health | items_24h: 100, window_started_at: DateTime.add(now, -(25 * 3_600))}
+
+              health ->
+                health
+            end)
+      })
+
+    pid =
+      start_supervised!(
+        {Simulator,
+         interval: 60_000, first_assess: 60_000, enqueue: capture_jobs(), name: :test_simulator}
+      )
+
+    send(pid, :tick)
+    _ = :sys.get_state(pid)
+
+    health = Map.new(SampleStore.get_state().feed_health, &{&1.feed_id, &1})
+    assert health["x"].items_24h == 1
+    refute DateTime.diff(now, health["x"].window_started_at) >= 24 * 3_600
+  end
 end
