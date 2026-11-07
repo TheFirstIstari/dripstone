@@ -9,8 +9,8 @@
 
 ## 2. Tracker structs and sample base data
 
-- [ ] 2.1 Add the structs `Account`, `Network`, `Link`, `Signal`, `Post`, `Evidence` (explanation, strength, account_ids), `Alert`, `Decision`, `Note`, `HistoryEntry` and `FeedHealth`, one per file (design §1). `Network` includes `detected_name`, `tags`, `removed_account_ids`, `related_ids` and `retired_into`. Verify with `mix compile --warnings-as-errors`.
-- [ ] 2.2 Add `Dripstone.Tracker.SampleData`: seeded base data (accounts, links, signals, posts, feed health), a time-ordered list of findings, and seed decisions and curation covering every scenario in design §5. Verify with tests that generation is deterministic and that each listed scenario is present.
+- [x] 2.1 Add the structs `Account`, `Network`, `Link`, `Signal`, `Post`, `Evidence` (explanation, strength, account_ids), `Alert`, `Decision`, `Note`, `HistoryEntry` and `FeedHealth`, one per file (design §1). `Network` includes `detected_name`, `tags`, `removed_account_ids`, `related_ids` and `retired_into`. Verify with `mix compile --warnings-as-errors`.
+- [x] 2.2 Add `Dripstone.Tracker.SampleData`: seeded base data (accounts, links, signals, posts, feed health), a time-ordered list of findings, and seed decisions and curation covering every scenario in design §5. Verify with tests that generation is deterministic and that each listed scenario is present.
 
 ## 3. Findings intake
 
