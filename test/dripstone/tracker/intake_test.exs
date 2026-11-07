@@ -71,7 +71,13 @@ defmodule Dripstone.Tracker.IntakeTest do
           }
         })
 
-      state = Map.update!(state_with_network(), :accounts, &Map.merge(&1, state_with_accounts(attrs).accounts))
+      state =
+        Map.update!(
+          state_with_network(),
+          :accounts,
+          &Map.merge(&1, state_with_accounts(attrs).accounts)
+        )
+
       {_result, state} = run!(state, attrs, at(2))
       network = state.networks["net-1"]
 
