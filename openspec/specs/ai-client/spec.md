@@ -78,3 +78,15 @@ without network (Bypass or equivalent), per `test/dripstone/ai_client_test.exs`.
 #### Scenario: Suite green offline
 - **WHEN** the suite runs with no network access
 - **THEN** the Bypass-backed decision and error-mapping cases pass
+
+### Requirement: Relationship analysis
+`decide/2` SHALL support link-analysis questions over pairs/groups of accounts:
+a `noul` question asking whether the accounts are coordinated plus a `choice`
+question classifying the relation (e.g. repost-ring, shared-link, timing-sync,
+audience-overlap, none). State for these calls SHALL be the accounts' activity
+summaries (posts, timestamps, shared domains), still under the 8000-char cap
+and public-data-only.
+
+#### Scenario: Two synced accounts return coordinated with relation label
+- **WHEN** `decide/2` is called with activity summaries of two timing-synced accounts
+- **THEN** it returns `coordinated=true` with a relation label and probability

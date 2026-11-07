@@ -66,3 +66,14 @@ zero network. Each JSONL line SHALL be one post object with post fields plus
 #### Scenario: Suite green with network disabled
 - **WHEN** the test suite runs with network disabled
 - **THEN** fetcher tests pass against the checked-in corpus fixtures with zero network calls
+
+### Requirement: Findings showcase dataset
+The repo SHALL carry a small curated demo corpus under
+`priv/datasets/showcase/` with linked accounts, their findings, and the
+resulting relation labels, so the demo tells a story end to end (data in →
+relations out). It SHALL be hand-built and versioned, separate from the
+scraped corpora, and the overview screen SHALL be able to run on it.
+
+#### Scenario: Loading the showcase renders linked networks
+- **WHEN** the overview screen loads the showcase corpus
+- **THEN** it renders linked networks with relation labels
