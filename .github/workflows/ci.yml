@@ -11,7 +11,7 @@ permissions:
 jobs:
   ci:
     runs-on: [self-hosted, Linux, X64, cachyos-x8664]
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       MIX_ENV: test
     steps:
@@ -20,7 +20,8 @@ jobs:
         with:
           cache: false
       - run: mix local.hex --force && mix local.rebar --force
-      - run: mix deps.get --only test
+      - run: mix deps.get
+      - run: mix deps.unlock --unused --check-unused
       - run: mix format --check-formatted
       - run: mix compile --warnings-as-errors
       - run: docker compose -p dripstone-ci up -d db
