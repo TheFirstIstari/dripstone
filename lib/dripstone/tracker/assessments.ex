@@ -36,18 +36,74 @@ defmodule Dripstone.Tracker.Assessments do
   @doc "Records an assessment. Returns the intake's result, or `{:error, errors}`."
   @spec record(State.t(), attrs(), DateTime.t()) ::
           {:ok, Intake.result(), State.t()} | {:error, %{atom() => [String.t()]}}
-  def record(%State{} = state, attrs, %DateTime{} = now) do
+  def record(%State{} = state, attrs, %DateTime{} = now) when is_map(attrs) do
     now = DateTime.truncate(now, :second)
 
-    case Feeds.get(attrs[:feed_id]) do
-      nil ->
-        {:error, %{feed_id: ["unknown feed #{inspect(attrs[:feed_id])}"]}}
+    with {:ok, attrs} <- normalize(attrs) do
+      case Feeds.get(attrs.feed_id) do
+        nil ->
+          {:error, %{feed_id: ["unknown feed #{inspect(attrs.feed_id)}"]}}
 
-      feed ->
-        {account, state} = upsert_account(state, attrs, now)
-        Intake.run(state, finding(state, feed, account, attrs.assessment, now), now)
+        feed ->
+          {account, state} = upsert_account(state, attrs, now)
+          Intake.run(state, finding(state, feed, account, attrs.assessment, now), now)
+      end
     end
   end
+
+  def record(%State{}, _attrs, %DateTime{}),
+    do: {:error, %{base: ["an assessment must be a map"]}}
+
+  # Accepts atom- or string-keyed maps (like Finding.cast/2); anything else is
+  # rejected so a bad payload never raises inside the store GenServer.
+  defp normalize(attrs) do
+    assessment = fetch(attrs, :assessment)
+
+    errors =
+      %{}
+      |> check(:feed_id, fetch(attrs, :feed_id), &is_binary/1, "must be a string")
+      |> check(:handle, fetch(attrs, :handle), &is_binary/1, "must be a string")
+      |> check(:posts, fetch(attrs, :posts), &posts?/1, "must be a list of maps")
+      |> check_assessment(assessment)
+
+    if errors == %{} do
+      {:ok,
+       %{
+         feed_id: fetch(attrs, :feed_id),
+         handle: fetch(attrs, :handle),
+         posts: fetch(attrs, :posts),
+         assessment: %{
+           score: fetch(assessment, :score),
+           labels: fetch(assessment, :labels),
+           ai_answers: fetch(assessment, :ai_answers),
+           source: fetch(assessment, :source)
+         }
+       }}
+    else
+      {:error, errors}
+    end
+  end
+
+  defp check(errors, field, value, valid?, message) do
+    if valid?.(value), do: errors, else: Map.update(errors, field, [message], &[message | &1])
+  end
+
+  defp posts?(posts), do: is_list(posts) and Enum.all?(posts, &is_map/1)
+  defp labels?(labels), do: is_list(labels) and Enum.all?(labels, &is_binary/1)
+
+  defp check_assessment(errors, assessment) when is_map(assessment) do
+    errors
+    |> check(:assessment, fetch(assessment, :score), &is_number/1, "score must be a number")
+    |> check(
+      :assessment,
+      fetch(assessment, :labels),
+      &labels?/1,
+      "labels must be a list of strings"
+    )
+  end
+
+  defp check_assessment(errors, _assessment),
+    do: Map.update(errors, :assessment, ["must be a map"], &["must be a map" | &1])
 
   ## Account and posts
 

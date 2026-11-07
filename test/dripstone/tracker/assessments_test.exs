@@ -116,6 +116,24 @@ defmodule Dripstone.Tracker.AssessmentsTest do
     assert "score: 40" in Enum.map(second.evidence, & &1.explanation)
   end
 
+  test "string-keyed attrs are accepted; malformed attrs return errors without touching state" do
+    stringy =
+      attrs()
+      |> Map.new(fn {k, v} -> {Atom.to_string(k), v} end)
+      |> Map.update!("assessment", &Map.new(&1, fn {k, v} -> {Atom.to_string(k), v} end))
+
+    assert {:ok, _, state} = Assessments.record(%State{}, stringy, @now)
+    assert [%{handle: "promo"}] = Map.values(state.accounts)
+
+    assert {:error, %{assessment: [_]}} =
+             Assessments.record(%State{}, %{"feed_id" => "x", "handle" => "promo"}, @now)
+
+    assert {:error, %{base: [_]}} = Assessments.record(%State{}, "nope", @now)
+
+    # Prior good state still records fine afterwards.
+    assert {:ok, %{action: :merged}, _} = Assessments.record(state, attrs(), @now)
+  end
+
   test "an unknown feed is rejected" do
     assert {:error, %{feed_id: [_]}} =
              Assessments.record(%State{}, %{attrs() | feed_id: "myspace"}, @now)
