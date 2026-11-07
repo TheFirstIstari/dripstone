@@ -145,6 +145,27 @@ defmodule Dripstone.Tracker.IntakeTest do
       {%{alert: alert}, _state} = run!(state, finding("net-1"), at(2))
       assert [%Evidence{}] = alert.evidence
     end
+
+    test "repeat findings keep merged evidence bounded" do
+      {_, state} = run!(state_with_network(), finding("net-1"), at(1))
+
+      state =
+        Enum.reduce(1..150, state, fn n, acc ->
+          attrs =
+            finding("net-1", %{
+              evidence: [evidence(%{explanation: "sighting #{n}", account_ids: ["a#{n}"]})]
+            })
+
+          {_, next} = run!(acc, attrs, DateTime.add(at(1), n, :second))
+          next
+        end)
+
+      alert = state.alerts |> Map.values() |> Enum.find(&(&1.trigger_id == "network_growth"))
+      assert length(alert.evidence) == 100
+      explanations = Enum.map(alert.evidence, & &1.explanation)
+      assert "sighting 150" in explanations
+      refute "sighting 1" in explanations
+    end
   end
 
   describe "re-alerting after dismissal" do
