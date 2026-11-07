@@ -2,7 +2,7 @@ defmodule DripstoneWeb.FeedLive.Index do
   @moduledoc """
   Health of every registered platform feed: status, last item, items in the last
   24 hours, tracked accounts and the most recent error. Read-only: feeds are added in
-  code (see `openspec/changes/add-tracker-ui/docs/FEEDS.md`).
+  code (see `openspec/docs/FEEDS.md`).
   """
   use DripstoneWeb, :live_view
 
@@ -38,7 +38,7 @@ defmodule DripstoneWeb.FeedLive.Index do
         <.icon name="hero-code-bracket" class="mt-0.5 size-4 shrink-0 text-ink-faint" />
         <span>
           Feeds are added in code, not here. See
-          <code class="font-mono text-ink">openspec/changes/add-tracker-ui/docs/FEEDS.md</code>
+          <code class="font-mono text-ink">openspec/docs/FEEDS.md</code>
           in the repository: one module plus one line of config.
         </span>
       </p>

@@ -125,8 +125,8 @@ deltas apply to the main specs.
   - the alert, network and account LiveViews and `tracker_components.ex` (answers panel,
     link legend, signal values).
 - **Docs:**
-  - `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md`, or its archived
-    location;
+  - `openspec/docs/DETECTION_INTERFACE.md` (moved there from `add-tracker-ui`'s
+    `docs/` folder, together with `FEEDS.md` and `TRIGGERS.md`);
   - `openspec/config.yaml`.
 - **Detection side (teammate):** sends findings in the new shape. Until prescreening
   exists, only account findings come from live detection; group and trend findings come

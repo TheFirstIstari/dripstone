@@ -11,40 +11,6 @@ spreads) and `Coordination rising` (an active network whose coordination is incr
 - **WHEN** a user opens the trigger filter on the Alerts screen
 - **THEN** the five initial trigger types are listed
 
-### Requirement: Single findings intake
-Detection SHALL report findings to the app through a single intake. A finding SHALL be
-one of three kinds: an account finding, a group finding or a trend finding. Each SHALL
-carry the time it was observed, the model that answered (if any), its heuristics, and
-the decision model's answers map exactly as returned, or none when the AI was
-unavailable.
-
-#### Scenario: Reporting a group finding
-- **WHEN** detection reports a valid group finding whose `coordinated` answer is 0.88 for
-  accounts in no existing network
-- **THEN** the app creates a network and an Open `New network` alert, and the intake
-  reports the alert it created
-
-#### Scenario: Reporting without AI answers
-- **WHEN** detection reports an account finding with no answers because the AI was
-  unavailable
-- **THEN** the account is updated from the heuristics alone and the intake reports that
-  no alert was raised
-
-### Requirement: Finding validation
-The intake SHALL reject a finding that has an unknown kind, no observation time, an
-account on an unknown feed, a group of fewer than two accounts, a trend or group naming
-an unknown network, or a malformed answer, and SHALL return the reasons. A rejected
-finding SHALL NOT change any state.
-
-#### Scenario: Unknown kind
-- **WHEN** detection reports a finding with kind `does-not-exist`
-- **THEN** the intake returns an error naming the unknown kind and no state changes
-
-#### Scenario: Malformed answer
-- **WHEN** a group finding's `coordinated` answer is a `noul` with a value of 1.4
-- **THEN** the intake returns an error naming the `coordinated` answer and no state
-  changes
-
 ### Requirement: Documented contract
 The repository SHALL contain a document describing the trigger catalog, the three
 finding kinds and their fields, the questions the app understands with their answer
@@ -79,6 +45,40 @@ answers SHALL be replaced by the newer finding's, and each alert SHALL keep at m
 - **THEN** the newest 100 items are kept and the oldest are dropped
 
 ## ADDED Requirements
+
+### Requirement: Answer-shaped findings intake
+Detection SHALL report findings to the app through a single intake. A finding SHALL be
+one of three kinds: an account finding, a group finding or a trend finding. Each SHALL
+carry the time it was observed, the model that answered (if any), its heuristics, and
+the decision model's answers map exactly as returned, or none when the AI was
+unavailable.
+
+#### Scenario: Reporting a group finding
+- **WHEN** detection reports a valid group finding whose `coordinated` answer is 0.88 for
+  accounts in no existing network
+- **THEN** the app creates a network and an Open `New network` alert, and the intake
+  reports the alert it created
+
+#### Scenario: Reporting without AI answers
+- **WHEN** detection reports an account finding with no answers because the AI was
+  unavailable
+- **THEN** the account is updated from the heuristics alone and the intake reports that
+  no alert was raised
+
+### Requirement: Answer-shaped finding validation
+The intake SHALL reject a finding that has an unknown kind, no observation time, an
+account on an unknown feed, a group of fewer than two accounts, a trend or group naming
+an unknown network, or a malformed answer, and SHALL return the reasons. A rejected
+finding SHALL NOT change any state.
+
+#### Scenario: Unknown kind
+- **WHEN** detection reports a finding with kind `does-not-exist`
+- **THEN** the intake returns an error naming the unknown kind and no state changes
+
+#### Scenario: Malformed answer
+- **WHEN** a group finding's `coordinated` answer is a `noul` with a value of 1.4
+- **THEN** the intake returns an error naming the `coordinated` answer and no state
+  changes
 
 ### Requirement: Account findings
 An account finding SHALL name one account by feed and handle, and SHALL include the posts
@@ -236,3 +236,18 @@ Trend rules).
 **Migration**: Send the answers and heuristics in an account, group or trend finding.
 The app derives comparisons and network updates. AI-written rationales are shown as not
 available.
+
+### Requirement: Single findings intake
+**Reason**: Replaced by "Answer-shaped findings intake". Findings are now account, group
+or trend findings carrying the decision model's answers, not finished alerts naming a
+trigger, severity, title and evidence.
+**Migration**: Send an account, group or trend finding as described in
+`openspec/docs/DETECTION_INTERFACE.md`. The app's rules choose the trigger, severity,
+title and evidence.
+
+### Requirement: Finding validation
+**Reason**: Replaced by "Answer-shaped finding validation". The new findings have no
+trigger, severity or evidence fields to validate. Validation checks their kind, accounts,
+networks and answers instead.
+**Migration**: Expect the validation errors listed under "Answer-shaped finding
+validation".

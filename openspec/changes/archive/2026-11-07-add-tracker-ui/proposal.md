@@ -85,8 +85,8 @@ for real.
 - **New domain code:** `lib/dripstone/tracker*` (context, structs, intake, sample store,
   sample data, dev simulator), `lib/dripstone/alerts/*` (trigger catalog), and
   `lib/dripstone/feeds/*` (feed registry and six platform modules).
-- **Docs:** `openspec/changes/add-tracker-ui/docs/DETECTION_INTERFACE.md` (the intake contract, shaped to match the
-  `decide/2` answers shape), `openspec/changes/add-tracker-ui/docs/FEEDS.md` (adding a platform) and `openspec/changes/add-tracker-ui/docs/TRIGGERS.md`
+- **Docs:** `openspec/docs/DETECTION_INTERFACE.md` (the intake contract, shaped to match the
+  `decide/2` answers shape), `openspec/docs/FEEDS.md` (adding a platform) and `openspec/docs/TRIGGERS.md`
   (adding a trigger type).
 - **Dependencies:** remove `:daisyui`. No new dependencies.
 - **Out of scope:** detection logic and thresholds, real ingestion, Ecto schemas and

@@ -19,7 +19,7 @@ defmodule Dripstone.RegistryExtensionTest do
     %{feeds: feeds, alerts: alerts}
   end
 
-  test "a feed registered as openspec/changes/add-tracker-ui/docs/FEEDS.md describes appears in the registry",
+  test "a feed registered as openspec/docs/FEEDS.md describes appears in the registry",
        %{feeds: feeds} do
     Application.put_env(:dripstone, Feeds, feeds: feeds[:feeds] ++ [ThrowawayFeed])
 
@@ -31,7 +31,7 @@ defmodule Dripstone.RegistryExtensionTest do
              "https://www.threads.net/@alice/post/C9x"
   end
 
-  test "a trigger type added as openspec/changes/add-tracker-ui/docs/TRIGGERS.md describes appears in the catalog",
+  test "a trigger type added as openspec/docs/TRIGGERS.md describes appears in the catalog",
        %{alerts: alerts} do
     entry = [
       id: "link_rotation",
