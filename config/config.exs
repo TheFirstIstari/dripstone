@@ -24,6 +24,44 @@ config :dripstone,
   ecto_repos: [Dripstone.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+# Platform feeds, in display order. Adding a platform: write a module that
+# implements Dripstone.Feeds.Feed and add it here (see docs/FEEDS.md).
+config :dripstone, Dripstone.Feeds,
+  feeds: [
+    Dripstone.Feeds.X,
+    Dripstone.Feeds.Reddit,
+    Dripstone.Feeds.Bluesky,
+    Dripstone.Feeds.Mastodon,
+    Dripstone.Feeds.Telegram,
+    Dripstone.Feeds.Facebook
+  ]
+
+# Alert trigger types, in display order. Ids are stable strings that detection
+# reports findings with. Adding one: append an entry here (see docs/TRIGGERS.md).
+config :dripstone, Dripstone.Alerts,
+  trigger_types: [
+    [
+      id: "new_network",
+      name: "New network",
+      description: "A new group of linked accounts looks like a possible bot farm."
+    ],
+    [
+      id: "network_growth",
+      name: "Network growth",
+      description: "A known network has gained new member accounts."
+    ],
+    [
+      id: "network_reactivation",
+      name: "Network reactivation",
+      description: "A dormant network has started posting again."
+    ],
+    [
+      id: "promotion_shift",
+      name: "Promotion shift",
+      description: "A network has changed the domain or promotion it spreads."
+    ]
+  ]
+
 # Configure the endpoint
 config :dripstone, DripstoneWeb.Endpoint,
   url: [host: "localhost"],
