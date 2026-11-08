@@ -19,7 +19,6 @@ defmodule Dripstone.Adapters.Polite do
     * `:plug` — test-only `Req.Test` stub, never forwarded from user input
   """
 
-  @table __MODULE__
   @default_interval_ms 1_000
   @default_retries 3
   @default_cap_ms 30_000
@@ -70,30 +69,15 @@ defmodule Dripstone.Adapters.Polite do
     end)
   end
 
-  defp table do
-    case :ets.whereis(@table) do
-      :undefined ->
-        :ets.new(@table, [:named_table, :public, :set, read_concurrency: true])
-
-      tid ->
-        tid
-    end
-  rescue
-    ArgumentError -> :ets.whereis(@table)
-  end
-
-  # Minimum gap between requests to the same host.
+  # Minimum gap between requests to the same host. The slot is booked
+  # atomically by the long-lived Polite.Gate, so concurrent callers (Oban jobs)
+  # are spaced too and the bookings outlive each caller.
   defp gate(host, interval_ms, sleep) do
-    now = System.monotonic_time(:millisecond)
+    case Dripstone.Adapters.Polite.Gate.reserve(host, interval_ms) do
+      0 -> :ok
+      wait -> sleep.(wait)
+    end
 
-    wait =
-      case :ets.lookup(table(), {:last, host}) do
-        [{_, last}] -> max(0, interval_ms - (now - last))
-        [] -> 0
-      end
-
-    if wait > 0, do: sleep.(wait)
-    :ets.insert(table(), {{:last, host}, System.monotonic_time(:millisecond)})
     :ok
   end
 
@@ -103,9 +87,9 @@ defmodule Dripstone.Adapters.Polite do
   end
 
   defp check_robots(uri, opts) do
-    case :ets.lookup(table(), {:robots, uri.host}) do
-      [{_, rules}] -> allowed?(uri.path || "/", rules)
-      [] -> fetch_robots(uri, opts)
+    case Dripstone.Adapters.Polite.Gate.robots(uri.host) do
+      {:ok, rules} -> allowed?(uri.path || "/", rules)
+      :miss -> fetch_robots(uri, opts)
     end
   end
 
@@ -118,7 +102,7 @@ defmodule Dripstone.Adapters.Polite do
         _ -> []
       end
 
-    :ets.insert(table(), {{:robots, uri.host}, rules})
+    :ok = Dripstone.Adapters.Polite.Gate.put_robots(uri.host, rules)
     allowed?(uri.path || "/", rules)
   end
 
@@ -175,16 +159,41 @@ defmodule Dripstone.Adapters.Polite do
     end
   end
 
+  # Retry-After is either delay-seconds or an HTTP date (RFC 9110).
   defp retry_after_ms(resp) do
     case Req.Response.get_header(resp, "retry-after") do
-      [secs | _] ->
-        case Integer.parse(String.trim(secs)) do
+      [value | _] ->
+        value = String.trim(value)
+
+        case Integer.parse(value) do
           {n, ""} when n >= 0 -> n * 1_000
-          _ -> 0
+          _ -> http_date_ms(value)
         end
 
       [] ->
         1_000
+    end
+  end
+
+  @months ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+
+  # IMF-fixdate, e.g. "Wed, 21 Oct 2015 07:28:00 GMT" (the form RFC 9110 requires).
+  defp http_date_ms(value) do
+    with [_, d, mon, y, h, mi, sec] <-
+           Regex.run(~r/^\w{3}, (\d{2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$/, value),
+         month when is_integer(month) <- Enum.find_index(@months, &(&1 == mon)),
+         {:ok, at} <-
+           NaiveDateTime.new(
+             String.to_integer(y),
+             month + 1,
+             String.to_integer(d),
+             String.to_integer(h),
+             String.to_integer(mi),
+             String.to_integer(sec)
+           ) do
+      at |> DateTime.from_naive!("Etc/UTC") |> DateTime.diff(DateTime.utc_now(), :millisecond) |> max(0)
+    else
+      _ -> 1_000
     end
   end
 
