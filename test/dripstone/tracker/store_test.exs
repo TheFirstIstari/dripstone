@@ -59,4 +59,15 @@ defmodule Dripstone.Tracker.StoreTest do
     reseeded = Store.load()
     assert map_size(reseeded.accounts) > 0
   end
+
+  test "legacy/unknown status strings load with defaults instead of raising" do
+    state = Store.load()
+    {_id, network} = Enum.at(state.networks, 0)
+
+    Dripstone.Repo.get!(Store.Network, network.id)
+    |> Ecto.Changeset.change(%{status: "cleared_legacy_never_atomized"})
+    |> Dripstone.Repo.update!()
+
+    assert Store.load().networks[network.id].status == :suspected
+  end
 end
