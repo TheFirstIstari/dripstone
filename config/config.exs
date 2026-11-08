@@ -151,7 +151,12 @@ config :dripstone, :load_sample_data, false
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.
 config :dripstone, Oban,
   repo: Dripstone.Repo,
-  queues: [default: 10]
+  queues: [default: 10],
+  plugins: [
+    # Live networks get a trend re-check every 6 hours (add-bluesky-live-pipeline).
+    {Oban.Plugins.Cron, crontab: [{"0 */6 * * *", Dripstone.Workers.TrendWorker}]},
+    Oban.Plugins.Pruner
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

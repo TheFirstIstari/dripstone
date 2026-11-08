@@ -55,7 +55,7 @@
   - "Unreachable account";
   - "Hourly cap reached";
   - "Large burst trimmed".
-- [ ] 5.4 Add `Oban.Plugins.Cron` and `Pruner` to the Oban config (`config.exs` **and** `runtime.exs`) and `TrendWorker` every 6 hours, capped and batched (design §9). Verify with a test for "Active network re-checked" (inactive networks skipped), and that the prod Oban config includes the cron entry.
+- [x] 5.4 Add `Oban.Plugins.Cron` and `Pruner` to the Oban config (`config.exs` **and** `runtime.exs`) and `TrendWorker` every 6 hours, capped and batched (design §9). Verify with a test for "Active network re-checked" (inactive networks skipped), and that the prod Oban config includes the cron entry.
 
 ## 6. Docs and integration checks
 
