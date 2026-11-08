@@ -21,6 +21,10 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           cache: false
+          # Pinned: the v2026.11.4 release asset 504s from GitHub-hosted
+          # runners. Tool versions still come from mise.toml; unpin when
+          # downloads recover.
+          version: 2026.11.3
       - run: mix local.hex --force && mix local.rebar --force
       - run: mix deps.get
       - run: mix deps.unlock --unused --check-unused
