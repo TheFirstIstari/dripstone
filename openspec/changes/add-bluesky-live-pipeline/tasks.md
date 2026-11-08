@@ -34,7 +34,7 @@
 
 ## 4. Live discovery
 
-- [ ] 4.1 Add `Dripstone.Discovery.Bursts`: windows of distinct DIDs per link, threshold, cooldown, common-domain list, bounded tracking (design §7). Verify with unit tests for:
+- [x] 4.1 Add `Dripstone.Discovery.Bursts`: windows of distinct DIDs per link, threshold, cooldown, common-domain list, bounded tracking (design §7). Verify with unit tests for:
   - "Five accounts share a link within ten minutes";
   - "Common domain ignored";
   - "Cooldown";
@@ -48,8 +48,8 @@
 
 ## 5. Assessing candidates
 
-- [ ] 5.1 Add `Tracker.report_findings/1`: one load, each finding through `Report` and `Rules` in order, one save, then broadcasts. A rejected finding rejects the batch (design §8). Verify with tests that a batch of an account and a group finding makes exactly one `Store.save`, and that a bad finding changes nothing.
-- [ ] 5.2 Add `tracker_accounts.external_id` (migration plus `Account` field plus the `Store` row mapping; design §10). Verify with a store round-trip test.
+- [x] 5.1 Add `Tracker.report_findings/1`: one load, each finding through `Report` and `Rules` in order, one save, then broadcasts. A rejected finding rejects the batch (design §8). Verify with tests that a batch of an account and a group finding makes exactly one `Store.save`, and that a bad finding changes nothing.
+- [x] 5.2 Add `tracker_accounts.external_id` (migration plus `Account` field plus the `Store` row mapping; design §10). Verify with a store round-trip test.
 - [ ] 5.3 Add `DiscoverWorker`: caps, DID-to-handle resolution, member fetch, account findings and a group finding with computed `domains`, reported in one batch (design §8). Verify with tests (stubbed HTTP and Jev) for:
   - "A candidate group raises a real alert";
   - "Unreachable account";

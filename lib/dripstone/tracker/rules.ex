@@ -598,15 +598,55 @@ defmodule Dripstone.Tracker.Rules do
 
   ## Accounts and posts
 
-  defp ensure_account(state, %{feed_id: feed_id, handle: handle}, now) do
-    case state.account_by_handle[{feed_id, handle}] do
-      nil ->
+  # Finds the account by its permanent id first (a Bluesky DID survives handle
+  # changes; a renamed account keeps its history and gets its new handle), then by
+  # feed and handle, else creates it.
+  defp ensure_account(state, %{feed_id: feed_id, handle: handle} = ref, now) do
+    external_id = Map.get(ref, :external_id)
+
+    by_external =
+      external_id &&
+        Enum.find(
+          Map.values(state.accounts),
+          &(&1.feed_id == feed_id and &1.external_id == external_id)
+        )
+
+    case {by_external, state.account_by_handle[{feed_id, handle}]} do
+      {%Account{handle: ^handle} = account, _} ->
+        {account, state}
+
+      {%Account{} = account, _} ->
+        renamed = %{account | handle: handle}
+
+        state = %{
+          state
+          | account_by_handle: Map.delete(state.account_by_handle, {feed_id, account.handle})
+        }
+
+        {renamed, State.put_account(state, renamed)}
+
+      {nil, nil} ->
         {id, state} = State.next_id(state, "acc")
-        account = %Account{id: id, feed_id: feed_id, handle: handle, first_seen_at: now}
+
+        account = %Account{
+          id: id,
+          feed_id: feed_id,
+          handle: handle,
+          external_id: external_id,
+          first_seen_at: now
+        }
+
         {account, State.put_account(state, account)}
 
-      id ->
-        {state.accounts[id], state}
+      {nil, id} ->
+        account = state.accounts[id]
+
+        if external_id && is_nil(account.external_id) do
+          account = %{account | external_id: external_id}
+          {account, State.put_account(state, account)}
+        else
+          {account, state}
+        end
     end
   end
 
