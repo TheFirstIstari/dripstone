@@ -8,11 +8,12 @@
    without a key they fail to `{:error, _}` and the app falls back to heuristics)
 6. Validate: `curl localhost:4000` returns 200.
 
-## GitHub runner
+## GitHub runner (deploy only)
 
-- Labels: `self-hosted, Linux, X64, cachyos-x8664` (see `.github/workflows/ci.yml`).
+- Labels: `self-hosted, Linux, X64, cachyos-x8664, deploy` — CI runs on
+  GitHub-hosted `ubuntu-latest` so PR code never reaches this host.
 - Register once on the CachyOS host:
-  `./config.sh --url https://github.com/TheFirstIstari/dripstone --name cachyos-x64-01`
+  `./config.sh --url https://github.com/TheFirstIstari/dripstone --name cachyos-x64-01 --labels self-hosted,Linux,X64,cachyos-x8664,deploy`
   Get the token from repo Settings → Actions → Runners → New runner; never commit it.
 - Manage: `sudo ./svc.sh status`, `sudo ./svc.sh start` (after `./svc.sh install`).
 - Enable systemd on boot so the runner survives reboot.
@@ -31,7 +32,7 @@ leave 1-3 on irc-serve.
    `./config.sh remove --token <IRC-SERVE-REMOVE-TOKEN>`
    `mkdir ~/actions-runner-dripstone && cd ~/actions-runner-dripstone`
    `tar xzf ~/actions-runner.tar.gz -C .` (or re-download runner)
-   `./config.sh --url https://github.com/TheFirstIstari/dripstone --token <DRIPSTONE-TOKEN> --labels self-hosted,Linux,X64,cachyos-x8664 --name cachyos-x8664-N`
+  `./config.sh --url https://github.com/TheFirstIstari/dripstone --token <DRIPSTONE-TOKEN> --labels self-hosted,Linux,X64,cachyos-x8664,deploy --name cachyos-x8664-N`
    `sudo ./svc.sh install <svc-user>; sudo ./svc.sh start`
    Use a distinct service name from the old irc-serve service.
 3. DO NOT reuse the same work dir for two repos.

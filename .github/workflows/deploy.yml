@@ -11,8 +11,9 @@ permissions:
   contents: read
 jobs:
   deploy:
+    # Deploy-only label: only the prod host registers `deploy`, so PR/CI jobs can never land here.
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository) }}
-    runs-on: [self-hosted, Linux, X64, cachyos-x8664]
+    runs-on: [self-hosted, Linux, X64, cachyos-x8664, deploy]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

@@ -6,12 +6,15 @@ Continuous integration pipeline for the project, defined in
 
 ## Requirements
 
-### Requirement: Self-hosted runner
-The CI workflow SHALL run on `runs-on: [self-hosted, Linux, X64, cachyos-x8664]`.
+### Requirement: Isolated runner pool
+The CI workflow SHALL run on GitHub-hosted `runs-on: ubuntu-latest` so
+PR-controlled code NEVER executes on the self-hosted deploy host (which holds
+`~/.dripstone-prod.env` and the Docker daemon). Only the deploy workflow may
+target the self-hosted `cachyos-x8664` + `deploy` labels.
 
 #### Scenario: Runner labels
 - **WHEN** a push to `main` or a pull request triggers the workflow
-- **THEN** the `ci` job executes on a self-hosted Linux X64 runner
+- **THEN** the `ci` job executes on a GitHub-hosted runner, not the deploy host
 
 ### Requirement: Test pipeline
 The workflow SHALL checkout, set up the toolchain via mise, install deps,
