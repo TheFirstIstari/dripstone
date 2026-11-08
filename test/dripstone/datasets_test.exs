@@ -96,4 +96,15 @@ defmodule Dripstone.DatasetsTest do
 
     assert {:error, _} = Datasets.refresh(Dripstone.Adapters.StubX, "x", "h", opts)
   end
+
+  test "write_corpus rejects date traversal and corpus_path raises", %{dir: dir} do
+    evil = Path.join(dir, "evil.jsonl")
+    File.rm(evil)
+
+    assert {:error, :invalid_date} =
+             Datasets.write_corpus("x", "h", [], datasets_dir: dir, date: "../../evil")
+
+    assert_raise ArgumentError, fn -> Datasets.corpus_path("x", "../../evil") end
+    refute File.exists?(evil)
+  end
 end
