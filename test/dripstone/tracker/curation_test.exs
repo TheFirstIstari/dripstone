@@ -3,17 +3,11 @@ defmodule Dripstone.Tracker.CurationTest do
   use Dripstone.DataCase, async: false
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.SampleStore
+  alias Dripstone.Tracker.Store
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    on_exit(fn -> :ok = Store.save(previous) end)
     Tracker.reset_sample_data!()
     :ok = Tracker.subscribe()
     :ok
@@ -140,7 +134,7 @@ defmodule Dripstone.Tracker.CurationTest do
       assert latest_history("net-c0421").summary == "Removed 1 member"
 
       {:ok, %{skipped: [%{account_id: ^member}]}} =
-        SampleStore.apply_finding(%{
+        Tracker.apply_finding(%{
           trigger: "network_growth",
           severity: "low",
           title: "Grew",
@@ -274,7 +268,7 @@ defmodule Dripstone.Tracker.CurationTest do
     {:ok, _} = Tracker.rename_network("net-c0421", %{"name" => "Renamed"})
 
     {:ok, _} =
-      SampleStore.apply_finding(%{
+      Tracker.apply_finding(%{
         trigger: "network_growth",
         severity: "low",
         title: "Grew",

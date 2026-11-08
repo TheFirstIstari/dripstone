@@ -16,7 +16,7 @@ defmodule Dripstone.Tracker do
     * `{:account_updated, account_id}`: an account changed (from a finding)
   """
 
-  alias Dripstone.Tracker.{Curation, Decisions, Queries, SampleStore, Store}
+  alias Dripstone.Tracker.{Curation, Decisions, Graph, Intake, Queries, Report, Rules, Store}
 
   @default_by "Detection"
 
@@ -34,7 +34,27 @@ defmodule Dripstone.Tracker do
   finding changes nothing.
   """
   @spec report_finding(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
-  def report_finding(attrs), do: SampleStore.report_finding(attrs)
+  def report_finding(attrs) do
+    with {:ok, state} <- Store.load(),
+         {:ok, report} <- Report.cast(attrs, state),
+         {:ok, result, new_state} <- Rules.run(state, report, now()) do
+      :ok = Store.save(new_state)
+      Enum.each(report_messages(result), &broadcast/1)
+      {:ok, result}
+    end
+  end
+
+  @doc false
+  # Runs one *internal* finding straight through the intake. Detection never
+  # calls this; it exists for tests that need a specific alert.
+  def apply_finding(attrs) do
+    with {:ok, state} <- Store.load(),
+         {:ok, result, new_state} <- Intake.run(state, attrs, now()) do
+      :ok = Store.save(new_state)
+      Enum.each(messages(result), &broadcast/1)
+      {:ok, result}
+    end
+  end
 
   ## Reads
 
@@ -51,7 +71,14 @@ defmodule Dripstone.Tracker do
   def list_network_options, do: read(&Queries.list_network_options/1)
   def get_network(id, view \\ :summary), do: read(&Queries.get_network(&1, id, view))
 
-  def network_graph(id), do: SampleStore.network_graph(id)
+  def network_graph(id) do
+    with {:ok, state} <- Store.load(),
+         %Dripstone.Tracker.Network{} = network <- state.networks[id] do
+      Graph.build(network, state.links)
+    else
+      _ -> nil
+    end
+  end
 
   def list_accounts(params \\ %{}), do: read(&Queries.list_accounts(&1, params))
   def get_account(id), do: read(&Queries.get_account(&1, id))
@@ -117,8 +144,12 @@ defmodule Dripstone.Tracker do
 
   ## Sample data
 
-  @doc "Regenerates the sample data relative to now (resets all changes)."
-  def reset_sample_data!, do: :ok = SampleStore.reset()
+  @doc "Reseeds the sample rows relative to now (resets all changes)."
+  def reset_sample_data! do
+    :ok = Store.reset!()
+    {:ok, _} = Store.load()
+    :ok
+  end
 
   ## PubSub
 
@@ -134,9 +165,33 @@ defmodule Dripstone.Tracker do
     fun.(state)
   end
 
-  # Writes run through SampleStore (one at a time, with broadcasts); the store
-  # persists the new state itself, so reads see it.
-  defp change(fun), do: SampleStore.change(fun)
+  # Writes load the persisted state, apply `fun`, save the result and broadcast
+  # its messages. A rejected change saves nothing.
+  defp change(fun) do
+    with {:ok, state} <- Store.load(),
+         {:ok, reply, %Dripstone.Tracker.State{} = new_state, messages} <- fun.(state) do
+      :ok = Store.save(%{new_state | cache: %{}})
+      Enum.each(messages, &broadcast/1)
+      {:ok, reply}
+    end
+  end
+
+  defp report_messages(result) do
+    alerts =
+      Enum.flat_map(result.alerts, &messages(Map.put(&1, :network_id, &1.alert.network_id)))
+
+    networks = if result.network_id, do: [{:network_updated, result.network_id}], else: []
+    accounts = Enum.map(result.account_ids, &{:account_updated, &1})
+    Enum.uniq(alerts ++ networks ++ accounts)
+  end
+
+  defp messages(%{action: :ignored}), do: []
+
+  defp messages(%{action: action, alert: alert, network_id: network_id}),
+    do: [
+      {:network_updated, network_id},
+      {if(action == :created, do: :alert_raised, else: :alert_updated), alert}
+    ]
 
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end

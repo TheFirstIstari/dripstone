@@ -8,17 +8,11 @@ defmodule DripstoneWeb.FeedLiveTest do
 
   alias Dripstone.Feeds
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.SampleStore
+  alias Dripstone.Tracker.Store
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    on_exit(fn -> :ok = Store.save(previous) end)
     Tracker.reset_sample_data!()
     :ok
   end

@@ -3,15 +3,14 @@ defmodule Dripstone.Tracker.StoreTest do
   use Dripstone.DataCase, async: false
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{SampleStore, Store}
+  alias Dripstone.Tracker.Store
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(Dripstone.Repo, self(), Process.whereis(SampleStore))
     Store.reset!()
     :ok
   end
 
-  test "save |> load round-trips the showcase state losslessly" do
+  test "save |> load round-trips the seeded state losslessly" do
     {:ok, seeded} = Store.load()
     assert map_size(seeded.accounts) > 0
     assert map_size(seeded.networks) > 0
@@ -95,10 +94,8 @@ defmodule Dripstone.Tracker.StoreTest do
     {:ok, renamed} = Tracker.rename_network(alert.network_id, %{"name" => "Restart Proof"})
     {:ok, _} = Tracker.add_tag(alert.network_id, %{"tag" => "restart-proof"})
 
-    # Simulate a restart: drop the in-memory state, reload from the Repo.
-    {:ok, persisted} = Store.load()
-    :ok = SampleStore.put_state(persisted)
-    reloaded = SampleStore.get_state()
+    # Simulate a restart: every read already reloads from the Repo.
+    {:ok, reloaded} = Store.load()
 
     assert reloaded.decisions[decision.id].alert_id == alert.id
     assert reloaded.alerts[alert.id].status == :confirmed

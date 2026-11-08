@@ -7,17 +7,11 @@ defmodule DripstoneWeb.NetworkLive.CurationTest do
   setup :register_and_log_in_user
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.SampleStore
+  alias Dripstone.Tracker.Store
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    on_exit(fn -> :ok = Store.save(previous) end)
     Tracker.reset_sample_data!()
     :ok
   end
@@ -214,7 +208,7 @@ defmodule DripstoneWeb.NetworkLive.CurationTest do
     end
 
     test "cancelling a merge leaves everything unchanged", %{conn: conn} do
-      before = SampleStore.get_state()
+      {:ok, before} = Store.load()
       {:ok, view, _html} = live(conn, "/networks/net-c0425")
 
       pending(view, "merge", %{target: "net-c0423"})
@@ -223,7 +217,7 @@ defmodule DripstoneWeb.NetworkLive.CurationTest do
       view |> element("#cancel-pending") |> render_click()
 
       refute has_element?(view, "#pending-modal")
-      assert SampleStore.get_state() == before
+      assert elem(Store.load(), 1) == before
     end
   end
 

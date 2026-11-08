@@ -5,7 +5,7 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
 
   alias Dripstone.Alerts
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{Account, Network, SampleStore, State}
+  alias Dripstone.Tracker.{Account, Network, State, Store}
 
   @doc_path Path.expand("../../../openspec/docs/DETECTION_INTERFACE.md", __DIR__)
   @external_resource @doc_path
@@ -13,13 +13,7 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
   # The app the examples run against, as the doc describes it: one known network,
   # net-example, with four members on X.
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
+    {:ok, previous} = Store.load()
 
     members =
       for n <- 1..4, do: %Account{id: "acc-net-#{n}", feed_id: "x", handle: "net_member_#{n}"}
@@ -35,7 +29,7 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
     }
 
     :ok =
-      SampleStore.put_state(
+      Store.save(
         %State{
           accounts: Map.new(members, &{&1.id, &1}),
           networks: %{"net-example" => network}
@@ -43,7 +37,7 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
         |> State.reindex()
       )
 
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    on_exit(fn -> :ok = Store.save(previous) end)
     :ok
   end
 
@@ -73,7 +67,7 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
     [account | _] = results
     assert account.alerts == []
 
-    state = SampleStore.get_state()
+    {:ok, state} = Store.load()
     network = state.networks["net-example"]
     assert length(network.member_ids) == 6
     assert network.main_domain == "deals-b.example"
