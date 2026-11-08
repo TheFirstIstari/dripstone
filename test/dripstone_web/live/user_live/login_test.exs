@@ -11,6 +11,12 @@ defmodule DripstoneWeb.UserLive.LoginTest do
       assert html =~ "Log in"
       refute html =~ "Sign up"
       assert html =~ "Log in with email"
+      refute html =~ "global-search"
+    end
+
+    test "hides the global search its live session cannot handle", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
+      refute has_element?(lv, "#global-search")
     end
   end
 
