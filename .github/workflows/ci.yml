@@ -10,7 +10,9 @@ permissions:
   contents: read
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    # Owner decision: CI runs on the deploy host; this reopens #162 (PR code
+    # executes alongside ~/.dripstone-prod.env and the Docker daemon).
+    runs-on: [self-hosted, Linux, X64, cachyos-x8664]
     timeout-minutes: 30
     env:
       MIX_ENV: test
