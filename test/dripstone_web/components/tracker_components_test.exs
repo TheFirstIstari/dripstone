@@ -188,4 +188,25 @@ defmodule DripstoneWeb.TrackerComponentsTest do
     refute html =~ ~s(data-kind="near_duplicate")
     assert html =~ "opacity-30", "node c has no visible links and should be dimmed"
   end
+
+  test "graph nodes are focusable buttons activatable with Enter or Space" do
+    graph = %{
+      nodes: [%{id: "a", x: 0.1, y: 0.1, degree: 2}],
+      edges: [],
+      total: 1,
+      omitted: 0
+    }
+
+    assigns = %{graph: graph, labels: %{"a" => "@alice"}}
+
+    html =
+      rendered_to_string(~H"""
+      <TrackerComponents.network_graph id="g" graph={@graph} labels={@labels} />
+      """)
+
+    assert html =~ ~s(role="button")
+    assert html =~ ~s(tabindex="0")
+    assert html =~ ~s(phx-keydown="select_node_key")
+    assert html =~ ~s(aria-label="@alice · 2 links")
+  end
 end

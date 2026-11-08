@@ -141,6 +141,12 @@ config :dripstone, Dripstone.AIClient,
   model: System.get_env("INTERNAL_AI_MODEL", "jev-1.13-free"),
   api_key: System.get_env("OPENCODE_API_KEY")
 
+# What an empty Live (database) dataset is seeded with on first boot: false
+# (nothing: Live fills from real detection), :showcase (hand-built corpus, dev
+# opt-in) or true (generated sample rows, used by tests). The sample data lives in
+# the memory-only Demo dataset instead (DemoStore); prod.exs pins false (#50).
+config :dripstone, :load_sample_data, false
+
 # Oban background jobs. Test env overrides with `testing: :manual`;
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.
 config :dripstone, Oban,

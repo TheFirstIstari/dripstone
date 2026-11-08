@@ -50,3 +50,8 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Tests seed the Live rows with the sample data, and start Demo without its
+# simulator (tests drive the simulator themselves).
+config :dripstone, :load_sample_data, true
+config :dripstone, :demo_simulator, false

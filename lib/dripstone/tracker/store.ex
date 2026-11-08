@@ -54,8 +54,14 @@ defmodule Dripstone.Tracker.Store do
   @spec load(keyword()) :: {:ok, State.t()} | {:error, term()}
   def load(opts \\ []) do
     case Process.get(__MODULE__) do
-      %State{} = state -> {:ok, state}
-      nil -> load_persisted(opts)
+      %State{} = state ->
+        {:ok, state}
+
+      nil ->
+        # Demo is memory-only (DemoStore); Live is the rows.
+        if Dripstone.Tracker.dataset() == :demo,
+          do: {:ok, Dripstone.Tracker.DemoStore.load()},
+          else: load_persisted(opts)
     end
   end
 
@@ -74,10 +80,20 @@ defmodule Dripstone.Tracker.Store do
     end
   end
 
-  # The hand-built corpus stays available for tests/dev; anything else seeds
-  # the generated sample rows.
+  # The hand-built corpus stays available for tests/dev. Otherwise
+  # `config :dripstone, :load_sample_data` decides what an empty database starts
+  # with: `true` (dev, test) seeds the generated sample rows, `:showcase` the
+  # showcase corpus, and `false` (prod, #50) an empty state, so invented findings
+  # are never written into the production database.
   defp seed([{:showcase_dir, _} | _] = opts), do: Dripstone.Showcase.load("v1.json", opts)
-  defp seed(_opts), do: {:ok, Dripstone.Tracker.SampleLoader.load()}
+
+  defp seed(_opts) do
+    case Application.get_env(:dripstone, :load_sample_data, true) do
+      false -> {:ok, %State{}}
+      :showcase -> Dripstone.Showcase.load("v1.json", [])
+      _ -> {:ok, Dripstone.Tracker.SampleLoader.load()}
+    end
+  end
 
   @doc false
   # Test-only override for the state `load/0` returns, so read-path tests can run
@@ -93,9 +109,31 @@ defmodule Dripstone.Tracker.Store do
     :ok
   end
 
+  @doc """
+  Runs `fun` as the tracker's single writer.
+
+  Every load-modify-save path (`Tracker.change/1`, `report_finding/1`,
+  `apply_finding/1`, the simulator) runs inside this serializer, so
+  concurrent writes queue instead of interleaving and losing one update.
+  """
+  # shortcut: BEAM-local serializer only; clustered nodes sharing the DB could
+  # still race — upgrade to `pg_advisory_xact_lock` if we ever run those.
+  @spec write((-> result)) :: result when result: var
+  def write(fun) do
+    if Dripstone.Tracker.dataset() == :demo,
+      do: Dripstone.Tracker.DemoStore.run(fun),
+      else: Dripstone.Tracker.Writer.run(fun)
+  end
+
   @doc "Writes the whole tracker state back."
   @spec save(State.t()) :: :ok
   def save(%State{} = state) do
+    if Dripstone.Tracker.dataset() == :demo,
+      do: Dripstone.Tracker.DemoStore.save(state),
+      else: save_rows(state)
+  end
+
+  defp save_rows(state) do
     # Same table order as persist_all/1 and reset!/0: every path deletes then
     # reinserts the tracker tables in one order, so concurrent writers never
     # deadlock waiting on each other's locks. Rows go in with one `insert_all`

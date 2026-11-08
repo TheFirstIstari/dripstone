@@ -134,7 +134,7 @@ defmodule Dripstone.Tracker.Curation do
       if new_ids == [] do
         {:ok, network, state, []}
       else
-        updated = join(network, new_ids, now)
+        updated = refresh_platforms(state, join(network, new_ids, now))
 
         state
         |> put_network(updated)
@@ -147,7 +147,7 @@ defmodule Dripstone.Tracker.Curation do
   def remove_members(state, id, account_ids, now, by \\ @by) do
     with {:ok, network} <- active(state, id),
          {:ok, ids} <- members(network, account_ids) do
-      updated = leave(network, ids)
+      updated = refresh_platforms(state, leave(network, ids))
 
       state
       |> put_network(updated)
@@ -161,8 +161,8 @@ defmodule Dripstone.Tracker.Curation do
          {:ok, from} <- active(state, from_id),
          {:ok, to} <- active(state, to_id),
          {:ok, ids} <- members(from, account_ids) do
-      from = leave(from, ids)
-      to = join(to, ids, now)
+      from = refresh_platforms(state, leave(from, ids))
+      to = refresh_platforms(state, join(to, ids, now))
       moved = count(ids, "member")
 
       state
@@ -179,12 +179,13 @@ defmodule Dripstone.Tracker.Curation do
   def merge(state, source_id, target_id, now, by \\ @by) do
     with :ok <- distinct(source_id, target_id),
          {:ok, source} <- active(state, source_id),
-         {:ok, target} <- active(state, target_id) do
+         {:ok, target} <- active(state, target_id),
+         :ok <- tags_fit(target.tags, source.tags) do
       merged = %{
         target
         | member_ids: Enum.uniq(target.member_ids ++ source.member_ids),
           joined_at: Map.merge(source.joined_at, target.joined_at),
-          platforms: Enum.uniq(target.platforms ++ source.platforms),
+          platforms: member_platforms(state, Enum.uniq(target.member_ids ++ source.member_ids)),
           tags: Enum.uniq(target.tags ++ source.tags),
           evidence: target.evidence ++ source.evidence,
           related_ids:
@@ -228,15 +229,17 @@ defmodule Dripstone.Tracker.Curation do
         confidence: network.confidence,
         member_ids: ids,
         joined_at: Map.new(ids, &{&1, now}),
-        platforms: ids |> Enum.map(&state.accounts[&1].feed_id) |> Enum.uniq(),
+        platforms: member_platforms(state, ids),
         main_domain: network.main_domain,
         first_activity_at: network.first_activity_at,
         last_activity_at: network.last_activity_at,
         inserted_at: now
       }
 
+      remainder = refresh_platforms(state, leave(network, ids))
+
       state
-      |> put_network(leave(network, ids))
+      |> put_network(remainder)
       |> put_network(split)
       |> history(id, "Split #{count(ids, "member")} into #{name}", now, by)
       |> history(new_id, "Split from #{network.name} with #{count(ids, "member")}", now, by)
@@ -291,6 +294,13 @@ defmodule Dripstone.Tracker.Curation do
   defp distinct(id, id), do: {:error, :same_network}
   defp distinct(_a, _b), do: :ok
 
+  # Combined deduped tags must fit, so the merged network can still take new tags.
+  defp tags_fit(target_tags, source_tags) do
+    if length(Enum.uniq(target_tags ++ source_tags)) > @max_tags,
+      do: {:error, :too_many_tags},
+      else: :ok
+  end
+
   defp known_accounts(state, ids) do
     if ids != [] and Enum.all?(ids, &Map.has_key?(state.accounts, &1)),
       do: :ok,
@@ -317,6 +327,19 @@ defmodule Dripstone.Tracker.Curation do
         removed_account_ids: network.removed_account_ids -- ids
     }
   end
+
+  defp member_platforms(state, member_ids) do
+    member_ids
+    |> Enum.map(&state.accounts[&1])
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(& &1.feed_id)
+    |> Enum.uniq()
+  end
+
+  # Derives the platform badge/filter list from current members so edits
+  # cannot leave stale entries behind.
+  defp refresh_platforms(state, network),
+    do: %{network | platforms: member_platforms(state, network.member_ids)}
 
   defp leave(network, ids) do
     %{

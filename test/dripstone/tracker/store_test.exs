@@ -10,6 +10,41 @@ defmodule Dripstone.Tracker.StoreTest do
     :ok
   end
 
+  describe "first-boot seeding follows :load_sample_data" do
+    setup do
+      previous = Application.get_env(:dripstone, :load_sample_data)
+      on_exit(fn -> Application.put_env(:dripstone, :load_sample_data, previous) end)
+      :ok
+    end
+
+    test "false (prod) starts empty and stores no sample rows (#50)" do
+      Application.put_env(:dripstone, :load_sample_data, false)
+
+      assert {:ok, state} = Store.load()
+      assert state.accounts == %{}
+      assert state.networks == %{}
+      assert state.alerts == %{}
+      assert Store.seeded?()
+
+      # A second load reads the (empty) rows back rather than seeding again.
+      Application.put_env(:dripstone, :load_sample_data, true)
+      assert {:ok, %{accounts: accounts}} = Store.load()
+      assert accounts == %{}
+    end
+
+    test ":showcase seeds the hand-built corpus" do
+      Application.put_env(:dripstone, :load_sample_data, :showcase)
+      assert {:ok, state} = Store.load()
+      assert map_size(state.accounts) == 6
+    end
+
+    test "true seeds the generated sample rows" do
+      Application.put_env(:dripstone, :load_sample_data, true)
+      assert {:ok, state} = Store.load()
+      assert map_size(state.accounts) > 100
+    end
+  end
+
   test "save |> load round-trips the seeded state losslessly" do
     {:ok, seeded} = Store.load()
     assert map_size(seeded.accounts) > 0

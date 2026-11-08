@@ -22,6 +22,8 @@ mise run dev
 Before `db-setup`, put a password (min 12 chars) in `.env` for the seed analyst:
 
 ```sh
+# Generate one (macOS/Linux), or pick any 12+ char dev-only password:
+openssl rand -base64 18
 ANALYST_PASSWORD=<dev-only-password>
 ```
 
