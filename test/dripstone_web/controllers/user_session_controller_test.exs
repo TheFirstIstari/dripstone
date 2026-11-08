@@ -71,6 +71,22 @@ defmodule DripstoneWeb.UserSessionControllerTest do
       assert redirected_to(conn) == ~p"/users/log-in"
     end
 
+    test "redirects with invalid credentials on boundary params" do
+      for params <- [%{"user" => %{"email" => unique_user_email()}}, %{"user" => %{}}] do
+        conn = post(build_conn(), ~p"/users/log-in", params)
+
+        assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
+        assert redirected_to(conn) == ~p"/users/log-in"
+      end
+
+      # Non-binary email must not crash either.
+      conn =
+        post(build_conn(), ~p"/users/log-in", %{"user" => %{"email" => ["x"], "password" => "y"}})
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
+      assert redirected_to(conn) == ~p"/users/log-in"
+    end
+
     test "throttles repeated password attempts" do
       email = unique_user_email()
       password_params = %{"user" => %{"email" => email, "password" => "wrong-password"}}

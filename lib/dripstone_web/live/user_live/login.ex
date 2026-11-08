@@ -100,7 +100,7 @@ defmodule DripstoneWeb.UserLive.Login do
 
     form = to_form(%{"email" => email}, as: "user")
 
-    {:ok, assign(socket, form: form, trigger_submit: false)}
+    {:ok, assign(socket, form: form, trigger_submit: false, peer_ip: peer_ip(socket))}
   end
 
   @impl true
@@ -108,8 +108,9 @@ defmodule DripstoneWeb.UserLive.Login do
     {:noreply, assign(socket, :trigger_submit, true)}
   end
 
-  def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
-    key = DripstoneWeb.LoginThrottle.key(email || "")
+  def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket)
+      when is_binary(email) do
+    key = DripstoneWeb.LoginThrottle.key(socket.assigns[:peer_ip], email)
 
     if DripstoneWeb.LoginThrottle.check_and_record(key) == :ok do
       if user = Accounts.get_user_by_email(email) do
@@ -120,13 +121,28 @@ defmodule DripstoneWeb.UserLive.Login do
       end
     end
 
+    {:noreply, magic_link_response(socket)}
+  end
+
+  # Missing key or non-binary email: same generic response, never a crash.
+  def handle_event("submit_magic", _params, socket) do
+    {:noreply, magic_link_response(socket)}
+  end
+
+  defp magic_link_response(socket) do
     info =
       "If your email is in our system, you will receive instructions for logging in shortly."
 
-    {:noreply,
-     socket
-     |> put_flash(:info, info)
-     |> push_navigate(to: ~p"/users/log-in")}
+    socket
+    |> put_flash(:info, info)
+    |> push_navigate(to: ~p"/users/log-in")
+  end
+
+  defp peer_ip(socket) do
+    case Phoenix.LiveView.get_connect_info(socket, :peer_data) do
+      %{address: address} -> address
+      _ -> nil
+    end
   end
 
   defp local_mail_adapter? do
