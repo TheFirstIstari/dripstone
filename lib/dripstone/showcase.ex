@@ -40,7 +40,8 @@ defmodule Dripstone.Showcase do
   defp replay_findings(state, findings) do
     Enum.reduce_while(findings, {:ok, state}, fn raw, {:ok, state} ->
       with {:ok, report} <- Report.cast(raw, state),
-           {:ok, _result, state} <- Rules.run(state, report, observed_at!(raw)) do
+           {:ok, at} <- observed_at(raw),
+           {:ok, _result, state} <- Rules.run(state, report, at) do
         {:cont, {:ok, state}}
       else
         {:error, _} = error -> {:halt, error}
@@ -48,10 +49,12 @@ defmodule Dripstone.Showcase do
     end)
   end
 
-  defp observed_at!(%{"observed_at" => iso}) do
+  defp observed_at(%{"observed_at" => iso}) when is_binary(iso) do
     case DateTime.from_iso8601(iso) do
-      {:ok, at, _offset} -> DateTime.truncate(at, :second)
-      _ -> raise ArgumentError, "showcase corpus has invalid observed_at #{inspect(iso)}"
+      {:ok, at, _offset} -> {:ok, DateTime.truncate(at, :second)}
+      _ -> {:error, :invalid_observed_at}
     end
   end
+
+  defp observed_at(_), do: {:error, :invalid_observed_at}
 end
