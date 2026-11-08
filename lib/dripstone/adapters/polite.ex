@@ -191,7 +191,10 @@ defmodule Dripstone.Adapters.Polite do
              String.to_integer(mi),
              String.to_integer(sec)
            ) do
-      at |> DateTime.from_naive!("Etc/UTC") |> DateTime.diff(DateTime.utc_now(), :millisecond) |> max(0)
+      at
+      |> DateTime.from_naive!("Etc/UTC")
+      |> DateTime.diff(DateTime.utc_now(), :millisecond)
+      |> max(0)
     else
       _ -> 1_000
     end
