@@ -1,19 +1,18 @@
 defmodule Dripstone.Tracker.SampleStore do
   @moduledoc """
-  In-memory holder of the tracker `State`, used until persistence exists.
+  Serialized write path for the tracker `State`, persisted via `Store`.
 
   On start it loads the replayed sample data (unless started with `state:` or
   `load: false`), or the showcase corpus with `load: :showcase`
-  (`Dripstone.Showcase`). All changes go through this process one at a time and are
-  broadcast on the tracker PubSub topic after they are applied. Reads also run
-  inside this process and return only their result. Restarting the app resets the
-  state.
+  (`Dripstone.Showcase`). All changes go through this process one at a time,
+  are broadcast on the tracker PubSub topic after they are applied, and are
+  persisted so `Store` reads see them.
   """
 
   use GenServer
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{Graph, Intake, Report, Rules, SampleLoader, State}
+  alias Dripstone.Tracker.{Graph, Intake, Report, Rules, SampleLoader, State, Store}
 
   @doc false
   def start_link(opts \\ []) do
@@ -99,7 +98,9 @@ defmodule Dripstone.Tracker.SampleStore do
       {:ok, reply, %State{} = new_state, messages} ->
         Enum.each(messages, &Tracker.broadcast/1)
         # State changed, so any cached graph may be stale.
-        {:reply, {:ok, reply}, %{new_state | cache: %{}}}
+        new_state = %{new_state | cache: %{}}
+        :ok = Store.save(new_state)
+        {:reply, {:ok, reply}, new_state}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -126,8 +127,17 @@ defmodule Dripstone.Tracker.SampleStore do
   end
 
   def handle_call(:get_state, _from, state), do: {:reply, state, state}
-  def handle_call({:put_state, new_state}, _from, _state), do: {:reply, :ok, new_state}
-  def handle_call(:reset, _from, _state), do: {:reply, :ok, SampleLoader.load()}
+
+  def handle_call({:put_state, new_state}, _from, _state) do
+    :ok = Store.save(new_state)
+    {:reply, :ok, new_state}
+  end
+
+  def handle_call(:reset, _from, _state) do
+    new_state = SampleLoader.load()
+    :ok = Store.save(new_state)
+    {:reply, :ok, new_state}
+  end
 
   defp showcase! do
     case Dripstone.Showcase.load() do

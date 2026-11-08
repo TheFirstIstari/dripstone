@@ -3,8 +3,8 @@ defmodule Dripstone.Tracker do
   The tracker context: the one interface the UI uses, and the one entry point
   detection reports findings through.
 
-  Backed by `Dripstone.Tracker.SampleStore` (replayed sample data) for now; the
-  functions are meant to keep their signatures when real storage replaces it.
+  Reads load persisted rows via `Dripstone.Tracker.Store`; writes apply against
+  the persisted state and save it back in the same step.
 
   Changes return `{:ok, result}` or `{:error, reason}`, where `reason` is an atom
   (`:not_found`, `:retired`, `:not_open`, ...) or an `Ecto.Changeset` for invalid
@@ -16,7 +16,7 @@ defmodule Dripstone.Tracker do
     * `{:account_updated, account_id}`: an account changed (from a finding)
   """
 
-  alias Dripstone.Tracker.{Curation, Decisions, Queries, SampleStore}
+  alias Dripstone.Tracker.{Curation, Decisions, Graph, Queries, SampleStore, Store}
 
   @default_by "Detection"
 
@@ -50,7 +50,16 @@ defmodule Dripstone.Tracker do
   def list_networks(params \\ %{}), do: read(&Queries.list_networks(&1, params))
   def list_network_options, do: read(&Queries.list_network_options/1)
   def get_network(id, view \\ :summary), do: read(&Queries.get_network(&1, id, view))
-  def network_graph(id), do: SampleStore.network_graph(id)
+
+  def network_graph(id) do
+    read(fn state ->
+      case state.networks[id] do
+        nil -> nil
+        network -> Graph.build(network, state.links)
+      end
+    end)
+  end
+
   def list_accounts(params \\ %{}), do: read(&Queries.list_accounts(&1, params))
   def get_account(id), do: read(&Queries.get_account(&1, id))
   def feed_health, do: read(&Queries.feed_health(&1, DateTime.utc_now()))
@@ -127,7 +136,14 @@ defmodule Dripstone.Tracker do
   @doc false
   def broadcast(message), do: Phoenix.PubSub.broadcast(Dripstone.PubSub, @topic, message)
 
-  defp read(fun), do: SampleStore.read(fun)
+  defp read(fun) do
+    {:ok, state} = Store.load()
+    fun.(state)
+  end
+
+  # Writes run through SampleStore (one at a time, with broadcasts); the store
+  # persists the new state itself, so reads see it.
   defp change(fun), do: SampleStore.change(fun)
+
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end
