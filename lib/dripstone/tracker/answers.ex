@@ -42,6 +42,10 @@ defmodule Dripstone.Tracker.Answers do
   @spec parse(term()) :: {:ok, parsed() | nil} | {:error, String.t()}
   def parse(nil), do: {:ok, nil}
 
+  def parse(answers) when is_map(answers) and map_size(answers) > 64 do
+    {:error, "must have at most 64 answers"}
+  end
+
   def parse(answers) when is_map(answers) do
     answers
     |> Enum.sort_by(fn {name, _} -> to_string(name) end)

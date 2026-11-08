@@ -101,6 +101,17 @@ defmodule Dripstone.Tracker.AnswersTest do
     assert {:error, _} = Answers.parse("not a map")
   end
 
+  test "rejects maps with more than 64 answers" do
+    oversized =
+      Map.new(1..65, fn i -> {"q#{i}", %{"type" => "noul", "noul" => 0.5}} end)
+
+    assert {:error, "must have at most 64 answers"} = Answers.parse(oversized)
+
+    ok = Map.new(1..64, fn i -> {"q#{i}", %{"type" => "noul", "noul" => 0.5}} end)
+    assert {:ok, parsed} = Answers.parse(ok)
+    assert map_size(parsed) == 64
+  end
+
   test "atom keys work as well as string keys" do
     assert {:ok, answers} = Answers.parse(%{coordinated: %{type: :noul, noul: 0.9}})
     assert Answers.noul(answers, "coordinated") == 0.9
