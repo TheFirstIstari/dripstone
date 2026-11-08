@@ -220,7 +220,7 @@ defmodule Dripstone.Tracker.CurationTest do
       assert network("net-c0425").retired_into == nil
 
       {:ok, _} = Tracker.add_tag("net-c0421", %{"tag" => "a1"})
-      for n <- 1..5, do: {:ok, _} = Tracker.remove_tag("net-c0425", "b#{n}")
+      for n <- 1..10, do: {:ok, _} = Tracker.remove_tag("net-c0425", "b#{n}")
       assert {:ok, %{tags: tags}} = Tracker.merge_networks("net-c0425", "net-c0421")
       assert length(tags) == 20
     end
