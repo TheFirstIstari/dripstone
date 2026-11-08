@@ -141,6 +141,11 @@ config :dripstone, Dripstone.AIClient,
   model: System.get_env("INTERNAL_AI_MODEL", "jev-1.13-free"),
   api_key: System.get_env("OPENCODE_API_KEY")
 
+# What an empty tracker database is seeded with on first boot: true (generated
+# sample rows), :showcase (hand-built corpus) or false (nothing). prod.exs sets
+# false so production never stores invented findings (#50).
+config :dripstone, :load_sample_data, true
+
 # Oban background jobs. Test env overrides with `testing: :manual`;
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.
 config :dripstone, Oban,

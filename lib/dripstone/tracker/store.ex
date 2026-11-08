@@ -74,10 +74,20 @@ defmodule Dripstone.Tracker.Store do
     end
   end
 
-  # The hand-built corpus stays available for tests/dev; anything else seeds
-  # the generated sample rows.
+  # The hand-built corpus stays available for tests/dev. Otherwise
+  # `config :dripstone, :load_sample_data` decides what an empty database starts
+  # with: `true` (dev, test) seeds the generated sample rows, `:showcase` the
+  # showcase corpus, and `false` (prod, #50) an empty state, so invented findings
+  # are never written into the production database.
   defp seed([{:showcase_dir, _} | _] = opts), do: Dripstone.Showcase.load("v1.json", opts)
-  defp seed(_opts), do: {:ok, Dripstone.Tracker.SampleLoader.load()}
+
+  defp seed(_opts) do
+    case Application.get_env(:dripstone, :load_sample_data, true) do
+      false -> {:ok, %State{}}
+      :showcase -> Dripstone.Showcase.load("v1.json", [])
+      _ -> {:ok, Dripstone.Tracker.SampleLoader.load()}
+    end
+  end
 
   @doc false
   # Test-only override for the state `load/0` returns, so read-path tests can run
