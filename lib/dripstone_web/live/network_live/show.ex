@@ -306,6 +306,20 @@ defmodule DripstoneWeb.NetworkLive.Show do
 
   def handle_event("confirm_pending", _params, socket), do: {:noreply, socket}
 
+  def handle_event("unrelate", %{"id" => target}, socket) do
+    case Tracker.unrelate_networks(
+           socket.assigns.network_id,
+           target,
+           socket.assigns.current_scope.user.email
+         ) do
+      {:ok, _} ->
+        {:noreply, socket |> put_flash(:info, "Relation removed.") |> load()}
+
+      {:error, reason} ->
+        {:noreply, error(socket, reason)}
+    end
+  end
+
   defp add_tag(socket, params) do
     case Tracker.add_tag(
            socket.assigns.network_id,
@@ -857,6 +871,14 @@ defmodule DripstoneWeb.NetworkLive.Show do
                   class="flex-1 truncate text-sm font-medium text-ink hover:text-accent"
                 >{other.name}</.link>
                 <.status_pill status={other.status} />
+                <button
+                  type="button"
+                  id={"unrelate-#{other.id}"}
+                  phx-click="unrelate"
+                  phx-value-id={other.id}
+                  data-confirm="Remove the relation between these networks?"
+                  class="text-xs font-medium text-ink-faint hover:text-status-dismissed"
+                >Remove</button>
               </li>
             </ul>
           </.card>
