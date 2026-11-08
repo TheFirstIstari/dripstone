@@ -195,7 +195,6 @@ defmodule Dripstone.Tracker.CurationTest do
       assert Enum.sort(added.platforms) == Enum.sort(before.platforms)
       assert Enum.any?(Tracker.list_networks(%{platform: feed}), &(&1.network.id == "net-c0421"))
     end
-
   end
 
   describe "merge" do
@@ -243,6 +242,7 @@ defmodule Dripstone.Tracker.CurationTest do
       assert {:ok, %{tags: tags}} = Tracker.merge_networks("net-c0425", "net-c0421")
       assert length(tags) == 20
     end
+
     test "merge rewires back-references pointing at the retired source" do
       {:ok, _} = Tracker.relate_networks("net-c0425", "net-c0422", "Shared infra")
       assert "net-c0425" in network("net-c0422").related_ids
