@@ -84,5 +84,4 @@ defmodule Dripstone.Tracker.StoreTest do
       File.rename!(backup, path)
     end
   end
-  end
 end
