@@ -50,13 +50,14 @@ defmodule Dripstone.Tracker.Store do
   @seq_key "seq"
 
   @doc "Loads the persisted state, seeding from the showcase corpus on first boot."
-  @spec load() :: State.t()
+  @spec load() :: {:ok, State.t()} | {:error, term()}
   def load do
     if seeded?() do
-      read_state()
+      {:ok, read_state()}
     else
-      {:ok, state} = Dripstone.Showcase.load()
-      persist_all(state)
+      with {:ok, state} <- Dripstone.Showcase.load() do
+        {:ok, persist_all(state)}
+      end
     end
   end
 
