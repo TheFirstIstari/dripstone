@@ -242,6 +242,22 @@ defmodule Dripstone.Tracker.CurationTest do
       assert {:ok, %{tags: tags}} = Tracker.merge_networks("net-c0425", "net-c0421")
       assert length(tags) == 20
     end
+
+    test "merge rewires back-references pointing at the retired source" do
+      {:ok, _} = Tracker.relate_networks("net-c0425", "net-c0422", "Shared infra")
+      assert "net-c0425" in network("net-c0422").related_ids
+      assert_received {:network_updated, "net-c0425"}
+      assert_received {:network_updated, "net-c0422"}
+
+      {:ok, _} = Tracker.merge_networks("net-c0425", "net-c0421")
+
+      assert network("net-c0422").related_ids == ["net-c0421"]
+      assert network("net-c0421").related_ids == ["net-c0422"]
+      refute "net-c0425" in network("net-c0421").related_ids
+      assert_received {:network_updated, "net-c0425"}
+      assert_received {:network_updated, "net-c0421"}
+      assert_received {:network_updated, "net-c0422"}
+    end
   end
 
   describe "split" do
