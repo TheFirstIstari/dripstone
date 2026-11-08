@@ -53,7 +53,16 @@ defmodule Dripstone.Tracker.Store do
   @doc "Loads the persisted state, seeding the sample rows on first boot."
   @spec load(keyword()) :: {:ok, State.t()} | {:error, term()}
   def load(opts \\ []) do
-    load_persisted(opts)
+    case Process.get(__MODULE__) do
+      %State{} = state ->
+        {:ok, state}
+
+      nil ->
+        # Demo is memory-only (DemoStore); Live is the rows.
+        if Dripstone.Tracker.dataset() == :demo,
+          do: {:ok, Dripstone.Tracker.DemoStore.load()},
+          else: load_persisted(opts)
+    end
   end
 
   defp load_persisted(showcase: true),
@@ -96,11 +105,21 @@ defmodule Dripstone.Tracker.Store do
   # shortcut: BEAM-local serializer only; clustered nodes sharing the DB could
   # still race — upgrade to `pg_advisory_xact_lock` if we ever run those.
   @spec write((-> result)) :: result when result: var
-  def write(fun), do: Dripstone.Tracker.Writer.run(fun)
+  def write(fun) do
+    if Dripstone.Tracker.dataset() == :demo,
+      do: Dripstone.Tracker.DemoStore.run(fun),
+      else: Dripstone.Tracker.Writer.run(fun)
+  end
 
   @doc "Writes the whole tracker state back."
   @spec save(State.t()) :: :ok
   def save(%State{} = state) do
+    if Dripstone.Tracker.dataset() == :demo,
+      do: Dripstone.Tracker.DemoStore.save(state),
+      else: save_rows(state)
+  end
+
+  defp save_rows(state) do
     # Same table order as persist_all/1 and reset!/0: every path deletes then
     # reinserts the tracker tables in one order, so concurrent writers never
     # deadlock waiting on each other's locks. Rows go in with one `insert_all`

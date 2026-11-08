@@ -18,7 +18,7 @@ defmodule DripstoneWeb.UserLive.Login do
         </div>
 
         <div
-          :if={local_mail_adapter?()}
+          :if={local_mail_adapter?() and Application.get_env(:dripstone, :dev_routes)}
           class="flex gap-2 rounded-lg border border-accent/40 bg-accent-soft p-3 text-sm text-ink"
         >
           <.icon name="hero-information-circle" class="size-6 shrink-0" />
