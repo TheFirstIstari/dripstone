@@ -7,17 +7,11 @@ defmodule DripstoneWeb.OverviewLiveTest do
   setup :register_and_log_in_user
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.SampleStore
+  alias Dripstone.Tracker.Store
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    on_exit(fn -> :ok = Store.save(previous) end)
     Tracker.reset_sample_data!()
     :ok
   end
@@ -88,7 +82,7 @@ defmodule DripstoneWeb.OverviewLiveTest do
       {:ok, view, _html} = live(conn, "/")
 
       {:ok, %{alert: alert}} =
-        SampleStore.apply_finding(%{
+        Tracker.apply_finding(%{
           trigger: "promotion_shift",
           severity: "high",
           title: "Live shift",

@@ -7,20 +7,14 @@ defmodule DripstoneWeb.AnswersUiTest do
   import Phoenix.LiveViewTest
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{SampleStore, State}
+  alias Dripstone.Tracker.{State, Store}
 
   setup :register_and_log_in_user
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    :ok = SampleStore.put_state(%State{})
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    :ok = Store.save(%State{})
+    on_exit(fn -> :ok = Store.save(previous) end)
     :ok
   end
 
@@ -113,8 +107,8 @@ defmodule DripstoneWeb.AnswersUiTest do
       %{network_id: id} = group(~w(a b), %{"coordinated" => noul(0.9)})
 
       # Clear the assessment the finding left, as for a network that predates findings.
-      state = SampleStore.get_state()
-      :ok = SampleStore.put_state(put_in(state.networks[id].assessment, nil))
+      {:ok, state} = Store.load()
+      :ok = Store.save(put_in(state.networks[id].assessment, nil))
 
       {:ok, view, _html} = live(conn, "/networks/#{id}")
       assert has_element?(view, "#network-assessment-none")

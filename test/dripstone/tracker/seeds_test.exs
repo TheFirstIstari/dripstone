@@ -1,9 +1,9 @@
-defmodule Dripstone.Tracker.SampleStoreTest do
-  # Resets the app-wide store, so it must not run alongside other tests.
+defmodule Dripstone.Tracker.SeedsTest do
+  # Resets the app-wide rows, so it must not run alongside other tests.
   use Dripstone.DataCase, async: false
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{SampleData, SampleLoader, SampleStore}
+  alias Dripstone.Tracker.{SampleData, SampleLoader, State, Store}
 
   # From the SampleData timeline: 12 "new network" alerts, of which 6 are decided
   # (4 confirmed, 2 dismissed), leaves 6 open; plus Bluewave growth, Echo's re-alert,
@@ -11,25 +11,21 @@ defmodule Dripstone.Tracker.SampleStoreTest do
   @expected_open 10
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    on_exit(fn -> :ok = Store.save(previous) end)
     Tracker.reset_sample_data!()
     :ok
   end
 
-  test "the app starts the store with the sample data loaded" do
-    assert Process.whereis(SampleStore)
-    assert map_size(SampleStore.get_state().accounts) == 1300
+  test "first boot seeds the sample rows" do
+    Store.reset!()
+    {:ok, seeded} = Store.load()
+    assert Store.seeded?()
+    assert map_size(seeded.accounts) == 1300
   end
 
   test "every alert traces back to a replayed finding" do
-    state = SampleStore.get_state()
+    {:ok, state} = Store.load()
     events = SampleData.generate(DateTime.utc_now()).events
 
     reported =
@@ -44,12 +40,13 @@ defmodule Dripstone.Tracker.SampleStoreTest do
   end
 
   test "the open alert count matches the seed timeline" do
-    open = SampleStore.get_state().alerts |> Map.values() |> Enum.count(&(&1.status == :open))
+    {:ok, state} = Store.load()
+    open = state.alerts |> Map.values() |> Enum.count(&(&1.status == :open))
     assert open == @expected_open
   end
 
   test "seed decisions and curation were applied at the right points" do
-    state = SampleStore.get_state()
+    {:ok, state} = Store.load()
 
     sunrise = state.networks["net-sunrise"]
     assert sunrise.name == "Discount Spam Ring"
@@ -84,39 +81,14 @@ defmodule Dripstone.Tracker.SampleStoreTest do
     assert Tracker.get_alert(alert.id).alert.status == :open
   end
 
-  test "network graphs are cached per membership and cleared on change" do
-    graph = Tracker.network_graph("net-c0422")
-    assert map_size(SampleStore.get_state().cache) == 1
-    assert Tracker.network_graph("net-c0422") == graph
-
-    [member | _] = Tracker.get_network("net-c0422").network.member_ids
-    {:ok, _} = Tracker.remove_members("net-c0422", [member])
-
-    assert SampleStore.get_state().cache == %{}
-    refute Enum.any?(Tracker.network_graph("net-c0422").nodes, &(&1.id == member))
-    assert map_size(SampleStore.get_state().cache) == 1
-    assert Tracker.network_graph("net-nope") == nil
-  end
-
-  test "reordered membership reuses the one cached graph entry" do
-    graph = Tracker.network_graph("net-c0422")
-    state = SampleStore.get_state()
-    network = state.networks["net-c0422"]
-    reordered = %{network | member_ids: Enum.reverse(network.member_ids)}
-    SampleStore.put_state(%{state | networks: Map.put(state.networks, "net-c0422", reordered)})
-
-    assert Tracker.network_graph("net-c0422") == graph
-    assert map_size(SampleStore.get_state().cache) == 1
-  end
-
   test "history is capped at the newest entries" do
     now = DateTime.utc_now()
-    state = SampleStore.get_state()
-    max = Dripstone.Tracker.State.max_history()
+    {:ok, state} = Store.load()
+    max = State.max_history()
 
     state =
       Enum.reduce(1..(max + 10), state, fn i, acc ->
-        Dripstone.Tracker.State.add_history(acc, "net-echo", :system, "sys", "e#{i}", now)
+        State.add_history(acc, "net-echo", :system, "sys", "e#{i}", now)
       end)
 
     assert length(state.history) == max
@@ -126,22 +98,5 @@ defmodule Dripstone.Tracker.SampleStoreTest do
   test "loading is deterministic for a given time" do
     now = ~U[2026-11-07 17:00:00Z]
     assert SampleLoader.load(now) == SampleLoader.load(now)
-  end
-
-  test "load: false boots empty (prod gate, #50)" do
-    {:ok, pid} = SampleStore.start_link(load: false, name: :sample_store_empty_check)
-    assert SampleStore.get_state(:sample_store_empty_check).alerts == %{}
-    GenServer.stop(pid)
-  end
-
-  test "load: :showcase starts on the showcase corpus" do
-    {:ok, pid} = SampleStore.start_link(load: :showcase, name: :sample_store_showcase_check)
-    state = SampleStore.get_state(:sample_store_showcase_check)
-    GenServer.stop(pid)
-
-    {:ok, expected} = Dripstone.Showcase.load()
-
-    assert Map.keys(state.networks) |> Enum.sort() == Map.keys(expected.networks) |> Enum.sort()
-    assert map_size(state.accounts) == 6
   end
 end

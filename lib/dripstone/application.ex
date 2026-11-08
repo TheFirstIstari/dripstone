@@ -13,9 +13,7 @@ defmodule Dripstone.Application do
         Dripstone.Repo,
         {Phoenix.PubSub, name: Dripstone.PubSub},
         {Oban, Application.fetch_env!(:dripstone, Oban)},
-        DripstoneWeb.LoginThrottle,
-        {Dripstone.Tracker.SampleStore,
-         load: Application.get_env(:dripstone, :load_sample_data, true)}
+        DripstoneWeb.LoginThrottle
       ] ++
         simulator() ++
         [

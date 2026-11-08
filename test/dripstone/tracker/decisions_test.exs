@@ -3,17 +3,11 @@ defmodule Dripstone.Tracker.DecisionsTest do
   use Dripstone.DataCase, async: false
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{Decision, SampleStore}
+  alias Dripstone.Tracker.{Decision, Store}
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    on_exit(fn -> :ok = Store.save(previous) end)
     Tracker.reset_sample_data!()
     :ok = Tracker.subscribe()
     :ok
@@ -93,13 +87,13 @@ defmodule Dripstone.Tracker.DecisionsTest do
 
   test "a note over 500 characters is rejected and nothing changes" do
     alert = lone_alert("net-c0421")
-    before = SampleStore.get_state()
+    before = elem(Store.load(), 1)
 
     assert {:error, %Ecto.Changeset{action: :insert} = changeset} =
              Tracker.confirm_alert(alert.id, %{"note" => String.duplicate("x", 501)})
 
     assert {"should be at most %{count} character(s)", _} = changeset.errors[:note]
-    assert SampleStore.get_state() == before
+    assert elem(Store.load(), 1) == before
     assert {:ok, _} = Tracker.confirm_alert(alert.id, %{"note" => String.duplicate("x", 500)})
   end
 

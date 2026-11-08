@@ -29,7 +29,7 @@ defmodule Dripstone.Tracker.Simulator do
   require Logger
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.SampleStore
+  alias Dripstone.Tracker.Store
   alias Dripstone.Workers.AssessWorker
 
   @default_interval 45_000
@@ -71,7 +71,7 @@ defmodule Dripstone.Tracker.Simulator do
 
   @impl true
   def handle_info(:tick, state) do
-    {:ok, _} = SampleStore.change(&refresh_feeds/1)
+    {:ok, _} = apply_change(&refresh_feeds/1)
     report_canned(state.kinds)
     Process.send_after(self(), :tick, state.interval)
     {:noreply, state}
@@ -89,13 +89,24 @@ defmodule Dripstone.Tracker.Simulator do
     {:noreply, state}
   end
 
+  # Simulator mutations save straight to the rows (no broadcasts needed for a
+  # feed refresh; canned findings broadcast through `report_finding`).
+  defp apply_change(fun) do
+    with {:ok, loaded} <- Store.load(),
+         {:ok, reply, new_state, _messages} <- fun.(loaded) do
+      :ok = Store.save(new_state)
+      {:ok, reply}
+    end
+  end
+
   ## Canned findings
 
   @relations ~w(repost-ring shared-link timing-sync audience-overlap)
   @trajectories ~w(forming stable fading)
 
   defp report_canned(kinds) do
-    finding = SampleStore.read(&canned_finding(&1, kinds))
+    {:ok, loaded} = Store.load()
+    finding = canned_finding(loaded, kinds)
 
     case Tracker.report_finding(finding) do
       {:ok, %{alerts: alerts}} ->

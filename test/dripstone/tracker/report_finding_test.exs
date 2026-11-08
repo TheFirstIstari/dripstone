@@ -5,18 +5,12 @@ defmodule Dripstone.Tracker.ReportFindingTest do
   import Dripstone.TrackerFixtures
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{SampleStore, State}
+  alias Dripstone.Tracker.{State, Store}
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    :ok = SampleStore.put_state(%State{})
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    :ok = Store.save(%State{})
+    on_exit(fn -> :ok = Store.save(previous) end)
     :ok = Tracker.subscribe()
     :ok
   end
@@ -43,7 +37,7 @@ defmodule Dripstone.Tracker.ReportFindingTest do
     assert_receive {:alert_raised, ^alert}
     assert_receive {:network_updated, ^nid}
     for id <- ids, do: assert_receive({:account_updated, ^id})
-    assert SampleStore.get_state().alerts[alert.id] == alert
+    assert elem(Store.load(), 1).alerts[alert.id] == alert
   end
 
   test "one finding can raise two alerts, each broadcast" do
@@ -77,19 +71,20 @@ defmodule Dripstone.Tracker.ReportFindingTest do
   end
 
   test "a rejected finding returns the reasons, changes nothing and broadcasts nothing" do
-    before = SampleStore.get_state()
+    {:ok, before} = Store.load()
 
     assert {:error, %{kind: ["must be account, group or trend"]}} =
              Tracker.report_finding(group(["a", "b"], %{"kind" => "does-not-exist"}))
 
-    assert SampleStore.get_state() == before
+    assert elem(Store.load(), 1) == before
     refute_received _any
   end
 
   test "a stale finding on a dismissed network raises no alert and says why" do
     {:ok, %{network_id: nid}} = Tracker.report_finding(group(["a", "b"]))
     future = DateTime.add(DateTime.utc_now(), 3600, :second)
-    :ok = SampleStore.put_state(dismiss(SampleStore.get_state(), nid, future))
+    {:ok, dismissed} = Store.load()
+    :ok = Store.save(dismiss(dismissed, nid, future))
     flush()
 
     assert {:ok, %{alerts: [], reason: :predates_dismissal}} =
@@ -116,8 +111,8 @@ defmodule Dripstone.Tracker.ReportFindingTest do
 
   test "internal findings still run straight through the intake (tests and sample data)" do
     finding = new_network_finding(%{observed_at: DateTime.utc_now()})
-    :ok = SampleStore.put_state(state_with_accounts(finding))
-    {:ok, _} = SampleStore.apply_finding(finding)
+    :ok = Store.save(state_with_accounts(finding))
+    {:ok, _} = Tracker.apply_finding(finding)
     assert_receive {:alert_raised, %{trigger_id: "new_network"}}
   end
 

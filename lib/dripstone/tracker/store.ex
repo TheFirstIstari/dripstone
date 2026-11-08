@@ -1,11 +1,12 @@
 defmodule Dripstone.Tracker.Store do
   @moduledoc false
   # Ecto persistence behind the tracker. `load/0` rebuilds a `State` from the
-  # rows (seeding from the showcase corpus on first boot); `save/1` writes the
-  # whole state back. The pure modules (Report, Rules, Intake, Decisions,
-  # Curation, Queries) keep working on `State`; this module only translates
-  # between rows and structs.
-  #
+  # rows (seeding the sample rows on first boot); `save/1` writes the whole
+  # state back. The pure modules (Report, Rules, Intake, Decisions, Curation,
+  # Queries) keep working on `State`; this module only translates between rows
+  # and structs. Sample rows come from `SampleLoader` (generated relative to
+  # now); the hand-built showcase corpus is only a test/dev alternative via
+  # `load(showcase: true)`.
   # Key mappings (domain struct -> row):
   # * answers/assessments/evidence/signals keep their atom keys as plain maps
   #   (jsonb); datetimes inside become ISO-8601 strings on write and parse back
@@ -49,7 +50,7 @@ defmodule Dripstone.Tracker.Store do
   @seed_key "seeded"
   @seq_key "seq"
 
-  @doc "Loads the persisted state, seeding from the showcase corpus on first boot."
+  @doc "Loads the persisted state, seeding the sample rows on first boot."
   @spec load(keyword()) :: {:ok, State.t()} | {:error, term()}
   def load(opts \\ []) do
     case Process.get(__MODULE__) do
@@ -58,15 +59,25 @@ defmodule Dripstone.Tracker.Store do
     end
   end
 
-  defp load_persisted(opts) do
+  defp load_persisted(showcase: true),
+    do: seed_from(fn -> Dripstone.Showcase.load("v1.json", []) end)
+
+  defp load_persisted(opts), do: seed_from(fn -> seed(opts) end)
+
+  defp seed_from(fun) do
     if seeded?() do
       {:ok, read_state()}
     else
-      with {:ok, state} <- Dripstone.Showcase.load("v1.json", opts) do
+      with {:ok, state} <- fun.() do
         {:ok, persist_all(state)}
       end
     end
   end
+
+  # The hand-built corpus stays available for tests/dev; anything else seeds
+  # the generated sample rows.
+  defp seed([{:showcase_dir, _} | _] = opts), do: Dripstone.Showcase.load("v1.json", opts)
+  defp seed(_opts), do: {:ok, Dripstone.Tracker.SampleLoader.load()}
 
   @doc false
   # Test-only override for the state `load/0` returns, so read-path tests can run

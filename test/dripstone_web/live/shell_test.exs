@@ -7,7 +7,7 @@ defmodule DripstoneWeb.ShellTest do
   setup :register_and_log_in_user
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.SampleStore
+  alias Dripstone.Tracker.Store
 
   @sections [
     {"/", "overview", "Overview"},
@@ -19,14 +19,8 @@ defmodule DripstoneWeb.ShellTest do
   ]
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    on_exit(fn -> :ok = Store.save(previous) end)
     Tracker.reset_sample_data!()
     :ok
   end
@@ -83,7 +77,7 @@ defmodule DripstoneWeb.ShellTest do
 
     test "updates live when an alert is raised in another session", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/accounts")
-      {:ok, %{action: :created}} = SampleStore.apply_finding(finding("medium"))
+      {:ok, %{action: :created}} = Tracker.apply_finding(finding("medium"))
 
       assert has_element?(view, "#nav-alerts-badge", "11")
     end
@@ -99,7 +93,7 @@ defmodule DripstoneWeb.ShellTest do
   describe "live toasts" do
     test "a High severity alert shows a toast linking to it", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/")
-      {:ok, %{alert: alert}} = SampleStore.apply_finding(finding("high"))
+      {:ok, %{alert: alert}} = Tracker.apply_finding(finding("high"))
 
       assert has_element?(view, "#toast-#{alert.id}[data-toast]", alert.title)
       assert has_element?(view, ~s(#toast-#{alert.id} a[href="/alerts/#{alert.id}"]))
@@ -107,7 +101,7 @@ defmodule DripstoneWeb.ShellTest do
 
     test "a Medium severity alert does not toast", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/")
-      {:ok, _} = SampleStore.apply_finding(finding("medium"))
+      {:ok, _} = Tracker.apply_finding(finding("medium"))
 
       _ = render(view)
       refute has_element?(view, "[data-toast]")
@@ -117,7 +111,7 @@ defmodule DripstoneWeb.ShellTest do
       {:ok, view, _html} = live(conn, "/")
 
       for network <- ~w(net-c0421 net-c0422 net-c0425 net-lumen),
-          do: {:ok, _} = SampleStore.apply_finding(finding("high", network))
+          do: {:ok, _} = Tracker.apply_finding(finding("high", network))
 
       _ = render(view)
 

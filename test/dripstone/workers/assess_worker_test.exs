@@ -6,19 +6,13 @@ defmodule Dripstone.Workers.AssessWorkerTest do
   @moduletag :capture_log
 
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.{SampleStore, State}
+  alias Dripstone.Tracker.{State, Store}
   alias Dripstone.Workers.AssessWorker
 
   setup do
-    Ecto.Adapters.SQL.Sandbox.allow(
-      Dripstone.Repo,
-      self(),
-      Process.whereis(Dripstone.Tracker.SampleStore)
-    )
-
-    previous = SampleStore.get_state()
-    :ok = SampleStore.put_state(%State{})
-    on_exit(fn -> SampleStore.put_state(previous) end)
+    {:ok, previous} = Store.load()
+    :ok = Store.save(%State{})
+    on_exit(fn -> :ok = Store.save(previous) end)
 
     # No key, so the scorer never calls the real AI endpoint and falls back to
     # heuristics only.
@@ -33,7 +27,7 @@ defmodule Dripstone.Workers.AssessWorkerTest do
   test "runs the stub adapter and scorer, then reports an account finding" do
     assert :ok = perform_job(AssessWorker, %{"adapter" => "stub_x", "handle" => "alice"})
 
-    [account] = Map.values(SampleStore.get_state().accounts)
+    [account] = Map.values(elem(Store.load(), 1).accounts)
     assert %{feed_id: "x", handle: "alice"} = account
     assert_receive {:account_updated, id}
     assert id == account.id
@@ -41,13 +35,13 @@ defmodule Dripstone.Workers.AssessWorkerTest do
     # Heuristics only (no key): no answers, no model, and account findings raise no alert.
     assert account.assessment.answers == nil
     assert account.assessment.model == nil
-    assert SampleStore.get_state().posts[account.id] != []
+    assert elem(Store.load(), 1).posts[account.id] != []
     refute_received {:alert_raised, _}
   end
 
   test "reddit handles land on the Reddit feed" do
     assert :ok = perform_job(AssessWorker, %{"adapter" => "stub_reddit", "handle" => "bob"})
-    assert [%{feed_id: "reddit", handle: "bob"}] = Map.values(SampleStore.get_state().accounts)
+    assert [%{feed_id: "reddit", handle: "bob"}] = Map.values(elem(Store.load(), 1).accounts)
   end
 
   test "an unknown adapter cancels the job" do
