@@ -25,23 +25,37 @@ defmodule Dripstone.Tracker.Queries do
   ## Overview
 
   def overview(%State{} = state, now) do
-    alerts = Map.values(state.alerts)
-    open = Enum.filter(alerts, &(&1.status == :open))
     today = DateTime.to_date(now)
     days = Enum.map(29..0//-1, &Date.add(today, -&1))
-    per_day = Enum.frequencies_by(alerts, &DateTime.to_date(&1.raised_at))
+
+    {open, open_high, open_counts, per_day} =
+      Enum.reduce(
+        Map.values(state.alerts),
+        {[], 0, %{}, %{}},
+        fn alert, {open, high, counts, per_day} ->
+          per_day = Map.update(per_day, DateTime.to_date(alert.raised_at), 1, &(&1 + 1))
+
+          if alert.status == :open do
+            high = if alert.severity == :high, do: high + 1, else: high
+            {[alert | open], high, Map.update(counts, alert.network_id, 1, &(&1 + 1)), per_day}
+          else
+            {open, high, counts, per_day}
+          end
+        end
+      )
+
     trend = Enum.map(days, &%{date: &1, count: Map.get(per_day, &1, 0)})
 
     %{
       open_alerts: length(open),
-      open_high_alerts: Enum.count(open, &(&1.severity == :high)),
+      open_high_alerts: open_high,
       suspected_networks: state |> active_networks() |> Enum.count(&(&1.status == :suspected)),
       tracked_accounts: map_size(state.accounts),
       trend: trend,
       trend_total: Enum.sum(Enum.map(trend, & &1.count)),
       newest_open_alerts:
         open |> newest_first() |> Enum.take(5) |> Enum.map(&alert_entry(state, &1)),
-      recent_networks: state |> list_networks(%{}) |> Enum.take(5),
+      recent_networks: top_recent_networks(state, open_counts, 5),
       feeds: state |> feed_health(now) |> Enum.sort_by(&(&1.health.status != :healthy), :desc)
     }
   end
@@ -93,19 +107,43 @@ defmodule Dripstone.Tracker.Queries do
   end
 
   @doc """
+  Alert detail plus its `{position, total, prev, next}` neighbors within
+  `list_alerts(params)`, computed from a single sorted pass. Returns `nil`
+  when the alert does not exist. Only the detail and (at most) the
+  neighboring entries are mapped; the full list is never materialized.
+  """
+  def alert_detail(%State{} = state, id, params) do
+    with %{} = detail <- get_alert(state, id) do
+      {detail, neighbors_for(state, id, params)}
+    end
+  end
+
+  @doc """
   Position of alert `id` within `list_alerts(params)`, with the previous and next ids.
   If the alert is no longer in the list (e.g. just decided), `next` is the alert that
   now holds its old place.
   """
   def alert_neighbors(%State{} = state, id, params) do
-    ids = state |> list_alerts(params) |> Enum.map(& &1.alert.id)
+    neighbors_for(state, id, params)
+  end
+
+  defp neighbors_for(%State{} = state, id, params) do
+    sorted = state |> matching_alerts(params) |> newest_first()
+
+    ids = Enum.map(sorted, & &1.id)
     total = length(ids)
 
     case Enum.find_index(ids, &(&1 == id)) do
       nil ->
         alert = state.alerts[id]
-        rest = if alert, do: Enum.drop_while(ids, &newer?(state.alerts[&1], alert)), else: ids
-        %{position: nil, total: total, prev: nil, next: List.first(rest)}
+        rest = if alert, do: Enum.drop_while(sorted, &newer?(&1, alert)), else: sorted
+
+        %{
+          position: nil,
+          total: total,
+          prev: nil,
+          next: rest |> List.first() |> then(&(&1 && &1.id))
+        }
 
       index ->
         %{
@@ -167,6 +205,25 @@ defmodule Dripstone.Tracker.Queries do
     |> active_networks()
     |> Enum.map(&{&1.name, &1.id})
     |> Enum.sort()
+  end
+
+  # Top-`n` active networks by recency without sorting the whole corpus:
+  # keeps a 5-small bounded list via partial insertion instead of a full sort.
+  defp top_recent_networks(state, open_counts, n) do
+    state
+    |> active_networks()
+    |> Enum.reduce([], fn network, top ->
+      entry = %{
+        network: network,
+        last_activity_at: network.last_activity_at,
+        open_alerts: Map.get(open_counts, network.id, 0)
+      }
+
+      [entry | top]
+      |> Enum.sort_by(&{&1.last_activity_at, &1.network.id}, &later_or_equal?/2)
+      |> Enum.take(n)
+    end)
+    |> Enum.sort_by(&{&1.last_activity_at, &1.network.id}, &later_or_equal?/2)
   end
 
   @doc """

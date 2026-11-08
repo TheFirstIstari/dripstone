@@ -31,16 +31,12 @@ defmodule DripstoneWeb.AlertLive.Show do
   defp load(socket) do
     %{alert_id: id, filters: filters} = socket.assigns
 
-    case Tracker.get_alert(id) do
+    case Tracker.alert_detail(id, Filters.to_tracker(filters)) do
       nil ->
         assign(socket, detail: nil, neighbors: nil, page_title: "Alert not found")
 
-      detail ->
-        assign(socket,
-          detail: detail,
-          neighbors: Tracker.alert_neighbors(id, Filters.to_tracker(filters)),
-          page_title: detail.alert.title
-        )
+      {detail, neighbors} ->
+        assign(socket, detail: detail, neighbors: neighbors, page_title: detail.alert.title)
     end
   end
 

@@ -185,6 +185,16 @@ defmodule Dripstone.Tracker.QueriesTest do
       assert %{position: nil, total: 9, next: ^third} =
                Queries.alert_neighbors(decided, second, %{})
     end
+
+    test "alert_detail returns the detail and neighbors from one query", %{state: state} do
+      ids = state |> Queries.list_alerts(%{}) |> Enum.map(& &1.alert.id)
+      [first, second | _] = ids
+
+      assert {%{alert: %{id: ^first}}, %{position: 1, prev: nil, next: ^second}} =
+               Queries.alert_detail(state, first, %{})
+
+      assert Queries.alert_detail(state, "alert-nope", %{}) == nil
+    end
   end
 
   describe "networks" do
