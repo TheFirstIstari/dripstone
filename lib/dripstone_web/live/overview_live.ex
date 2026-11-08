@@ -10,18 +10,22 @@ defmodule DripstoneWeb.OverviewLive do
   alias Dripstone.Tracker
 
   @impl true
+  def mount(
+        _params,
+        _session,
+        %{assigns: %{current_scope: %{user: %Dripstone.Accounts.User{}}}} = socket
+      ) do
+    {:ok,
+     socket
+     |> assign(:page_title, "Overview")
+     |> stream_configure(:alerts, dom_id: &"overview-alert-#{&1.alert.id}")
+     |> stream_configure(:networks, dom_id: &"overview-network-#{&1.network.id}")
+     |> stream_configure(:feeds, dom_id: &"feed-strip-#{&1.feed.id()}")
+     |> load()}
+  end
+
   def mount(_params, _session, socket) do
-    if socket.assigns.current_scope && socket.assigns.current_scope.user do
-      {:ok,
-       socket
-       |> assign(:page_title, "Overview")
-       |> stream_configure(:alerts, dom_id: &"overview-alert-#{&1.alert.id}")
-       |> stream_configure(:networks, dom_id: &"overview-network-#{&1.network.id}")
-       |> stream_configure(:feeds, dom_id: &"feed-strip-#{&1.feed.id()}")
-       |> load()}
-    else
-      {:ok, assign(socket, :page_title, "Dripstone")}
-    end
+    {:ok, assign(socket, :page_title, "Dripstone")}
   end
 
   @doc false
