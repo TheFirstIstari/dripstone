@@ -24,6 +24,11 @@ defmodule Mix.Tasks.Dripstone.RefreshTest do
     assert Refresh.forward_args(args) == args
   end
 
+  test "positional plus --platform/--all raises instead of silently winning" do
+    assert_raise Mix.Error, fn -> Refresh.forward_args(["x", "--platform", "reddit"]) end
+    assert_raise Mix.Error, fn -> Refresh.forward_args(["x", "--all"]) end
+  end
+
   test "--date survives positional forwarding" do
     forwarded = Refresh.forward_args(["x", "--handle", "@someone", "--date", "2026-11-08"])
 

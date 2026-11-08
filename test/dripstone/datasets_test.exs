@@ -127,4 +127,23 @@ defmodule Dripstone.DatasetsTest do
     assert_raise ArgumentError, fn -> Datasets.corpus_path("x", "../../evil") end
     refute File.exists?(evil)
   end
+
+  test "latest_corpus ignores stray non-dated jsonl files", %{dir: dir} do
+    Datasets.write_corpus("x", "h", [], datasets_dir: dir, date: "2026-11-01")
+    File.write!(Path.join([dir, "x", "notes.jsonl"]), ~s({"id":"stray"}\n))
+
+    assert {:ok, path} = Datasets.latest_corpus("x", datasets_dir: dir)
+    assert Path.basename(path) == "2026-11-01.jsonl"
+    assert {:ok, []} = Datasets.read_corpus("x", datasets_dir: dir)
+  end
+
+  test "platform traversal is rejected", %{dir: dir} do
+    assert_raise ArgumentError, fn -> Datasets.corpus_path("../../evil", "2026-11-07") end
+    assert_raise ArgumentError, fn -> Datasets.latest_corpus("*", datasets_dir: dir) end
+
+    assert {:error, :invalid_platform} =
+             Datasets.write_corpus("../../evil", "h", [], datasets_dir: dir, date: "2026-11-07")
+
+    refute File.exists?(Path.join(dir, "evil.jsonl"))
+  end
 end

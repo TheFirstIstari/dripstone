@@ -170,4 +170,66 @@ defmodule Dripstone.Adapters.PoliteTest do
   test "relative url returns {:error, {:invalid_args, _}}" do
     assert {:error, {:invalid_args, _}} = Polite.get("/relative/path", robots: false)
   end
+
+  describe "shared state lives in Polite.Gate" do
+    alias Dripstone.Adapters.Polite.Gate
+
+    test "rate slots survive the calling process exiting (Oban jobs are short-lived)" do
+      host = "polite-survive-#{System.unique_integer([:positive])}.test"
+
+      task = Task.async(fn -> Gate.reserve(host, 60_000) end)
+      assert Task.await(task) == 0
+
+      # A later caller, in another process, still has to wait for that booking.
+      assert Gate.reserve(host, 60_000) > 50_000
+    end
+
+    test "concurrent callers to one host are spaced by the minimum interval" do
+      host = "polite-concurrent-#{System.unique_integer([:positive])}.test"
+
+      waits =
+        1..5
+        |> Enum.map(fn _ -> Task.async(fn -> Gate.reserve(host, 1_000) end) end)
+        |> Enum.map(&Task.await/1)
+        |> Enum.sort()
+
+      # One goes now; the others are booked roughly 1s, 2s, 3s, 4s later.
+      [first | rest] = waits
+      assert first == 0
+
+      rest
+      |> Enum.with_index(1)
+      |> Enum.each(fn {wait, n} -> assert_in_delta wait, n * 1_000, 200 end)
+    end
+  end
+
+  test "a date-form Retry-After is honoured" do
+    retry_at =
+      DateTime.utc_now()
+      |> DateTime.add(3, :second)
+      |> Calendar.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    Req.Test.stub(@stub, fn conn ->
+      case conn.request_path do
+        "/robots.txt" ->
+          Req.Test.text(conn, "User-agent: *\nAllow: /")
+
+        _ ->
+          if Process.get(:dated_retry) do
+            Req.Test.json(conn, %{"ok" => true})
+          else
+            Process.put(:dated_retry, true)
+
+            conn
+            |> Plug.Conn.put_resp_header("retry-after", retry_at)
+            |> Plug.Conn.put_status(429)
+            |> Req.Test.json(%{})
+          end
+      end
+    end)
+
+    assert {:ok, %{status: 200}} = Polite.get("http://polite-dated.test/items", opts())
+    assert_received {:slept, ms}
+    assert ms > 1_000 and ms <= 3_000
+  end
 end

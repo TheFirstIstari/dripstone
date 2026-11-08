@@ -28,10 +28,15 @@ defmodule Dripstone.Datasets do
   end
 
   @date_regex ~r/^\d{4}-\d{2}-\d{2}$/
+  @platform_regex ~r/^[A-Za-z0-9_-]+$/
 
   @doc "Dated corpus path for a platform, e.g. `priv/datasets/x/2026-11-07.jsonl`."
   @spec corpus_path(platform(), String.t(), keyword()) :: Path.t()
   def corpus_path(platform, date, opts \\ []) do
+    unless is_binary(platform) and platform =~ @platform_regex do
+      raise ArgumentError, "invalid corpus platform: #{inspect(platform)}"
+    end
+
     unless is_binary(date) and date =~ @date_regex do
       raise ArgumentError, "invalid corpus date: #{inspect(date)} (want YYYY-MM-DD)"
     end
@@ -60,41 +65,64 @@ defmodule Dripstone.Datasets do
   def write_corpus(platform, handle, posts, opts \\ []) do
     date = Keyword.get(opts, :date, Date.utc_today() |> Date.to_iso8601())
 
-    unless is_binary(date) and date =~ @date_regex do
-      {:error, :invalid_date}
+    cond do
+      not valid_platform?(platform) -> {:error, :invalid_platform}
+      not valid_date?(date) -> {:error, :invalid_date}
+      true -> write_validated_corpus(platform, handle, posts, date, opts)
+    end
+  end
+
+  defp valid_platform?(platform) when is_binary(platform), do: platform =~ @platform_regex
+  defp valid_platform?(_), do: false
+
+  defp valid_date?(date) when is_binary(date), do: date =~ @date_regex
+  defp valid_date?(_), do: false
+
+  defp write_validated_corpus(platform, handle, posts, date, opts) do
+    fetched_at = DateTime.utc_now() |> DateTime.to_iso8601()
+    source = platform <> ":" <> handle
+    path = corpus_path(platform, date, opts)
+
+    lines =
+      Enum.map(posts, fn post ->
+        Jason.encode!(%{
+          "id" => field(post, :id),
+          "handle" => field(post, :handle),
+          "text" => field(post, :text),
+          "urls" => field(post, :urls) || [],
+          "published_at" => iso8601(field(post, :published_at)),
+          "fetched_at" => fetched_at,
+          "source" => source
+        })
+      end)
+
+    body = if lines == [], do: "", else: Enum.map_join(lines, "\n", & &1) <> "\n"
+    tmp = path <> ".tmp-#{:erlang.unique_integer([:positive])}"
+
+    with :ok <- File.mkdir_p(Path.dirname(path)),
+         :ok <- File.write(tmp, body),
+         :ok <- File.rename(tmp, path) do
+      {:ok, path}
     else
-      fetched_at = DateTime.utc_now() |> DateTime.to_iso8601()
-      source = platform <> ":" <> handle
-      path = corpus_path(platform, date, opts)
-
-      lines =
-        Enum.map(posts, fn post ->
-          Jason.encode!(%{
-            "id" => field(post, :id),
-            "handle" => field(post, :handle),
-            "text" => field(post, :text),
-            "urls" => field(post, :urls) || [],
-            "published_at" => iso8601(field(post, :published_at)),
-            "fetched_at" => fetched_at,
-            "source" => source
-          })
-        end)
-
-      body = if lines == [], do: "", else: Enum.map_join(lines, "\n", & &1) <> "\n"
-
-      with :ok <- File.mkdir_p(Path.dirname(path)),
-           :ok <- File.write(path, body) do
-        {:ok, path}
-      end
+      {:error, _} = error ->
+        File.rm(tmp)
+        error
     end
   end
 
   @doc "Latest dated corpus file for a platform, or `{:error, :no_corpus}`."
   @spec latest_corpus(platform(), keyword()) :: {:ok, Path.t()} | {:error, :no_corpus}
   def latest_corpus(platform, opts \\ []) do
+    unless is_binary(platform) and platform =~ @platform_regex do
+      raise ArgumentError, "invalid corpus platform: #{inspect(platform)}"
+    end
+
     pattern = Path.join([base_dir(opts), platform, "*.jsonl"])
 
-    case pattern |> Path.wildcard() |> Enum.sort(:desc) do
+    case pattern
+         |> Path.wildcard()
+         |> Enum.filter(&(Path.basename(&1) =~ ~r/^\d{4}-\d{2}-\d{2}\.jsonl$/))
+         |> Enum.sort(:desc) do
       [latest | _] -> {:ok, latest}
       [] -> {:error, :no_corpus}
     end

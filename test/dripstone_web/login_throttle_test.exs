@@ -13,12 +13,12 @@ defmodule DripstoneWeb.LoginThrottleTest do
 
     for _ <- 1..5, do: assert(:ok = LoginThrottle.check_and_record(key))
     assert :throttled = LoginThrottle.check_and_record(key)
-    refute LoginThrottle.allowed?(key)
+    assert :throttled = LoginThrottle.check_and_record(key)
   end
 
   test "concurrent check_and_record admits at most 5 attempts" do
     key = "throttle-race@example.com"
-    for _ <- 1..4, do: LoginThrottle.record(key)
+    for _ <- 1..4, do: assert(:ok = LoginThrottle.check_and_record(key))
 
     results =
       1..10
@@ -29,12 +29,47 @@ defmodule DripstoneWeb.LoginThrottleTest do
     assert Enum.count(results, &(&1 == :throttled)) == 9
   end
 
-  test "expired keys are pruned instead of retained" do
-    key = "throttle-prune@example.com"
+  test "expired attempts fall out of the window" do
+    key = "throttle-expiry@example.com"
     stale = System.monotonic_time(:millisecond) - 120_000
-    :sys.replace_state(LoginThrottle, fn _ -> %{key => [stale]} end)
+    :sys.replace_state(LoginThrottle, fn _ -> %{key => [stale, stale, stale, stale, stale]} end)
 
-    assert LoginThrottle.allowed?(key)
-    assert :sys.get_state(LoginThrottle) == %{}
+    for _ <- 1..5, do: assert(:ok = LoginThrottle.check_and_record(key))
+    assert :throttled = LoginThrottle.check_and_record(key)
+  end
+
+  test "budgets are per IP: one source cannot burn another's" do
+    email = "victim-#{System.unique_integer([:positive])}@example.com"
+
+    for _ <- 1..5,
+        do: assert(:ok = LoginThrottle.check_and_record(LoginThrottle.key({127, 0, 0, 1}, email)))
+
+    assert :throttled = LoginThrottle.check_and_record(LoginThrottle.key({127, 0, 0, 1}, email))
+    assert :ok = LoginThrottle.check_and_record(LoginThrottle.key({10, 0, 0, 2}, email))
+  end
+
+  test "non-binary email maps to a shared bucket without crashing" do
+    for _ <- 1..5,
+        do: assert(:ok = LoginThrottle.check_and_record(LoginThrottle.key({127, 0, 0, 1}, nil)))
+
+    assert :throttled = LoginThrottle.check_and_record(LoginThrottle.key({127, 0, 0, 1}, nil))
+  end
+
+  test "writes sweep expired keys once over threshold" do
+    stale = System.monotonic_time(:millisecond) - 120_000
+
+    big =
+      for n <- 1..1_001,
+          into: %{},
+          do: {LoginThrottle.key({127, 0, 0, 1}, "sweep-#{n}@example.com"), [stale]}
+
+    :sys.replace_state(LoginThrottle, fn _ -> big end)
+
+    assert :ok =
+             LoginThrottle.check_and_record(
+               LoginThrottle.key({127, 0, 0, 1}, "fresh@example.com")
+             )
+
+    assert map_size(:sys.get_state(LoginThrottle)) == 1
   end
 end
