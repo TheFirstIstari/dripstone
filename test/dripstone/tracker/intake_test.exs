@@ -244,7 +244,12 @@ defmodule Dripstone.Tracker.IntakeTest do
     test "a finding for a merged-away network is rejected and changes nothing" do
       second =
         new_network_finding(%{
-          new_network: %{id: "net-2", name: "Cluster #2", member_ids: ["a4", "a5"], confidence: 70}
+          new_network: %{
+            id: "net-2",
+            name: "Cluster #2",
+            member_ids: ["a4", "a5"],
+            confidence: 70
+          }
         })
 
       state = with_accounts(state_with_network(), second)
