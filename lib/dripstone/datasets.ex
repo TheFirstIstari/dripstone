@@ -25,9 +25,15 @@ defmodule Dripstone.Datasets do
     Keyword.get(opts, :datasets_dir, Path.join(File.cwd!(), "priv/datasets"))
   end
 
+  @date_regex ~r/^\d{4}-\d{2}-\d{2}$/
+
   @doc "Dated corpus path for a platform, e.g. `priv/datasets/x/2026-11-07.jsonl`."
   @spec corpus_path(platform(), String.t(), keyword()) :: Path.t()
   def corpus_path(platform, date, opts \\ []) do
+    unless is_binary(date) and date =~ @date_regex do
+      raise ArgumentError, "invalid corpus date: #{inspect(date)} (want YYYY-MM-DD)"
+    end
+
     Path.join([base_dir(opts), platform, date <> ".jsonl"])
   end
 
@@ -51,26 +57,31 @@ defmodule Dripstone.Datasets do
           {:ok, Path.t()} | {:error, term()}
   def write_corpus(platform, handle, posts, opts \\ []) do
     date = Keyword.get(opts, :date, Date.utc_today() |> Date.to_iso8601())
-    fetched_at = DateTime.utc_now() |> DateTime.to_iso8601()
-    source = platform <> ":" <> handle
-    path = corpus_path(platform, date, opts)
 
-    lines =
-      Enum.map(posts, fn post ->
-        Jason.encode!(%{
-          "id" => field(post, :id),
-          "handle" => field(post, :handle),
-          "text" => field(post, :text),
-          "urls" => field(post, :urls) || [],
-          "published_at" => iso8601(field(post, :published_at)),
-          "fetched_at" => fetched_at,
-          "source" => source
-        })
-      end)
+    unless is_binary(date) and date =~ @date_regex do
+      {:error, :invalid_date}
+    else
+      fetched_at = DateTime.utc_now() |> DateTime.to_iso8601()
+      source = platform <> ":" <> handle
+      path = corpus_path(platform, date, opts)
 
-    with :ok <- File.mkdir_p(Path.dirname(path)),
-         :ok <- File.write(path, Enum.map_join(lines, "\n", & &1) <> "\n") do
-      {:ok, path}
+      lines =
+        Enum.map(posts, fn post ->
+          Jason.encode!(%{
+            "id" => field(post, :id),
+            "handle" => field(post, :handle),
+            "text" => field(post, :text),
+            "urls" => field(post, :urls) || [],
+            "published_at" => iso8601(field(post, :published_at)),
+            "fetched_at" => fetched_at,
+            "source" => source
+          })
+        end)
+
+      with :ok <- File.mkdir_p(Path.dirname(path)),
+           :ok <- File.write(path, Enum.map_join(lines, "\n", & &1) <> "\n") do
+        {:ok, path}
+      end
     end
   end
 
