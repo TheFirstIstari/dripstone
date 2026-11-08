@@ -20,8 +20,40 @@ defmodule DripstoneWeb.DigestLive do
   end
 
   @doc false
-  # Called by DripstoneWeb.Nav for every tracker change.
-  def handle_tracker_event(_message, socket), do: load(socket)
+  # Only history/digest-relevant events re-run the digest: decisions (flips),
+  # new-edge findings (intake) and re-alerts. Feed ticks and unrelated
+  # account updates stay silent instead of resetting scroll (#248).
+  def handle_tracker_event({event, _} = message, socket)
+      when event in [:alert_raised, :alert_updated, :network_updated] do
+    if digest_relevant?(message), do: load(socket), else: socket
+  end
+
+  def handle_tracker_event(_message, socket), do: socket
+
+  # Decisions record "Confirmed/Dismissed alert …"; intake records new edges
+  # ("Added …", "Detected with …", "New evidence on …") or re-alerts. Other
+  # network updates (curation moves, feed ticks) leave the digest alone.
+  defp digest_relevant?({:alert_raised, _}), do: true
+  defp digest_relevant?({:alert_updated, _}), do: true
+  defp digest_relevant?({:network_updated, id}), do: digest_network_relevant?(id)
+
+  defp digest_network_relevant?(id) do
+    {:ok, state} = Dripstone.Tracker.Store.load()
+    Enum.any?(state.history, &(&1.network_id == id and digest_entry?(&1.summary)))
+  rescue
+    _ -> true
+  end
+
+  defp digest_entry?(summary) when is_binary(summary) do
+    String.starts_with?(summary, [
+      "Added ",
+      "Detected with ",
+      "New evidence on ",
+      "Confirmed alert ",
+      "Dismissed alert ",
+      "Re-alerted after dismissal"
+    ])
+  end
 
   defp load(socket), do: stream(socket, :items, Tracker.change_digest(), reset: true)
 

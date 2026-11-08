@@ -101,8 +101,22 @@ defmodule DripstoneWeb.AlertLive.Show do
   def handle_event("navigate", _params, socket), do: {:noreply, socket}
 
   @doc false
-  # Called by DripstoneWeb.Nav for every tracker change.
-  def handle_tracker_event(_message, socket), do: load(socket)
+  # Only this alert's own update (or its network changing) reloads the detail;
+  # unrelated alerts and account findings leave it alone (#248).
+  def handle_tracker_event({event, %{id: id}}, socket)
+      when event in [:alert_raised, :alert_updated] do
+    if !is_nil(socket.assigns[:detail]) and socket.assigns.detail.alert.id == id,
+      do: load(socket),
+      else: socket
+  end
+
+  def handle_tracker_event({:network_updated, id}, socket) do
+    if !is_nil(socket.assigns[:detail]) and socket.assigns.detail.network.id == id,
+      do: load(socket),
+      else: socket
+  end
+
+  def handle_tracker_event(_message, socket), do: socket
 
   @impl true
   def render(%{detail: nil} = assigns) do

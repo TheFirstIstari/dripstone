@@ -633,6 +633,8 @@ defmodule Dripstone.Tracker.Rules do
   # newest first; posts whose timestamp can't be read are kept at the end (never
   # dropped, never given an invented time) so evidence isn't lost. Capped.
   defp merge_posts(state, account_id, raw_posts, limit) do
+    # Dedup before minting ids: re-reporting the same posts must neither burn
+    # `seq` nor swap stable post ids (#145).
     existing =
       state.posts |> Map.get(account_id, []) |> Map.new(&{&1.post_id, &1.id})
 
