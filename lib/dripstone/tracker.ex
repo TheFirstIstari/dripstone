@@ -16,7 +16,7 @@ defmodule Dripstone.Tracker do
     * `{:account_updated, account_id}`: an account changed (from a finding)
   """
 
-  alias Dripstone.Tracker.{Curation, Decisions, Graph, Queries, SampleStore, Store}
+  alias Dripstone.Tracker.{Curation, Decisions, Queries, SampleStore, Store}
 
   @default_by "Detection"
 
@@ -51,14 +51,7 @@ defmodule Dripstone.Tracker do
   def list_network_options, do: read(&Queries.list_network_options/1)
   def get_network(id, view \\ :summary), do: read(&Queries.get_network(&1, id, view))
 
-  def network_graph(id) do
-    read(fn state ->
-      case state.networks[id] do
-        nil -> nil
-        network -> Graph.build(network, state.links)
-      end
-    end)
-  end
+  def network_graph(id), do: SampleStore.network_graph(id)
 
   def list_accounts(params \\ %{}), do: read(&Queries.list_accounts(&1, params))
   def get_account(id), do: read(&Queries.get_account(&1, id))

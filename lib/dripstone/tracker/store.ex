@@ -272,6 +272,7 @@ defmodule Dripstone.Tracker.Store do
           tags: n.tags,
           related_ids: n.related_ids,
           evidence: Enum.map(n.evidence, &evidence_to_row/1),
+          removed_account_ids: n.removed_account_ids,
           retired_into_id: n.retired_into,
           first_seen_at: ts(n.first_activity_at),
           last_true_at: ts(n.last_activity_at),
