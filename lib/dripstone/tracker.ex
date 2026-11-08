@@ -155,14 +155,49 @@ defmodule Dripstone.Tracker do
     :ok
   end
 
+  ## Datasets (Live / Demo)
+
+  @dataset_key :dripstone_dataset
+
+  @doc """
+  The dataset the calling process reads and writes: `:live` (the database, the
+  default) or `:demo` (memory-only `DemoStore`). LiveViews get theirs from the
+  session (`DripstoneWeb.Nav`); background code uses Live unless it says otherwise.
+  """
+  @spec dataset() :: :live | :demo
+  def dataset, do: Process.get(@dataset_key, :live)
+
+  @doc "Sets the calling process's dataset."
+  @spec put_dataset(:live | :demo) :: :ok
+  def put_dataset(dataset) when dataset in [:live, :demo] do
+    Process.put(@dataset_key, dataset)
+    :ok
+  end
+
+  @doc "Runs `fun` with the calling process's dataset set to `dataset`, then restores it."
+  @spec with_dataset(:live | :demo, (-> result)) :: result when result: var
+  def with_dataset(dataset, fun) when dataset in [:live, :demo] do
+    previous = Process.get(@dataset_key)
+    Process.put(@dataset_key, dataset)
+
+    try do
+      fun.()
+    after
+      if previous, do: Process.put(@dataset_key, previous), else: Process.delete(@dataset_key)
+    end
+  end
+
   ## PubSub
 
-  @doc "Subscribes the calling process to tracker changes."
+  @doc "Subscribes the calling process to changes in its dataset."
   @spec subscribe() :: :ok | {:error, term()}
-  def subscribe, do: Phoenix.PubSub.subscribe(Dripstone.PubSub, @topic)
+  def subscribe, do: Phoenix.PubSub.subscribe(Dripstone.PubSub, topic())
 
   @doc false
-  def broadcast(message), do: Phoenix.PubSub.broadcast(Dripstone.PubSub, @topic, message)
+  def broadcast(message), do: Phoenix.PubSub.broadcast(Dripstone.PubSub, topic(), message)
+
+  # Each dataset has its own topic, so Demo changes never reach Live screens.
+  defp topic, do: if(dataset() == :demo, do: @topic <> ":demo", else: @topic)
 
   defp read(fun) do
     {:ok, state} = Store.load()

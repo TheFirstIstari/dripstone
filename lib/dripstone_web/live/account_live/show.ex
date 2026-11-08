@@ -97,10 +97,6 @@ defmodule DripstoneWeb.AccountLive.Show do
         <:subtitle>{@account.display_name}</:subtitle>
         <:meta>
           <.platform_badge feed_id={@account.feed_id} />
-          <span :if={@account.created_at}>created {Calendar.strftime(
-            @account.created_at,
-            "%b %-d, %Y"
-          )}</span>
           <span :if={@account.first_seen_at}>
             seen {Calendar.strftime(@account.first_seen_at, "%b %-d")} –
             <.relative_time :if={@account.last_seen_at} at={@account.last_seen_at} />
