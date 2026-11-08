@@ -86,7 +86,8 @@ defmodule Dripstone.Tracker.Queries do
       (status == :all or alert.status == status) and
         matches?(params, :severity, alert.severity) and
         matches?(params, :trigger, alert.trigger_id) and
-        (is_nil(params[:platform]) or params[:platform] in network.platforms)
+        (is_nil(params[:platform]) or
+           (not is_nil(network) and params[:platform] in network.platforms))
     end)
   end
 
