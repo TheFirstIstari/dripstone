@@ -180,6 +180,49 @@ defmodule DripstoneWeb.AlertLive.IndexTest do
       assert has_element?(view, "#alert-count", "9 open")
     end
 
+    test "a network rename refreshes the rows live", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/alerts")
+      [%{alert: alert, network: network} | _] = Tracker.list_alerts()
+
+      {:ok, _} = Tracker.rename_network(network.id, %{"name" => "Fresh Name"})
+
+      assert has_element?(view, "#alert-row-#{alert.id}", "Fresh Name")
+    end
+
+    test "an escalated alert appears in sorted order, not at the top", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/alerts?severity=high")
+      before = row_ids(view)
+      [%{alert: newest} | _] = Tracker.list_alerts(%{severity: :high})
+      older = Tracker.list_alerts(%{severity: :medium}) |> Enum.take(-1) |> hd()
+
+      # A high finding on an older medium alert merges in place and escalates it.
+      {:ok, %{alert: escalated}} =
+        Tracker.apply_finding(
+          Map.merge(finding("high"), %{
+            network_id: older.alert.network_id,
+            trigger: older.alert.trigger_id
+          })
+        )
+
+      assert escalated.id == older.alert.id
+      assert row_ids(view) == expected_ids(%{severity: :high})
+      assert hd(row_ids(view)) == "alert-row-#{newest.id}"
+      refute hd(row_ids(view)) == "alert-row-#{escalated.id}"
+      assert before -- row_ids(view) == []
+    end
+
+    test "an undone decision restores the alert in sorted order", %{conn: conn} do
+      expected = expected_ids(%{status: :open})
+      %{alert: alert} = Tracker.list_alerts() |> Enum.take(-1) |> hd()
+      {:ok, %{decision: decision}} = Tracker.confirm_alert(alert.id)
+      {:ok, view, _html} = live(conn, "/alerts")
+      refute "alert-row-#{alert.id}" in row_ids(view)
+
+      {:ok, _} = Tracker.undo_decision(decision.id)
+
+      assert row_ids(view) == expected
+    end
+
     test "the highlight clears when the filters change", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/alerts")
       {:ok, %{alert: alert}} = Tracker.apply_finding(finding("high"))

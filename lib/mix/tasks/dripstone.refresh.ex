@@ -25,6 +25,10 @@ defmodule Mix.Tasks.Dripstone.Refresh do
         strict: [platform: :string, handle: :string, all: :boolean, date: :string]
       )
 
+    if rest != [] and (opts[:platform] != nil or opts[:all]) do
+      Mix.raise("pass a platform positionally or via --platform/--all, not both")
+    end
+
     case {opts[:platform], rest} do
       {nil, [platform | _]} ->
         ["--platform", platform] ++ OptionParser.to_argv(Keyword.delete(opts, :platform))
