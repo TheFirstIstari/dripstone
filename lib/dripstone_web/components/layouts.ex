@@ -41,6 +41,10 @@ defmodule DripstoneWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
 
+  attr :show_search, :boolean,
+    default: true,
+    doc: "whether to render the global search form (auth pages opt out)"
+
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -103,6 +107,7 @@ defmodule DripstoneWeb.Layouts do
           </button>
 
           <.form
+            :if={@show_search}
             for={to_form(%{"q" => ""}, as: :search)}
             id="global-search"
             phx-submit="global_search"
