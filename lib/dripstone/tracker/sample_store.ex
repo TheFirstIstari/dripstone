@@ -115,12 +115,12 @@ defmodule Dripstone.Tracker.SampleStore do
         key = Graph.cache_key(network)
 
         case state.cache do
-          %{^key => graph} ->
+          %{^network_id => {^key, graph}} ->
             {:reply, graph, state}
 
           _miss ->
             graph = Graph.build(network, state.links)
-            {:reply, graph, %{state | cache: Map.put(state.cache, key, graph)}}
+            {:reply, graph, %{state | cache: Map.put(state.cache, network_id, {key, graph})}}
         end
     end
   end
