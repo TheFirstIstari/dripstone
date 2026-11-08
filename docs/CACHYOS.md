@@ -7,10 +7,13 @@ db-up`, `mise run db-setup`, `mise run dev`).
 — never to a local vLLM host. Without a key, calls fail to `{:error, _}` and
 the app silently falls back to heuristics.)
 
-## GitHub runner (deploy only)
+## GitHub runner (CI + deploy)
 
-- Labels: `self-hosted, Linux, X64, cachyos-x8664, deploy` — only the deploy
-  workflow targets this host; keep deployment credentials off CI runners.
+- CI labels: `self-hosted, Linux, X64, cachyos-x8664`; deploy adds the
+  `deploy` label. Owner decision: CI runs on the deploy host so warm mise
+  tools make `mise install` a millisecond no-op (vs ~2min cold install on
+  GitHub-hosted runners). This reopens #162 — PR code executes alongside
+  `~/.dripstone-prod.env` and the Docker daemon.
 
 - Register once on the CachyOS host:
   `./config.sh --url https://github.com/TheFirstIstari/dripstone --name cachyos-x64-01 --labels self-hosted,Linux,X64,cachyos-x8664,deploy`
