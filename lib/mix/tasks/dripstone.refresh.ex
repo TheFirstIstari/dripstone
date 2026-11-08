@@ -15,26 +15,22 @@ defmodule Mix.Tasks.Dripstone.Refresh do
 
   @impl Mix.Task
   def run(args) do
+    Mix.Tasks.Dripstone.Datasets.Refresh.run(forward_args(args))
+  end
+
+  @doc false
+  def forward_args(args) do
     {opts, rest, _} =
       OptionParser.parse(args,
         strict: [platform: :string, handle: :string, all: :boolean, date: :string]
       )
 
-    forwarded =
-      case {opts[:platform], rest} do
-        {nil, [platform | extra]} -> ["--platform", platform] ++ extra ++ opts_to_args(opts)
-        _ -> args
-      end
+    case {opts[:platform], rest} do
+      {nil, [platform | _]} ->
+        ["--platform", platform] ++ OptionParser.to_argv(Keyword.delete(opts, :platform))
 
-    Mix.Tasks.Dripstone.Datasets.Refresh.run(forwarded)
-  end
-
-  defp opts_to_args(opts) do
-    Enum.flat_map(opts, fn
-      {:platform, _} -> []
-      {:all, true} -> ["--all"]
-      {:all, _} -> []
-      {k, v} -> ["--#{k}", to_string(v)]
-    end)
+      _ ->
+        args
+    end
   end
 end
