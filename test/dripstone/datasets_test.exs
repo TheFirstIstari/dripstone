@@ -109,6 +109,14 @@ defmodule Dripstone.DatasetsTest do
     assert [%{"id" => "x1"}, %{"id" => "x2"}] = lines
   end
 
+  test "write_corpus with empty posts reads back empty", %{dir: dir} do
+    assert {:ok, path} =
+             Datasets.write_corpus("x", "h", [], datasets_dir: dir, date: "2026-11-07")
+
+    assert File.read!(path) == ""
+    assert {:ok, []} = Datasets.read_corpus("x", datasets_dir: dir)
+  end
+
   test "write_corpus rejects date traversal and corpus_path raises", %{dir: dir} do
     evil = Path.join(dir, "evil.jsonl")
     File.rm(evil)
