@@ -26,16 +26,16 @@ defmodule Dripstone.Workers.AssessWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"adapter" => adapter, "handle" => handle} = args}) do
-    with {:ok, module} <- adapter(adapter),
-         {:ok, posts} <- module.fetch_posts(handle) do
-      opts = scorer_opts(args)
-      assessment = Scorer.assess(posts, opts)
+    opts = scorer_opts(args)
 
+    with {:ok, module, feed} <- adapter(adapter),
+         {:ok, posts} <- module.fetch_posts(handle),
+         {:ok, assessment} <- assess(posts, opts) do
       finding = %{
         kind: "account",
         observed_at: DateTime.utc_now(),
         model: if(assessment.ai_answers, do: model(opts)),
-        account: %{feed_id: Map.fetch!(@feeds, module), handle: handle},
+        account: %{feed_id: feed, handle: handle},
         posts: posts,
         heuristics: %{score: assessment.score, labels: assessment.labels},
         answers: assessment.ai_answers
@@ -48,11 +48,30 @@ defmodule Dripstone.Workers.AssessWorker do
     end
   end
 
+  # Scorer.assess/2 returns {:error, ...} for non-list posts. A poison adapter
+  # payload must fail the job cleanly, not crash-loop on `.score` (#137).
+  defp assess(posts, opts) do
+    case Scorer.assess(posts, opts) do
+      %{score: _, labels: _, ai_answers: _} = assessment -> {:ok, assessment}
+      {:error, _} = error -> error
+      other -> {:error, {:invalid_assessment, other}}
+    end
+  end
+
   defp adapter(name) do
-    case Adapters.get(name) do
-      module when is_map_key(@feeds, module) -> {:ok, module}
+    case Adapters.get(name) || extra_adapter(name) do
+      module when is_map_key(@feeds, module) -> {:ok, module, Map.fetch!(@feeds, module)}
+      {module, feed} when is_atom(module) and is_binary(feed) -> {:ok, module, feed}
       _ -> {:cancel, "unknown adapter #{inspect(name)}"}
     end
+  end
+
+  # Test seam: %{"name" => {module, feed}} doubles, e.g. poison payloads (#137).
+  defp extra_adapter(name) do
+    :dripstone
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:extra_adapters, %{})
+    |> Map.get(name)
   end
 
   defp scorer_opts(%{"model" => model}) when is_binary(model), do: [model: model]
