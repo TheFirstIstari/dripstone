@@ -179,7 +179,8 @@ defmodule Dripstone.Tracker.Curation do
   def merge(state, source_id, target_id, now, by \\ @by) do
     with :ok <- distinct(source_id, target_id),
          {:ok, source} <- active(state, source_id),
-         {:ok, target} <- active(state, target_id) do
+         {:ok, target} <- active(state, target_id),
+         :ok <- tags_fit(target.tags, source.tags) do
       merged = %{
         target
         | member_ids: Enum.uniq(target.member_ids ++ source.member_ids),
@@ -290,6 +291,13 @@ defmodule Dripstone.Tracker.Curation do
 
   defp distinct(id, id), do: {:error, :same_network}
   defp distinct(_a, _b), do: :ok
+
+  # Combined deduped tags must fit, so the merged network can still take new tags.
+  defp tags_fit(target_tags, source_tags) do
+    if length(Enum.uniq(target_tags ++ source_tags)) > @max_tags,
+      do: {:error, :too_many_tags},
+      else: :ok
+  end
 
   defp known_accounts(state, ids) do
     if ids != [] and Enum.all?(ids, &Map.has_key?(state.accounts, &1)),

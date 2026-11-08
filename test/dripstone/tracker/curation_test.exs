@@ -210,6 +210,20 @@ defmodule Dripstone.Tracker.CurationTest do
     test "a network can't be merged into itself" do
       assert {:error, :same_network} = Tracker.merge_networks("net-c0421", "net-c0421")
     end
+
+    test "a merge that would exceed the tag limit is refused" do
+      for n <- 1..15, do: {:ok, _} = Tracker.add_tag("net-c0421", %{"tag" => "a#{n}"})
+      for n <- 1..15, do: {:ok, _} = Tracker.add_tag("net-c0425", %{"tag" => "b#{n}"})
+
+      assert {:error, :too_many_tags} = Tracker.merge_networks("net-c0425", "net-c0421")
+      assert network("net-c0421").tags |> length() == 15
+      assert network("net-c0425").retired_into == nil
+
+      {:ok, _} = Tracker.add_tag("net-c0421", %{"tag" => "a1"})
+      for n <- 1..10, do: {:ok, _} = Tracker.remove_tag("net-c0425", "b#{n}")
+      assert {:ok, %{tags: tags}} = Tracker.merge_networks("net-c0425", "net-c0421")
+      assert length(tags) == 20
+    end
   end
 
   describe "split" do
