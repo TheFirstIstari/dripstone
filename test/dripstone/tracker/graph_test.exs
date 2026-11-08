@@ -50,6 +50,17 @@ defmodule Dripstone.Tracker.GraphTest do
     assert graph.omitted == 0
   end
 
+  test "adjacency mirrors edges and positions mirror nodes", %{large: graph} do
+    for %{a: a, b: b, kind: kind} <- graph.edges do
+      assert {b, kind} in graph.adjacency[a]
+      assert {a, kind} in graph.adjacency[b]
+    end
+
+    for %{id: id, x: x, y: y} <- graph.nodes do
+      assert graph.positions[id] == {x, y}
+    end
+  end
+
   test "degenerate networks don't crash" do
     one = Graph.build(%Network{id: "n1", name: "One", member_ids: ["a"]}, [])
     assert [%{id: "a", x: 0.5, y: 0.5}] = one.nodes

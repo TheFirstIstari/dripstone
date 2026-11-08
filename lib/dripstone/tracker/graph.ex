@@ -19,9 +19,12 @@ defmodule Dripstone.Tracker.Graph do
   # Ideal distance between linked nodes, as a fraction of sqrt(1/n).
   @spacing 0.8
 
+  @type adjacency :: %{String.t() => [{String.t(), Link.kind()}]}
   @type t :: %{
           nodes: [%{id: String.t(), x: float(), y: float(), degree: non_neg_integer()}],
           edges: [%{a: String.t(), b: String.t(), kind: Link.kind(), strength: atom()}],
+          positions: %{String.t() => {float(), float()}},
+          adjacency: adjacency(),
           total: non_neg_integer(),
           omitted: non_neg_integer()
         }
@@ -62,6 +65,13 @@ defmodule Dripstone.Tracker.Graph do
 
     positions = layout(drawn, edges, :erlang.phash2(network.id))
 
+    adjacency =
+      edges
+      |> Enum.reduce(Map.new(drawn, &{&1, []}), fn %{a: a, b: b, kind: kind}, acc ->
+        acc |> Map.update!(a, &[{b, kind} | &1]) |> Map.update!(b, &[{a, kind} | &1])
+      end)
+      |> Map.new(fn {id, pairs} -> {id, Enum.reverse(pairs)} end)
+
     nodes =
       Enum.map(drawn, fn id ->
         {x, y} = positions[id]
@@ -69,7 +79,15 @@ defmodule Dripstone.Tracker.Graph do
       end)
 
     total = length(network.member_ids)
-    %{nodes: nodes, edges: edges, total: total, omitted: total - length(drawn)}
+
+    %{
+      nodes: nodes,
+      edges: edges,
+      positions: positions,
+      adjacency: adjacency,
+      total: total,
+      omitted: total - length(drawn)
+    }
   end
 
   ## Fruchterman–Reingold
