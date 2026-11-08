@@ -65,7 +65,7 @@ defmodule Dripstone.Workers.AssessWorkerTest do
     assert {:error, _} =
              perform_job(AssessWorker, %{"adapter" => "stub_poison", "handle" => "mallory"})
 
-    assert SampleStore.get_state().accounts == %{}
+    assert elem(Store.load(), 1).accounts == %{}
     refute_received {:account_updated, _}
   end
 
