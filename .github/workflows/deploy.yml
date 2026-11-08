@@ -20,6 +20,7 @@ jobs:
         with: {ref: "${{ github.event.workflow_run.head_sha }}"}
       - run: docker build -t dripstone:latest .
       - run: docker run --rm --network dripstone-net --env-file ~/.dripstone-prod.env dripstone:latest /app/bin/dripstone eval "Dripstone.Release.migrate"
+      - run: docker run --rm --network dripstone-net --env-file ~/.dripstone-prod.env dripstone:latest /app/bin/dripstone eval "Dripstone.Release.seed_analysts"
       - run: |
           docker rm -f dripstone-app || true
           docker run -d --name dripstone-app --network dripstone-net --restart unless-stopped --log-opt max-size=10m --log-opt max-file=3 --env-file ~/.dripstone-prod.env -p 127.0.0.1:4000:4000 dripstone:latest
