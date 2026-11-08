@@ -48,13 +48,20 @@ defmodule DripstoneWeb.UserSessionController do
         |> UserAuth.log_in_user(user, user_params)
 
       true ->
-        DripstoneWeb.LoginThrottle.record(key)
+        case DripstoneWeb.LoginThrottle.check_and_record(key) do
+          :throttled ->
+            conn
+            |> put_flash(:error, "Too many login attempts. Try again in a minute.")
+            |> put_flash(:email, String.slice(email, 0, 160))
+            |> redirect(to: ~p"/users/log-in")
 
-        # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
-        conn
-        |> put_flash(:error, "Invalid email or password")
-        |> put_flash(:email, String.slice(email, 0, 160))
-        |> redirect(to: ~p"/users/log-in")
+          :ok ->
+            # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
+            conn
+            |> put_flash(:error, "Invalid email or password")
+            |> put_flash(:email, String.slice(email, 0, 160))
+            |> redirect(to: ~p"/users/log-in")
+        end
     end
   end
 
