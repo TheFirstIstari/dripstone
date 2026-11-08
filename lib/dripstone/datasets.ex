@@ -140,7 +140,7 @@ defmodule Dripstone.Datasets do
     end
   end
 
-  defp rate_limited?({:http_status, 429}), do: true
+  defp rate_limited?({:http_error, 429}), do: true
   defp rate_limited?(:rate_limited), do: true
   defp rate_limited?({:rate_limited, _}), do: true
   defp rate_limited?(_), do: false

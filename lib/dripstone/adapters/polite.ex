@@ -3,23 +3,27 @@ defmodule Dripstone.Adapters.Polite do
   Shared HTTP politeness layer for source fetchers.
 
   Every fetcher goes through `get/2`, which applies — in order — a
-  per-host rate gate, a `robots.txt` check, and 429 backoff honoring
+  per-origin rate gate, a `robots.txt` check, and 429 backoff honoring
   `Retry-After`. Returns `{:ok, resp}` on 2xx, `{:error, reason}`
   otherwise; fetchers map that into their `{:ok, posts} | {:error,
   reason}` contract. No fetcher does its own HTTP politeness.
 
   Tunables (`opts`, falling back to app env, then defaults):
 
-    * `:min_interval_ms` — minimum gap between requests to one host (default 1_000)
+    * `:min_interval_ms` — minimum gap between requests to one origin (default 1_000)
     * `:max_retries` — extra attempts after a 429 (default 3)
     * `:user_agent` — sent on every request (default `"DripstoneBot/0.1 (+research)"`)
     * `:robots` — set `false` to skip the robots check (default `true`)
     * `:retry_after_cap_ms` — upper bound on a single 429 sleep (default 30_000)
     * `:sleep` — sleep fun, injectable for tests (default `&:timer.sleep/1`)
     * `:plug` — test-only `Req.Test` stub, never forwarded from user input
+
+  Pacing timestamps and `robots.txt` rules live only in the calling
+  process: best-effort per-process pacing, uncoordinated across
+  processes. Only successful (`200`) `robots.txt` parses are cached;
+  failures refetch on the next call and fail open.
   """
 
-  @table __MODULE__
   @default_interval_ms 1_000
   @default_retries 3
   @default_cap_ms 30_000
@@ -38,13 +42,13 @@ defmodule Dripstone.Adapters.Polite do
              | {:invalid_args, String.t()}}
   def get(url, opts \\ []) when is_list(opts) do
     with {:ok, uri} <- parse_url(url) do
-      host = uri.host
+      origin = origin(uri)
       sleep = Keyword.get(opts, :sleep, &:timer.sleep/1)
 
-      gate(host, interval_ms(opts), sleep)
+      gate(origin, interval_ms(opts), sleep)
 
       case robots_allowed?(uri, opts) do
-        true -> request(url, uri, host, opts, sleep, 0)
+        true -> request(url, origin, opts, sleep, 0)
         false -> {:error, :disallowed_by_robots}
       end
     end
@@ -63,37 +67,33 @@ defmodule Dripstone.Adapters.Polite do
 
   defp parse_url(_), do: {:error, {:invalid_args, "url must be an absolute http(s) URL"}}
 
-  defp interval_ms(opts) do
-    Keyword.get_lazy(opts, :min_interval_ms, fn ->
+  defp interval_ms(opts), do: env_opt(opts, :min_interval_ms, @default_interval_ms)
+  defp max_retries(opts), do: env_opt(opts, :max_retries, @default_retries)
+  defp retry_cap_ms(opts), do: env_opt(opts, :retry_after_cap_ms, @default_cap_ms)
+
+  defp env_opt(opts, key, default) do
+    Keyword.get_lazy(opts, key, fn ->
       Application.get_env(:dripstone, __MODULE__, [])
-      |> Keyword.get(:min_interval_ms, @default_interval_ms)
+      |> Keyword.get(key, default)
     end)
   end
 
-  defp table do
-    case :ets.whereis(@table) do
-      :undefined ->
-        :ets.new(@table, [:named_table, :public, :set, read_concurrency: true])
+  defp origin(uri), do: {uri.scheme, uri.host, uri.port}
 
-      tid ->
-        tid
-    end
-  rescue
-    ArgumentError -> :ets.whereis(@table)
-  end
-
-  # Minimum gap between requests to the same host.
-  defp gate(host, interval_ms, sleep) do
+  # Minimum gap between requests to the same origin, best-effort within
+  # the calling process (concurrent processes stay uncoordinated).
+  defp gate(origin, interval_ms, sleep) do
     now = System.monotonic_time(:millisecond)
+    key = {__MODULE__, :last, origin}
 
     wait =
-      case :ets.lookup(table(), {:last, host}) do
-        [{_, last}] -> max(0, interval_ms - (now - last))
-        [] -> 0
+      case Process.get(key) do
+        nil -> 0
+        last -> max(0, interval_ms - (now - last))
       end
 
     if wait > 0, do: sleep.(wait)
-    :ets.insert(table(), {{:last, host}, System.monotonic_time(:millisecond)})
+    Process.put(key, System.monotonic_time(:millisecond))
     :ok
   end
 
@@ -103,32 +103,33 @@ defmodule Dripstone.Adapters.Polite do
   end
 
   defp check_robots(uri, opts) do
-    case :ets.lookup(table(), {:robots, uri.host}) do
-      [{_, rules}] -> allowed?(uri.path || "/", rules)
-      [] -> fetch_robots(uri, opts)
+    case Process.get({__MODULE__, :robots, origin(uri)}) do
+      nil -> fetch_robots(uri, opts)
+      rules -> allowed?(uri.path || "/", rules)
     end
   end
 
   defp fetch_robots(uri, opts) do
-    robots_url = "#{uri.scheme}://#{uri.host}/robots.txt"
+    robots_url = %{uri | path: "/robots.txt", query: nil, fragment: nil} |> URI.to_string()
 
-    rules =
-      case Req.get(robots_url, req_opts(opts)) do
-        {:ok, %{status: 200, body: body}} when is_binary(body) -> parse_robots(body)
-        _ -> []
-      end
+    case Req.get(robots_url, req_opts(opts)) do
+      {:ok, %{status: 200, body: body}} when is_binary(body) ->
+        rules = parse_robots(body)
+        Process.put({__MODULE__, :robots, origin(uri)}, rules)
+        allowed?(uri.path || "/", rules)
 
-    :ets.insert(table(), {{:robots, uri.host}, rules})
-    allowed?(uri.path || "/", rules)
+      _ ->
+        true
+    end
   end
 
-  # Minimal parser: Disallow lines applying to `User-agent: *` (or all
-  # agents when no agent section matched — conservative enough for a guest).
+  # Minimal parser: Disallow lines applying to `User-agent: *`. Lines
+  # before any User-agent section apply to no group (RFC 9309).
   defp parse_robots(body) do
     {rules, _} =
       body
       |> String.split(~r/\r?\n/)
-      |> Enum.reduce({[], true}, fn line, {rules, relevant} ->
+      |> Enum.reduce({[], false}, fn line, {rules, relevant} ->
         line = line |> String.split("#", parts: 2) |> hd() |> String.trim()
 
         cond do
@@ -151,15 +152,15 @@ defmodule Dripstone.Adapters.Polite do
   defp allowed?(_path, []), do: true
   defp allowed?(path, rules), do: not Enum.any?(rules, &String.starts_with?(path, &1))
 
-  defp request(url, uri, host, opts, sleep, attempt) do
-    max = Keyword.get(opts, :max_retries, @default_retries)
-    cap = Keyword.get(opts, :retry_after_cap_ms, @default_cap_ms)
+  defp request(url, origin, opts, sleep, attempt) do
+    max = max_retries(opts)
+    cap = retry_cap_ms(opts)
 
     case Req.get(url, req_opts(opts)) do
       {:ok, %{status: 429} = resp} when attempt < max ->
         sleep.(min(retry_after_ms(resp), cap))
-        gate(host, interval_ms(opts), sleep)
-        request(url, uri, host, opts, sleep, attempt + 1)
+        gate(origin, interval_ms(opts), sleep)
+        request(url, origin, opts, sleep, attempt + 1)
 
       {:ok, %{status: 429}} ->
         {:error, {:rate_limited, max + 1}}
@@ -180,7 +181,7 @@ defmodule Dripstone.Adapters.Polite do
       [secs | _] ->
         case Integer.parse(String.trim(secs)) do
           {n, ""} when n >= 0 -> n * 1_000
-          _ -> 0
+          _ -> 1_000
         end
 
       [] ->

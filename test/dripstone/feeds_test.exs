@@ -116,6 +116,16 @@ defmodule Dripstone.FeedsTest do
     end
   end
 
+  test "malformed refs return nil instead of raising" do
+    assert X.profile_url(%{}) == nil
+    assert X.post_url(%{handle: "a"}) == nil
+    assert X.format_handle(%{}) == nil
+    assert Mastodon.post_url(%{post_id: "1"}) == nil
+    assert Mastodon.profile_url("alice") == nil
+    assert Reddit.post_url(%{}) == nil
+    assert Telegram.post_url(%{handle: "a", post_id: nil}) == nil
+  end
+
   describe "link safety" do
     test "path segments from external data are percent-encoded" do
       assert X.profile_url(%{handle: "../admin?x=1"}) == "https://x.com/..%2Fadmin%3Fx%3D1"

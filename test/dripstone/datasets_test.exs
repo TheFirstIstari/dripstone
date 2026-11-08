@@ -13,7 +13,7 @@ defmodule Dripstone.DatasetsTest do
       Process.put(:flaky_attempts, n + 1)
 
       if n < Keyword.get(opts, :fail_times, 0) do
-        {:error, {:http_status, 429}}
+        {:error, {:http_error, 429}}
       else
         {:ok, [%{id: "1", handle: handle, text: "hi", urls: [], published_at: nil}]}
       end
@@ -87,7 +87,7 @@ defmodule Dripstone.DatasetsTest do
   test "refresh gives up after max retries", %{dir: dir} do
     opts = [datasets_dir: dir, fail_times: 9, max_retries: 2, retry_sleep_ms: 0]
 
-    assert {:error, {:http_status, 429}} = Datasets.refresh(FlakyAdapter, "x", "h", opts)
+    assert {:error, {:http_error, 429}} = Datasets.refresh(FlakyAdapter, "x", "h", opts)
     assert Process.get(:flaky_attempts) == 3
   end
 
