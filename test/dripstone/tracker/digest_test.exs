@@ -62,4 +62,21 @@ defmodule Dripstone.Tracker.DigestTest do
     assert [%{at: first} | [%{at: second} | _]] = items
     assert DateTime.compare(first, second) != :lt
   end
+
+  # Dismiss → re-alert is one event: the re-alert surfaces from the alert
+  # itself, so the "Re-alerted after dismissal" history entry must not add a
+  # second digest row.
+  test "dismiss then re-alert yields a single re-alert row" do
+    state = state_with_network()
+    alert = state.alerts |> Map.values() |> hd()
+
+    {:ok, _, dismissed, _} =
+      Dripstone.Tracker.Decisions.dismiss(state, alert.id, %{}, at(10))
+
+    {_, state} =
+      run!(dismissed, finding("net-1", %{severity: "high", observed_at: at(12)}), at(13))
+
+    assert [%{kind: :re_alert, network_id: "net-1"}] =
+             Digest.build(state, at(14), at(11))
+  end
 end
