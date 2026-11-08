@@ -241,6 +241,8 @@ defmodule Dripstone.Scorer do
     Map.get(post, key, Map.get(post, Atom.to_string(key)))
   end
 
+  defp fetch(_post, _key), do: nil
+
   defp to_unix(post) do
     case fetch(post, :published_at) do
       %DateTime{} = dt -> DateTime.to_unix(dt)
