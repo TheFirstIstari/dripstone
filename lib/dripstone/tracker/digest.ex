@@ -93,9 +93,11 @@ defmodule Dripstone.Tracker.Digest do
   defp new_edge?(_entry), do: false
 
   # Flipped labels: a confirm/dismiss decision on an alert (the network's
-  # status flips), or a detection re-alert after dismissal.
+  # status flips). Re-alerts are not flips here: they surface from the alerts
+  # themselves via `from_alerts/3`, and counting the history entry too would
+  # double-count one event.
   defp flipped_label?(%HistoryEntry{summary: summary}) do
-    String.starts_with?(summary, ["Confirmed alert ", "Dismissed alert ", "Re-alerted after "])
+    String.starts_with?(summary, ["Confirmed alert ", "Dismissed alert "])
   end
 
   # Re-alerts surface from the alerts themselves (marked at intake on dismissed
