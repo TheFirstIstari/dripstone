@@ -14,7 +14,12 @@ defmodule Dripstone.Workers.TrendWorkerTest do
     worker = Application.get_env(:dripstone, TrendWorker, [])
     ai = Application.get_env(:dripstone, Dripstone.AIClient, [])
     Application.put_env(:dripstone, TrendWorker, ai_opts: [plug: {Req.Test, @stub}])
-    Application.put_env(:dripstone, Dripstone.AIClient, Keyword.merge(ai, api_key: "test", base_url: "http://ai.test"))
+
+    Application.put_env(
+      :dripstone,
+      Dripstone.AIClient,
+      Keyword.merge(ai, api_key: "test", base_url: "http://ai.test")
+    )
 
     on_exit(fn ->
       Application.put_env(:dripstone, TrendWorker, worker)
@@ -38,7 +43,13 @@ defmodule Dripstone.Workers.TrendWorkerTest do
 
     {%Network{id: id, name: id, member_ids: [account_id], platforms: ["bluesky"]},
      %Account{id: account_id, feed_id: "bluesky", handle: "#{account_id}.bsky.social"},
-     %Post{id: "post-#{account_id}", account_id: account_id, post_id: "p1", posted_at: at, text: "x"}}
+     %Post{
+       id: "post-#{account_id}",
+       account_id: account_id,
+       post_id: "p1",
+       posted_at: at,
+       text: "x"
+     }}
   end
 
   test "active live networks are re-checked and inactive ones skipped (Active network re-checked)" do

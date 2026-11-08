@@ -81,7 +81,9 @@ defmodule Dripstone.Discovery.Bursts do
             q ->
               q
               |> URI.decode_query()
-              |> Enum.reject(fn {k, _} -> String.starts_with?(k, "utm_") or k in ["fbclid", "ref"] end)
+              |> Enum.reject(fn {k, _} ->
+                String.starts_with?(k, "utm_") or k in ["fbclid", "ref"]
+              end)
               |> case do
                 [] -> nil
                 kept -> kept |> Enum.sort() |> URI.encode_query()

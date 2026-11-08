@@ -45,7 +45,8 @@ defmodule Dripstone.Discovery.Caps do
     if length(recent) < s.config[:groups_per_hour] do
       {:reply, :ok, %{s | groups: [now | recent]}}
     else
-      {:reply, :over_cap, %{s | groups: recent, skipped: Map.update!(s.skipped, :groups, &(&1 + 1))}}
+      {:reply, :over_cap,
+       %{s | groups: recent, skipped: Map.update!(s.skipped, :groups, &(&1 + 1))}}
     end
   end
 

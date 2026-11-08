@@ -45,7 +45,11 @@ defmodule Dripstone.Workers.TrendWorker do
       _ ->
         with {:ok, results} <- Tracker.report_findings(findings) do
           alerts = for %{alerts: alerts} <- results, %{alert: a} <- alerts, do: a.trigger_id
-          Logger.info("Trend re-check of #{length(findings)} networks; alerts: #{inspect(alerts)}")
+
+          Logger.info(
+            "Trend re-check of #{length(findings)} networks; alerts: #{inspect(alerts)}"
+          )
+
           :ok
         end
     end

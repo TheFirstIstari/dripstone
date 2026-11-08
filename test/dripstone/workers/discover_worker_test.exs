@@ -18,11 +18,21 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
     ai = Application.get_env(:dripstone, Dripstone.AIClient, [])
 
     Application.put_env(:dripstone, DiscoverWorker,
-      http_opts: [plug: {Req.Test, @stub}, min_interval_ms: 0, robots: false, sleep: fn _ -> :ok end],
+      http_opts: [
+        plug: {Req.Test, @stub},
+        min_interval_ms: 0,
+        robots: false,
+        sleep: fn _ -> :ok end
+      ],
       ai_opts: [plug: {Req.Test, @stub}]
     )
 
-    Application.put_env(:dripstone, Dripstone.AIClient, Keyword.merge(ai, api_key: "test", base_url: "http://ai.test"))
+    Application.put_env(
+      :dripstone,
+      Dripstone.AIClient,
+      Keyword.merge(ai, api_key: "test", base_url: "http://ai.test")
+    )
+
     Caps.reset()
 
     on_exit(fn ->
@@ -42,7 +52,11 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
           actors = conn.query_string |> URI.query_decoder() |> Enum.map(fn {_, v} -> v end)
 
           Req.Test.json(conn, %{
-            "profiles" => Enum.map(actors, &%{"did" => &1, "handle" => String.replace(&1, "did:plc:", "") <> ".bsky.social"})
+            "profiles" =>
+              Enum.map(
+                actors,
+                &%{"did" => &1, "handle" => String.replace(&1, "did:plc:", "") <> ".bsky.social"}
+              )
           })
 
         "/xrpc/app.bsky.feed.getAuthorFeed" ->
@@ -60,11 +74,26 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
 
           answers =
             Map.new(questions, fn
-              {"coordinated", _} -> {"coordinated", %{"type" => "noul", "noul" => coordinated}}
-              {"relation", _} -> {"relation", %{"type" => "choice", "choice" => "shared-link", "confidence" => 0.8}}
-              {name, %{"type" => "noul"}} -> {name, %{"type" => "noul", "noul" => 0.9}}
-              {name, %{"type" => "choice"}} -> {name, %{"type" => "choice", "choice" => "other", "confidence" => 0.5}}
-              {name, %{"type" => "score"}} -> {name, %{"type" => "score", "score" => 1, "legend" => %{"0" => "a", "1" => "b", "2" => "c"}}}
+              {"coordinated", _} ->
+                {"coordinated", %{"type" => "noul", "noul" => coordinated}}
+
+              {"relation", _} ->
+                {"relation",
+                 %{"type" => "choice", "choice" => "shared-link", "confidence" => 0.8}}
+
+              {name, %{"type" => "noul"}} ->
+                {name, %{"type" => "noul", "noul" => 0.9}}
+
+              {name, %{"type" => "choice"}} ->
+                {name, %{"type" => "choice", "choice" => "other", "confidence" => 0.5}}
+
+              {name, %{"type" => "score"}} ->
+                {name,
+                 %{
+                   "type" => "score",
+                   "score" => 1,
+                   "legend" => %{"0" => "a", "1" => "b", "2" => "c"}
+                 }}
             end)
 
           Req.Test.json(conn, %{"answers" => answers})
@@ -81,7 +110,13 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
           "record" => %{
             "text" => "Deal #{n}",
             "createdAt" => "2026-11-08T09:0#{n}:00Z",
-            "facets" => [%{"features" => [%{"$type" => "app.bsky.richtext.facet#link", "uri" => "https://deals.example/x"}]}]
+            "facets" => [
+              %{
+                "features" => [
+                  %{"$type" => "app.bsky.richtext.facet#link", "uri" => "https://deals.example/x"}
+                ]
+              }
+            ]
           }
         }
       }
@@ -95,7 +130,12 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
     :ok = Tracker.subscribe()
     group = dids(5)
 
-    assert :ok = perform_job(DiscoverWorker, %{"url" => "https://deals.example/x", "domain" => "deals.example", "dids" => group})
+    assert :ok =
+             perform_job(DiscoverWorker, %{
+               "url" => "https://deals.example/x",
+               "domain" => "deals.example",
+               "dids" => group
+             })
 
     assert_receive {:alert_raised, %{trigger_id: "new_network", model: _} = alert}
     {:ok, state} = Store.load()
@@ -110,7 +150,12 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
     stub(0.9, [String.replace(c, "did:plc:", "") <> ".bsky.social"])
     :ok = Tracker.subscribe()
 
-    assert :ok = perform_job(DiscoverWorker, %{"url" => "https://u.example/", "domain" => "u.example", "dids" => group})
+    assert :ok =
+             perform_job(DiscoverWorker, %{
+               "url" => "https://u.example/",
+               "domain" => "u.example",
+               "dids" => group
+             })
 
     assert_receive {:alert_raised, %{network_id: id}}
     {:ok, state} = Store.load()
@@ -122,8 +167,12 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
     stub(0.9)
     Caps.reset(groups_per_hour: 1)
 
-    assert :ok = perform_job(DiscoverWorker, %{"url" => "https://one.example/", "dids" => dids(2)})
-    assert :ok = perform_job(DiscoverWorker, %{"url" => "https://two.example/", "dids" => dids(2)})
+    assert :ok =
+             perform_job(DiscoverWorker, %{"url" => "https://one.example/", "dids" => dids(2)})
+
+    assert :ok =
+             perform_job(DiscoverWorker, %{"url" => "https://two.example/", "dids" => dids(2)})
+
     assert Caps.skipped().groups == 1
   end
 
@@ -131,7 +180,9 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
     stub(0.9)
     :ok = Tracker.subscribe()
 
-    assert :ok = perform_job(DiscoverWorker, %{"url" => "https://big.example/", "dids" => dids(40)})
+    assert :ok =
+             perform_job(DiscoverWorker, %{"url" => "https://big.example/", "dids" => dids(40)})
+
     assert_receive {:alert_raised, %{network_id: id}}
     {:ok, state} = Store.load()
     assert length(state.networks[id].member_ids) == 10

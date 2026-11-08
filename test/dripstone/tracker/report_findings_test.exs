@@ -50,7 +50,9 @@ defmodule Dripstone.Tracker.ReportFindingsTest do
     assert Enum.sort(grp.account_ids) == Enum.sort(acc_a.account_ids ++ acc_b.account_ids)
     assert_receive {:alert_raised, %{trigger_id: "new_network"}}
 
-    ours = accounts_on("bluesky") |> Enum.filter(&(&1.handle in ["a.bsky.social", "b.bsky.social"]))
+    ours =
+      accounts_on("bluesky") |> Enum.filter(&(&1.handle in ["a.bsky.social", "b.bsky.social"]))
+
     assert ours |> Enum.map(& &1.external_id) |> Enum.sort() == ["did:plc:a", "did:plc:b"]
   end
 

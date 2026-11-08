@@ -54,7 +54,11 @@ defmodule Dripstone.Workers.DiscoverWorker do
       case Tracker.report_findings(findings) do
         {:ok, results} ->
           alerts = for %{alerts: alerts} <- results, %{alert: a} <- alerts, do: a.trigger_id
-          Logger.info("Discovery assessed #{length(members)} accounts for #{args["url"]}; alerts: #{inspect(alerts)}")
+
+          Logger.info(
+            "Discovery assessed #{length(members)} accounts for #{args["url"]}; alerts: #{inspect(alerts)}"
+          )
+
           :ok
 
         {:error, reason} ->
