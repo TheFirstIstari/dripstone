@@ -43,6 +43,19 @@ defmodule DripstoneWeb.OverviewLiveTest do
     assert has_element?(view, "#headline-counts")
   end
 
+  test "scope without a user takes the logged-out branch in mount and render" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{__changed__: %{}, current_scope: %{user: nil}, flash: %{}}
+    }
+
+    assert {:ok, %{assigns: %{page_title: "Dripstone"}}} =
+             DripstoneWeb.OverviewLive.mount(%{}, %{}, socket)
+
+    assigns = %{current_scope: %{user: nil}, flash: %{}}
+    assert %Phoenix.LiveView.Rendered{static: static} = DripstoneWeb.OverviewLive.render(assigns)
+    assert Enum.join(static) =~ "landing"
+  end
+
   describe "headline counts" do
     test "show open, open high, suspected networks and tracked accounts", %{conn: conn} do
       overview = Tracker.overview()
