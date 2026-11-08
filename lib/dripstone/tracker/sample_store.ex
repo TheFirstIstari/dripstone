@@ -99,7 +99,7 @@ defmodule Dripstone.Tracker.SampleStore do
         Enum.each(messages, &Tracker.broadcast/1)
         # State changed, so any cached graph may be stale.
         new_state = %{new_state | cache: %{}}
-        :ok = Store.save(new_state)
+        if persist?(), do: :ok = Store.save(new_state)
         {:reply, {:ok, reply}, new_state}
 
       {:error, reason} ->
@@ -129,13 +129,13 @@ defmodule Dripstone.Tracker.SampleStore do
   def handle_call(:get_state, _from, state), do: {:reply, state, state}
 
   def handle_call({:put_state, new_state}, _from, _state) do
-    :ok = Store.save(new_state)
+    if persist?(), do: :ok = Store.save(new_state)
     {:reply, :ok, new_state}
   end
 
   def handle_call(:reset, _from, _state) do
     new_state = SampleLoader.load()
-    :ok = Store.save(new_state)
+    if persist?(), do: :ok = Store.save(new_state)
     {:reply, :ok, new_state}
   end
 
@@ -162,4 +162,14 @@ defmodule Dripstone.Tracker.SampleStore do
       {:network_updated, network_id},
       {if(action == :created, do: :alert_raised, else: :alert_updated), alert}
     ]
+
+  # The store GenServer boots before the sandbox owner in non-DB tests, so its
+  # connection is not shared there. Probing the Repo distinguishes LiveView-only
+  # tests (skip persistence) from DB tests (persist); anything else is prod/dev.
+  defp persist? do
+    _ = Dripstone.Repo.get(Dripstone.Tracker.Store.Meta, "seq", log: false)
+    true
+  rescue
+    _ -> false
+  end
 end
