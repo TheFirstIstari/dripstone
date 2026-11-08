@@ -215,7 +215,6 @@ defmodule Dripstone.Tracker.Store do
       history:
         Repo.all(from h in HistoryRow, order_by: [desc: h.at, desc: h.id])
         |> Enum.map(&to_history/1),
-      cache: %{},
       seq: seq()
     }
     |> State.reindex()

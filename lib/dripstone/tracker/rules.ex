@@ -153,30 +153,42 @@ defmodule Dripstone.Tracker.Rules do
     target = report.network_id || majority_network(state, members)
     coordinated? = is_number(coordinated) and coordinated >= cfg[:yes] and length(members) >= 2
 
-    state = if coordinated?, do: upsert_links(state, members, coordinated, ctx), else: state
-
-    with {:ok, state, alerts, skipped, network_id, ignored} <-
-           group_alerts(state, target, members, coordinated, coordinated?, ctx),
-         {:ok, state, shift, shift_ignored} <- promotion_shift(state, network_id, members, ctx) do
-      alerts = alerts ++ shift
-
-      reason =
-        cond do
-          alerts != [] -> nil
-          ignored || shift_ignored -> ignored || shift_ignored
-          is_nil(answers) -> :no_answers
-          not coordinated? -> :below_threshold
-          true -> nil
-        end
-
+    # Intake would ignore a finding observed at/before the dismissal, but the
+    # link/confidence/assessment writes below run first and would still be saved.
+    if stale?(state, target, report.observed_at) do
       {:ok,
        result(ctx,
-         alerts: alerts,
-         network_id: network_id,
+         alerts: [],
+         network_id: target,
          account_ids: ids,
-         skipped: skipped,
-         reason: reason
+         reason: :predates_dismissal
        ), state}
+    else
+      state = if coordinated?, do: upsert_links(state, members, coordinated, ctx), else: state
+
+      with {:ok, state, alerts, skipped, network_id, ignored} <-
+             group_alerts(state, target, members, coordinated, coordinated?, ctx),
+           {:ok, state, shift, shift_ignored} <- promotion_shift(state, network_id, members, ctx) do
+        alerts = alerts ++ shift
+
+        reason =
+          cond do
+            alerts != [] -> nil
+            ignored || shift_ignored -> ignored || shift_ignored
+            is_nil(answers) -> :no_answers
+            not coordinated? -> :below_threshold
+            true -> nil
+          end
+
+        {:ok,
+         result(ctx,
+           alerts: alerts,
+           network_id: network_id,
+           account_ids: ids,
+           skipped: skipped,
+           reason: reason
+         ), state}
+      end
     end
   end
 
@@ -296,7 +308,7 @@ defmodule Dripstone.Tracker.Rules do
   end
 
   defp shift(state, network, members, domain, share, ctx) do
-    coordinated = network.assessment && network.assessment[:coordinated]
+    coordinated = Answers.noul(ctx.report.answers, "coordinated")
 
     finding = %{
       trigger: "promotion_shift",
@@ -430,53 +442,60 @@ defmodule Dripstone.Tracker.Rules do
 
   defp trend(state, %{report: report, cfg: cfg} = ctx) do
     network = Map.fetch!(state.networks, report.network_id)
-    previous = network.assessment && network.assessment[:trajectory]
-    increasing = Answers.noul(report.answers, "increasing")
-    {trajectory, confidence} = Answers.choice(report.answers, "trajectory") || {nil, nil}
 
-    state =
-      update_assessment(state, network.id, %{
-        increasing: increasing,
-        trajectory: trajectory || previous,
-        trajectory_confidence: if(trajectory, do: confidence),
-        trend_observed_at: report.observed_at,
-        model: report.model
-      })
-
-    rising? = (is_number(increasing) and increasing >= cfg[:yes]) or trajectory == "forming"
-
-    if rising? do
-      trigger =
-        if previous in ["fading", "none"], do: "network_reactivation", else: "coordination_rising"
-
-      title =
-        if trigger == "network_reactivation",
-          do: "#{network.name} is active again",
-          else: "Coordination rising in #{network.name}"
-
-      finding = %{
-        trigger: trigger,
-        severity: severity(increasing || confidence, cfg),
-        title: title,
-        observed_at: report.observed_at,
-        network_id: network.id,
-        comparison: %{
-          label: "Trajectory",
-          before: previous || "unknown",
-          after: trajectory || "unknown"
-        },
-        evidence:
-          trend_evidence(network.member_ids, increasing, trajectory, confidence, cfg, who(ctx))
-      }
-
-      with {:ok, state, alerts, skipped, ignored} <- intake(state, finding, ctx) do
-        {:ok,
-         result(ctx, alerts: alerts, network_id: network.id, skipped: skipped, reason: ignored),
-         state}
-      end
+    if stale?(state, network.id, report.observed_at) do
+      {:ok, result(ctx, network_id: network.id, reason: :predates_dismissal), state}
     else
-      reason = if is_nil(report.answers), do: :no_answers, else: :below_threshold
-      {:ok, result(ctx, network_id: network.id, reason: reason), state}
+      previous = network.assessment && network.assessment[:trajectory]
+      increasing = Answers.noul(report.answers, "increasing")
+      {trajectory, confidence} = Answers.choice(report.answers, "trajectory") || {nil, nil}
+
+      state =
+        update_assessment(state, network.id, %{
+          increasing: increasing,
+          trajectory: trajectory || previous,
+          trajectory_confidence: if(trajectory, do: confidence),
+          trend_observed_at: report.observed_at,
+          model: report.model
+        })
+
+      rising? = (is_number(increasing) and increasing >= cfg[:yes]) or trajectory == "forming"
+
+      if rising? do
+        trigger =
+          if previous in ["fading", "none"],
+            do: "network_reactivation",
+            else: "coordination_rising"
+
+        title =
+          if trigger == "network_reactivation",
+            do: "#{network.name} is active again",
+            else: "Coordination rising in #{network.name}"
+
+        finding = %{
+          trigger: trigger,
+          severity: severity(increasing || confidence, cfg),
+          title: title,
+          observed_at: report.observed_at,
+          network_id: network.id,
+          comparison: %{
+            label: "Trajectory",
+            before: previous || "unknown",
+            after: trajectory || "unknown"
+          },
+          evidence:
+            trend_evidence(network.member_ids, increasing, trajectory, confidence, cfg, who(ctx))
+        }
+
+        with {:ok, state, alerts, skipped, ignored} <- intake(state, finding, ctx) do
+          {:ok,
+           result(ctx, alerts: alerts, network_id: network.id, skipped: skipped, reason: ignored),
+           state}
+        end
+      else
+        reason = if is_nil(report.answers), do: :no_answers, else: :below_threshold
+        {:ok, result(ctx, network_id: network.id, reason: reason), state}
+      end
     end
   end
 
@@ -681,6 +700,17 @@ defmodule Dripstone.Tracker.Rules do
   defp host(_), do: nil
 
   ## Helpers
+
+  # A finding observed at/before the network's latest dismissal is stale: intake
+  # would ignore it, so callers must not mutate links/confidence/assessments first.
+  defp stale?(_state, nil, _observed_at), do: false
+
+  defp stale?(state, network_id, observed_at) do
+    case state.latest_dismissal[network_id] do
+      %{at: at} -> not DateTime.after?(observed_at, at)
+      nil -> false
+    end
+  end
 
   defp update_network(state, id, fun),
     do: %{state | networks: Map.update!(state.networks, id, fun)}

@@ -4,9 +4,8 @@ defmodule Dripstone.Tracker.State do
   the intake and other operations are pure functions from one state to the next.
 
   `posts` is keyed by account id (newest first). `history` is newest first.
-  `seq` feeds `next_id/2`. `cache` holds derived data such as graph layouts.
-  `findings` logs the latest reported findings (newest first, capped) so link
-  provenance can be traced back to them.
+  `seq` feeds `next_id/2`. `findings` logs the latest reported findings (newest
+  first, capped) so link provenance can be traced back to them.
   """
 
   alias Dripstone.Tracker.{Alert, Decision, HistoryEntry, Network, Note}
@@ -20,7 +19,6 @@ defmodule Dripstone.Tracker.State do
             decisions: %{},
             notes: %{},
             history: [],
-            cache: %{},
             findings: [],
             seq: 0,
             # Lookup indexes (maintained by put_account/put_alert/put_decision below):
@@ -44,7 +42,6 @@ defmodule Dripstone.Tracker.State do
           decisions: %{String.t() => Decision.t()},
           notes: %{String.t() => Note.t()},
           history: [HistoryEntry.t()],
-          cache: map(),
           findings: [map()],
           seq: non_neg_integer(),
           account_by_handle: %{{String.t(), String.t()} => String.t()},
