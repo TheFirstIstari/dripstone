@@ -177,6 +177,24 @@ defmodule Dripstone.Tracker.CurationTest do
       assert latest_history("net-c0425").summary == "Received 3 members from Cluster #0421"
       assert {:error, :same_network} = Tracker.move_members("net-c0421", "net-c0421", moving)
     end
+
+    test "membership edits reindex platforms so filters and badges stay correct" do
+      before = network("net-c0421")
+      by_feed = Enum.group_by(before.member_ids, &Tracker.get_account(&1).account.feed_id)
+
+      {feed, ids} =
+        Enum.find(by_feed, fn {_feed, ids} -> length(ids) < length(before.member_ids) end) ||
+          hd(Map.to_list(by_feed))
+
+      {:ok, removed} = Tracker.remove_members("net-c0421", ids)
+      refute feed in removed.platforms
+      assert Enum.sort(removed.platforms) == Enum.sort(before.platforms -- [feed])
+      refute Enum.any?(Tracker.list_networks(%{platform: feed}), &(&1.network.id == "net-c0421"))
+
+      {:ok, added} = Tracker.add_members("net-c0421", ids)
+      assert Enum.sort(added.platforms) == Enum.sort(before.platforms)
+      assert Enum.any?(Tracker.list_networks(%{platform: feed}), &(&1.network.id == "net-c0421"))
+    end
   end
 
   describe "merge" do
