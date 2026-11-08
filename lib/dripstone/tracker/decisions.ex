@@ -38,7 +38,6 @@ defmodule Dripstone.Tracker.Decisions do
   def undo(%State{} = state, decision_id, now, by \\ @reviewer) do
     with {:ok, decision} <- fetch(state.decisions, decision_id),
          %Alert{decision_id: ^decision_id} = alert <- state.alerts[decision.alert_id],
-         :ok <- no_newer_decision(state, decision),
          :ok <- network_unchanged(state, decision) do
       alert = %{alert | status: decision.previous_alert_status, decision_id: nil, updated_at: now}
       network = %{state.networks[decision.network_id] | status: decision.previous_network_status}
@@ -105,24 +104,34 @@ defmodule Dripstone.Tracker.Decisions do
     end
   end
 
-  # A newer decision on the same network supersedes this one: undoing would
-  # clobber that newer outcome (e.g. undoing an older confirm resets the network
-  # while a newer confirm still stands). Newer means strictly later `at`
-  # (decisions share one clock), breaking ties by id so same-second decisions
-  # still order deterministically with #175's guard.
-  defp no_newer_decision(state, decision) do
-    newer? =
-      Enum.any?(state.decisions, fn {id, other} ->
-        id != decision.id and other.network_id == decision.network_id and
-          (DateTime.after?(other.at, decision.at) or
-             (DateTime.compare(other.at, decision.at) == :eq and seq(other.id) > seq(decision.id)))
-      end)
+  # The network may have changed since the decision (a newer decision on another
+  # alert of the same network). Undoing then would clobber that newer outcome.
+  # A status comparison alone is not enough: two confirms in a row leave the
+  # network Confirmed, yet undoing the first would still wipe the second's
+  # decision. Any newer decision on the same network therefore blocks the undo.
+  defp network_unchanged(state, decision) do
+    current = state.networks[decision.network_id] && state.networks[decision.network_id].status
 
-    if newer?, do: {:error, :superseded}, else: :ok
+    if superseded_by_newer?(state, decision) or current != decision.resulting_network_status,
+      do: {:error, :superseded},
+      else: :ok
   end
 
-  # Decision ids are sequential ("dec-9", "dec-10"), so string order misorders
-  # past 9; compare the numeric suffix.
+  defp superseded_by_newer?(state, decision) do
+    Enum.any?(state.decisions, fn {id, other} ->
+      id != decision.id and other.network_id == decision.network_id and newer?(other, decision)
+    end)
+  end
+
+  # `at` is second-truncated so ties fall back to the id sequence from next_id/2.
+  defp newer?(%Decision{at: this_at, id: this_id}, %Decision{at: other_at, id: other_id}) do
+    case DateTime.compare(this_at, other_at) do
+      :gt -> true
+      :lt -> false
+      :eq -> seq(this_id) > seq(other_id)
+    end
+  end
+
   defp seq("dec-" <> rest) do
     case Integer.parse(rest) do
       {n, ""} -> n
@@ -132,23 +141,15 @@ defmodule Dripstone.Tracker.Decisions do
 
   defp seq(_), do: 0
 
-  # The network may have changed since the decision (a newer decision on another
-  # alert of the same network). Undoing then would clobber that newer outcome.
-  defp network_unchanged(state, decision) do
-    current = state.networks[decision.network_id] && state.networks[decision.network_id].status
-
-    if current == decision.resulting_network_status, do: :ok, else: {:error, :superseded}
-  end
-
   defp alert_status(:confirm), do: :confirmed
   defp alert_status(:dismiss), do: :dismissed
 
   defp network_status(_state, _network, _alert, :confirm), do: :confirmed
 
   defp network_status(state, network, _alert, :dismiss) do
-    if Map.get(state.confirmed_by_network, network.id, 0) > 0,
-      do: network.status,
-      else: :dismissed
+    # `decide` only runs on :open alerts, so any confirmed alert in the count is
+    # a different alert on the same network.
+    if (state.confirmed_by_network[network.id] || 0) > 0, do: network.status, else: :dismissed
   end
 
   defp past(:confirm), do: "confirmed"

@@ -32,7 +32,13 @@ defmodule Dripstone.Showcase do
   @spec corpus_path(String.t(), keyword()) :: Path.t()
   def corpus_path(name, opts \\ []) do
     dir =
-      Keyword.get(opts, :showcase_dir, Path.join([File.cwd!(), "priv", "datasets", "showcase"]))
+      Keyword.get_lazy(opts, :showcase_dir, fn ->
+        # Releases run eval from any cwd; prefer the OTP priv dir.
+        case :code.priv_dir(:dripstone) do
+          {:error, _} -> Path.join([File.cwd!(), "priv", "datasets", "showcase"])
+          priv -> Path.join(to_string(priv), Path.join(["datasets", "showcase"]))
+        end
+      end)
 
     Path.join(dir, name)
   end

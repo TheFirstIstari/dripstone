@@ -6,7 +6,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_PASSWORD: postgres
+      # Prod never uses this file for its DB; the prod container is created
+      # with an explicit `docker run` (see deploy spec). Default keeps dev/test green.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
 
 volumes:
   pgdata:

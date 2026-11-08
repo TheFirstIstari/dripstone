@@ -201,13 +201,19 @@ defmodule Dripstone.Tracker.Curation do
 
       retired = %{source | retired_into: target_id, related_ids: []}
 
+      backrefs =
+        for {id, n} <- state.networks,
+            id != source_id and id != target_id and source_id in n.related_ids,
+            do: id
+
       state
+      |> rewire_related(source_id, target_id)
       |> put_network(merged)
       |> put_network(retired)
       |> reassign(source_id, target_id)
       |> history(target_id, "Merged in #{source.name}", now, by)
       |> history(source_id, "Merged into #{target.name}", now, by)
-      |> done(merged, [target_id, source_id | source.related_ids])
+      |> done(merged, [target_id, source_id | Enum.uniq(backrefs ++ source.related_ids)])
     end
   end
 
@@ -317,17 +323,6 @@ defmodule Dripstone.Tracker.Curation do
     end
   end
 
-  defp join(network, ids, now) do
-    ids = ids -- network.member_ids
-
-    %{
-      network
-      | member_ids: network.member_ids ++ ids,
-        joined_at: Map.merge(network.joined_at, Map.new(ids, &{&1, now})),
-        removed_account_ids: network.removed_account_ids -- ids
-    }
-  end
-
   defp member_platforms(state, member_ids) do
     member_ids
     |> Enum.map(&state.accounts[&1])
@@ -340,6 +335,17 @@ defmodule Dripstone.Tracker.Curation do
   # cannot leave stale entries behind.
   defp refresh_platforms(state, network),
     do: %{network | platforms: member_platforms(state, network.member_ids)}
+
+  defp join(network, ids, now) do
+    ids = ids -- network.member_ids
+
+    %{
+      network
+      | member_ids: network.member_ids ++ ids,
+        joined_at: Map.merge(network.joined_at, Map.new(ids, &{&1, now})),
+        removed_account_ids: network.removed_account_ids -- ids
+    }
+  end
 
   defp leave(network, ids) do
     %{
@@ -366,6 +372,21 @@ defmodule Dripstone.Tracker.Curation do
     }
     |> State.reindex()
   end
+
+  # Points back-references at `from` onto `to` (or prunes them when already linked).
+  defp rewire_related(state, from, to) do
+    %{state | networks: Map.new(state.networks, &rewire_one(&1, from, to))}
+  end
+
+  defp rewire_one({id, n}, from, to) when id != from and id != to do
+    if from in n.related_ids do
+      {id, %{n | related_ids: Enum.uniq(List.delete(n.related_ids, from) ++ [to]) -- [id]}}
+    else
+      {id, n}
+    end
+  end
+
+  defp rewire_one(entry, _from, _to), do: entry
 
   defp put_network(state, network),
     do: %{state | networks: Map.put(state.networks, network.id, network)}

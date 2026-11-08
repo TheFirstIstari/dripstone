@@ -65,10 +65,12 @@ defmodule Dripstone.Tracker.Store do
     end
   end
 
-  defp load_persisted(showcase: true),
-    do: seed_from(fn -> Dripstone.Showcase.load("v1.json", []) end)
-
-  defp load_persisted(opts), do: seed_from(fn -> seed(opts) end)
+  defp load_persisted(opts) when is_list(opts) do
+    case Keyword.fetch(opts, :showcase) do
+      {:ok, true} -> seed_from(fn -> Dripstone.Showcase.load("v1.json", opts) end)
+      _ -> seed_from(fn -> seed(opts) end)
+    end
+  end
 
   defp seed_from(fun) do
     if seeded?() do
