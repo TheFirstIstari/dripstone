@@ -1,4 +1,6 @@
 defmodule Dripstone.Datasets do
+  require Logger
+
   @moduledoc """
   Versioned fetcher corpora under `priv/datasets/<platform>/<date>.jsonl`.
 
@@ -96,7 +98,7 @@ defmodule Dripstone.Datasets do
     end
   end
 
-  @doc "Reads the latest corpus for a platform (file I/O only, zero network)."
+  @doc "Reads the latest corpus for a platform (file I/O only, zero network). Skips corrupt lines with a warning."
   @spec read_corpus(platform(), keyword()) :: {:ok, list(map())} | {:error, term()}
   def read_corpus(platform, opts \\ []) do
     with {:ok, path} <- latest_corpus(platform, opts),
@@ -104,7 +106,16 @@ defmodule Dripstone.Datasets do
       lines =
         raw
         |> String.split("\n", trim: true)
-        |> Enum.map(&Jason.decode!/1)
+        |> Enum.flat_map(fn line ->
+          case Jason.decode(line) do
+            {:ok, decoded} ->
+              [decoded]
+
+            {:error, _} ->
+              Logger.warning("Skipping corrupt corpus line in #{path}")
+              []
+          end
+        end)
 
       {:ok, lines}
     end
