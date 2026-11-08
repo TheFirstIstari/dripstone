@@ -10,6 +10,12 @@ defmodule Dripstone.Workers.AssessWorkerTest do
   alias Dripstone.Workers.AssessWorker
 
   setup do
+    Ecto.Adapters.SQL.Sandbox.allow(
+      Dripstone.Repo,
+      self(),
+      Process.whereis(Dripstone.Tracker.SampleStore)
+    )
+
     previous = SampleStore.get_state()
     :ok = SampleStore.put_state(%State{})
     on_exit(fn -> SampleStore.put_state(previous) end)

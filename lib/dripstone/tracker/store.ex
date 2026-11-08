@@ -52,6 +52,13 @@ defmodule Dripstone.Tracker.Store do
   @doc "Loads the persisted state, seeding from the showcase corpus on first boot."
   @spec load(keyword()) :: {:ok, State.t()} | {:error, term()}
   def load(opts \\ []) do
+    case Process.get(__MODULE__) do
+      %State{} = state -> {:ok, state}
+      nil -> load_persisted(opts)
+    end
+  end
+
+  defp load_persisted(opts) do
     if seeded?() do
       {:ok, read_state()}
     else
@@ -59,6 +66,20 @@ defmodule Dripstone.Tracker.Store do
         {:ok, persist_all(state)}
       end
     end
+  end
+
+  @doc false
+  # Test-only override for the state `load/0` returns, so read-path tests can run
+  # against fixture states without touching rows. Unset with `override(nil)`.
+  @spec override(State.t() | nil) :: :ok
+  def override(nil) do
+    Process.delete(__MODULE__)
+    :ok
+  end
+
+  def override(%State{} = state) do
+    Process.put(__MODULE__, state)
+    :ok
   end
 
   @doc "Writes the whole tracker state back."
@@ -79,6 +100,11 @@ defmodule Dripstone.Tracker.Store do
       write_findings(state)
 
       Repo.insert!(%MetaRow{key: @seq_key, value: state.seq},
+        on_conflict: {:replace, [:value]},
+        conflict_target: :key
+      )
+
+      Repo.insert!(%MetaRow{key: @seed_key, value: 1},
         on_conflict: {:replace, [:value]},
         conflict_target: :key
       )
@@ -216,15 +242,15 @@ defmodule Dripstone.Tracker.Store do
           instance: a.instance,
           risk_score: a.risk_score,
           signals: Enum.map(a.signals, &signal_to_row/1),
-          first_seen_at: a.first_seen_at,
-          last_seen_at: a.last_seen_at,
+          first_seen_at: ts(a.first_seen_at),
+          last_seen_at: ts(a.last_seen_at),
           last_checked_at: nil,
           assessment: a.assessment && atomize_strings(a.assessment),
           topic: a.topic
         }
       end)
 
-    insert_all(AccountRow, rows)
+    if rows != [], do: Repo.insert_all(AccountRow, rows)
   end
 
   defp write_networks(state) do
@@ -241,16 +267,17 @@ defmodule Dripstone.Tracker.Store do
           confidence: n.confidence,
           main_domain: n.main_domain,
           summary_text: n.summary && n.summary.text,
-          summary_generated_at: n.summary && n.summary.generated_at,
+          summary_generated_at: ts(n.summary && n.summary.generated_at),
           platforms: n.platforms,
           tags: n.tags,
           related_ids: n.related_ids,
           evidence: Enum.map(n.evidence, &evidence_to_row/1),
+          removed_account_ids: n.removed_account_ids,
           retired_into_id: n.retired_into,
-          first_seen_at: n.first_activity_at,
-          last_true_at: n.last_activity_at,
+          first_seen_at: ts(n.first_activity_at),
+          last_true_at: ts(n.last_activity_at),
           last_checked_at: nil,
-          inserted_at: n.inserted_at,
+          inserted_at: ts(n.inserted_at),
           assessment: n.assessment && atomize_strings(n.assessment)
         }
       end)
@@ -263,14 +290,14 @@ defmodule Dripstone.Tracker.Store do
           %{
             network_id: n.id,
             account_id: account_id,
-            joined_at: Map.get(n.joined_at, account_id),
+            joined_at: ts(Map.get(n.joined_at, account_id)),
             position: position
           }
         end)
       end)
 
-    insert_all(NetworkRow, networks)
-    insert_all(MembershipRow, memberships)
+    if networks != [], do: Repo.insert_all(NetworkRow, networks)
+    if memberships != [], do: Repo.insert_all(MembershipRow, memberships)
   end
 
   defp write_alerts(state) do
@@ -285,9 +312,9 @@ defmodule Dripstone.Tracker.Store do
           severity: to_string(a.severity),
           status: to_string(a.status),
           title: a.title,
-          raised_at: a.raised_at,
-          observed_at: a.observed_at,
-          updated_at: a.updated_at,
+          raised_at: ts(a.raised_at),
+          observed_at: ts(a.observed_at),
+          updated_at: ts(a.updated_at),
           evidence: Enum.map(a.evidence, &evidence_to_row/1),
           ai_rationale: a.ai_rationale && atomize_strings(a.ai_rationale),
           comparison: a.comparison && atomize_strings(a.comparison),
@@ -299,7 +326,7 @@ defmodule Dripstone.Tracker.Store do
         }
       end)
 
-    insert_all(AlertRow, rows)
+    if rows != [], do: Repo.insert_all(AlertRow, rows)
   end
 
   defp write_decisions(state) do
@@ -313,7 +340,7 @@ defmodule Dripstone.Tracker.Store do
           network_id: d.network_id,
           action: to_string(d.action),
           by: d.by,
-          at: d.at,
+          at: ts(d.at),
           note: d.note,
           previous_alert_status: d.previous_alert_status && to_string(d.previous_alert_status),
           previous_network_status:
@@ -323,7 +350,7 @@ defmodule Dripstone.Tracker.Store do
         }
       end)
 
-    insert_all(DecisionRow, rows)
+    if rows != [], do: Repo.insert_all(DecisionRow, rows)
   end
 
   defp write_notes(state) do
@@ -331,10 +358,10 @@ defmodule Dripstone.Tracker.Store do
 
     rows =
       Enum.map(state.notes, fn {_id, %Note{} = n} ->
-        %{id: n.id, network_id: n.network_id, body: n.body, by: n.by, at: n.at}
+        %{id: n.id, network_id: n.network_id, body: n.body, by: n.by, at: ts(n.at)}
       end)
 
-    insert_all(NoteRow, rows)
+    if rows != [], do: Repo.insert_all(NoteRow, rows)
   end
 
   defp write_history(state) do
@@ -347,12 +374,12 @@ defmodule Dripstone.Tracker.Store do
           network_id: h.network_id,
           actor: to_string(h.actor),
           by: h.by,
-          at: h.at,
+          at: ts(h.at),
           summary: h.summary
         }
       end)
 
-    insert_all(HistoryRow, rows)
+    if rows != [], do: Repo.insert_all(HistoryRow, rows)
   end
 
   defp write_aux(state) do
@@ -367,7 +394,7 @@ defmodule Dripstone.Tracker.Store do
             id: p.id,
             account_id: account_id,
             post_id: p.post_id,
-            posted_at: p.posted_at,
+            posted_at: ts(p.posted_at),
             text: p.text,
             domain: p.domain
           }
@@ -392,17 +419,17 @@ defmodule Dripstone.Tracker.Store do
         %{
           feed_id: f.feed_id,
           status: to_string(f.status),
-          last_item_at: f.last_item_at,
+          last_item_at: ts(f.last_item_at),
           items_24h: f.items_24h,
-          window_started_at: f.window_started_at,
+          window_started_at: ts(f.window_started_at),
           last_error: f.last_error,
-          last_error_at: f.last_error_at
+          last_error_at: ts(f.last_error_at)
         }
       end)
 
-    insert_all(PostRow, posts)
-    insert_all(LinkRow, links)
-    insert_all(FeedRow, feeds)
+    if posts != [], do: Repo.insert_all(PostRow, posts)
+    if links != [], do: Repo.insert_all(LinkRow, links)
+    if feeds != [], do: Repo.insert_all(FeedRow, feeds)
   end
 
   defp write_findings(state) do
@@ -415,7 +442,7 @@ defmodule Dripstone.Tracker.Store do
         %{
           id: entry.id,
           kind: to_string(entry.kind),
-          observed_at: entry.observed_at,
+          observed_at: ts(entry.observed_at),
           model: entry.model,
           network_id: entry.network_id,
           accounts: Enum.map(entry.accounts, &stringify/1),
@@ -424,12 +451,13 @@ defmodule Dripstone.Tracker.Store do
         }
       end)
 
-    insert_all(FindingRow, rows)
+    if rows != [], do: Repo.insert_all(FindingRow, rows)
   end
 
-  # One bulk insert per table; skips the round-trip entirely for empty tables.
-  defp insert_all(_schema, []), do: {0, nil}
-  defp insert_all(schema, rows), do: Repo.insert_all(schema, rows)
+  # Postgres `:utc_datetime` columns are second-precision; caller datetimes may
+  # carry microseconds, which Ecto rejects on insert.
+  defp ts(nil), do: nil
+  defp ts(%DateTime{} = dt), do: DateTime.truncate(dt, :second)
 
   ## Rows to structs
 
@@ -595,10 +623,10 @@ defmodule Dripstone.Tracker.Store do
       id: row.id,
       alert_id: row.alert_id,
       network_id: row.network_id,
+      action: to_atom(row.action, :confirm),
       by: row.by,
       at: row.at,
       note: row.note,
-      action: to_atom(row.action, :confirm),
       previous_alert_status: to_atom(row.previous_alert_status, nil),
       previous_network_status: to_atom(row.previous_network_status, nil),
       resulting_network_status: to_atom(row.resulting_network_status, nil)
@@ -690,7 +718,8 @@ defmodule Dripstone.Tracker.Store do
   # through except answers (rebuilt above) and datetimes, which parse back.
   defp to_assessment(%{} = map) do
     Map.new(map, fn
-      {"answers", v} -> {:answers, deatomize_answers(v)}
+      {"answers", v} when is_map(v) -> {:answers, deatomize_answers(v)}
+      {"answers", v} -> {:answers, v}
       {"observed_at", v} -> {:observed_at, parse_at(v)}
       {"group_observed_at", v} -> {:group_observed_at, parse_at(v)}
       {"trend_observed_at", v} -> {:trend_observed_at, parse_at(v)}

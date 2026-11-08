@@ -14,7 +14,11 @@ config :dripstone, Dripstone.Repo,
   hostname: "localhost",
   database: "dripstone_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  # LiveView channel processes fan out full-state Store.load/Store.save
+  # traffic over the single shared sandbox connection; tolerate the queue.
+  pool_size: System.schedulers_online() * 2,
+  queue_target: 5_000,
+  queue_interval: 2_000
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

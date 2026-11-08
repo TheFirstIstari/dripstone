@@ -1,7 +1,7 @@
 defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
   # Reports the examples from openspec/docs/DETECTION_INTERFACE.md through the shared
   # store, so the doc can't drift from the code. Uses the app-wide store: not async.
-  use ExUnit.Case, async: false
+  use Dripstone.DataCase, async: false
 
   alias Dripstone.Alerts
   alias Dripstone.Tracker
@@ -13,6 +13,12 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
   # The app the examples run against, as the doc describes it: one known network,
   # net-example, with four members on X.
   setup do
+    Ecto.Adapters.SQL.Sandbox.allow(
+      Dripstone.Repo,
+      self(),
+      Process.whereis(Dripstone.Tracker.SampleStore)
+    )
+
     previous = SampleStore.get_state()
 
     members =

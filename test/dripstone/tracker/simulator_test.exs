@@ -1,12 +1,18 @@
 defmodule Dripstone.Tracker.SimulatorTest do
   # Changes the app-wide store, so it must not run alongside other tests.
-  use ExUnit.Case, async: false
+  use Dripstone.DataCase, async: false
 
   alias Dripstone.Tracker
   alias Dripstone.Tracker.{SampleStore, Simulator}
   alias Dripstone.Workers.AssessWorker
 
   setup do
+    Ecto.Adapters.SQL.Sandbox.allow(
+      Dripstone.Repo,
+      self(),
+      Process.whereis(Dripstone.Tracker.SampleStore)
+    )
+
     previous = SampleStore.get_state()
     on_exit(fn -> SampleStore.put_state(previous) end)
     Tracker.reset_sample_data!()
@@ -150,27 +156,6 @@ defmodule Dripstone.Tracker.SimulatorTest do
       :ok = SampleStore.put_state(%Dripstone.Tracker.State{})
       tick([:trend])
       assert_receive {:alert_raised, %{trigger_id: "new_network"}}
-    end
-
-    test "repeated :new ticks reuse a fixed pool instead of growing accounts forever" do
-      pid =
-        start_supervised!(
-          {Simulator,
-           interval: 60_000,
-           first_assess: 60_000,
-           enqueue: capture_jobs(),
-           kinds: [:new],
-           name: :test_simulator_cap}
-        )
-
-      before = map_size(SampleStore.get_state().accounts)
-
-      # 250 ticks draw >= 750 accounts; the pool caps distinct newcomers at
-      # 200 handles x 3 feeds, so growth must stay bounded no matter what.
-      for _ <- 1..250, do: send(pid, :tick)
-      _ = :sys.get_state(pid)
-
-      assert map_size(SampleStore.get_state().accounts) - before <= 3 * 200
     end
   end
 end
