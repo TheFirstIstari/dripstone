@@ -20,7 +20,8 @@ defmodule Dripstone.Adapters.Polite.Gate do
   @robots_ttl_ms 24 * 60 * 60 * 1000
 
   @doc false
-  def start_link(opts \\ []), do: GenServer.start_link(__MODULE__, :ok, Keyword.put_new(opts, :name, @name))
+  def start_link(opts \\ []),
+    do: GenServer.start_link(__MODULE__, :ok, Keyword.put_new(opts, :name, @name))
 
   @doc "Starts the gate if it isn't running (outside the app supervisor)."
   @spec ensure_started() :: :ok
@@ -52,7 +53,9 @@ defmodule Dripstone.Adapters.Polite.Gate do
 
     case :ets.lookup(@table, {:robots, host}) do
       [{_, rules, at}] ->
-        if System.monotonic_time(:millisecond) - at < @robots_ttl_ms, do: {:ok, rules}, else: :miss
+        if System.monotonic_time(:millisecond) - at < @robots_ttl_ms,
+          do: {:ok, rules},
+          else: :miss
 
       _ ->
         :miss
