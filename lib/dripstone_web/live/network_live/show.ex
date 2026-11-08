@@ -259,6 +259,14 @@ defmodule DripstoneWeb.NetworkLive.Show do
     {:noreply, assign(socket, :selected_node, selected)}
   end
 
+  def handle_event("select_node_key", %{"key" => key, "id" => id}, socket)
+      when key in ["Enter", " "] do
+    selected = if socket.assigns.selected_node == id, do: nil, else: id
+    {:noreply, assign(socket, :selected_node, selected)}
+  end
+
+  def handle_event("select_node_key", _params, socket), do: {:noreply, socket}
+
   ## Events: pending actions (modal)
 
   def handle_event("open_pending", %{"type" => type}, socket) do

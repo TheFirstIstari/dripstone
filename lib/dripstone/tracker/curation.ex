@@ -347,6 +347,19 @@ defmodule Dripstone.Tracker.Curation do
     }
   end
 
+  defp member_platforms(state, member_ids) do
+    member_ids
+    |> Enum.map(&state.accounts[&1])
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(& &1.feed_id)
+    |> Enum.uniq()
+  end
+
+  # Derives the platform badge/filter list from current members so edits
+  # cannot leave stale entries behind.
+  defp refresh_platforms(state, network),
+    do: %{network | platforms: member_platforms(state, network.member_ids)}
+
   defp leave(network, ids) do
     %{
       network
