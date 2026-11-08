@@ -23,11 +23,10 @@ defmodule Dripstone.Tracker.Store.Network do
     field :evidence, {:array, :map}, default: []
     field :removed_account_ids, {:array, :string}, default: []
     field :retired_into_id, :string
-    # `first_seen_at`/`last_true_at`/`last_checked_at` are the spec's temporal
-    # triple; `inserted_at` is when the row was first stored.
+    # `first_seen_at`/`last_true_at` are the spec's temporal pair;
+    # `inserted_at` is when the row was first stored.
     field :first_seen_at, :utc_datetime
     field :last_true_at, :utc_datetime
-    field :last_checked_at, :utc_datetime
     field :inserted_at, :utc_datetime
     field :assessment, :map
   end

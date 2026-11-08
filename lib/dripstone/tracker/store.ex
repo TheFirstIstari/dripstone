@@ -53,10 +53,7 @@ defmodule Dripstone.Tracker.Store do
   @doc "Loads the persisted state, seeding the sample rows on first boot."
   @spec load(keyword()) :: {:ok, State.t()} | {:error, term()}
   def load(opts \\ []) do
-    case Process.get(__MODULE__) do
-      %State{} = state -> {:ok, state}
-      nil -> load_persisted(opts)
-    end
+    load_persisted(opts)
   end
 
   defp load_persisted(showcase: true),
@@ -87,20 +84,6 @@ defmodule Dripstone.Tracker.Store do
       :showcase -> Dripstone.Showcase.load("v1.json", [])
       _ -> {:ok, Dripstone.Tracker.SampleLoader.load()}
     end
-  end
-
-  @doc false
-  # Test-only override for the state `load/0` returns, so read-path tests can run
-  # against fixture states without touching rows. Unset with `override(nil)`.
-  @spec override(State.t() | nil) :: :ok
-  def override(nil) do
-    Process.delete(__MODULE__)
-    :ok
-  end
-
-  def override(%State{} = state) do
-    Process.put(__MODULE__, state)
-    :ok
   end
 
   @doc """
@@ -178,19 +161,7 @@ defmodule Dripstone.Tracker.Store do
   ## Boot
 
   defp persist_all(state) do
-    Repo.transaction(fn ->
-      write_accounts(state)
-      write_networks(state)
-      write_alerts(state)
-      write_decisions(state)
-      write_notes(state)
-      write_history(state)
-      write_aux(state)
-      write_findings(state)
-      Repo.insert!(%MetaRow{key: @seq_key, value: state.seq})
-      Repo.insert!(%MetaRow{key: @seed_key, value: 1})
-    end)
-
+    :ok = save(state)
     read_state()
   end
 
@@ -250,7 +221,7 @@ defmodule Dripstone.Tracker.Store do
     {dated, undated} = Enum.split_with(posts, & &1.posted_at)
 
     Enum.sort_by(dated, & &1.posted_at, {:desc, DateTime}) ++
-      Enum.sort_by(undated, & &1.id)
+      Enum.sort_by(undated, & &1.post_id)
   end
 
   defp findings do
@@ -277,7 +248,6 @@ defmodule Dripstone.Tracker.Store do
           signals: Enum.map(a.signals, &signal_to_row/1),
           first_seen_at: ts(a.first_seen_at),
           last_seen_at: ts(a.last_seen_at),
-          last_checked_at: nil,
           assessment: a.assessment && atomize_strings(a.assessment),
           topic: a.topic
         }
@@ -309,7 +279,6 @@ defmodule Dripstone.Tracker.Store do
           retired_into_id: n.retired_into,
           first_seen_at: ts(n.first_activity_at),
           last_true_at: ts(n.last_activity_at),
-          last_checked_at: nil,
           inserted_at: ts(n.inserted_at),
           assessment: n.assessment && atomize_strings(n.assessment)
         }
@@ -501,7 +470,6 @@ defmodule Dripstone.Tracker.Store do
       handle: row.handle,
       display_name: row.display_name,
       instance: row.instance,
-      created_at: nil,
       first_seen_at: row.first_seen_at,
       last_seen_at: row.last_seen_at,
       risk_score: row.risk_score,
