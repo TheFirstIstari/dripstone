@@ -20,10 +20,12 @@ defmodule Dripstone.DatasetsTest do
     end
   end
 
-  setup do
-    dir = Path.join(System.tmp_dir!(), "datasets-#{System.unique_integer([:positive])}")
-    {:ok, dir: dir}
-  end
+  # ExUnit gives each test its own folder (under `tmp/`, named after the module and
+  # test) and empties it before the test runs, so corpora left behind by earlier
+  # runs on the same machine can't leak in (issue 116).
+  @moduletag :tmp_dir
+
+  setup %{tmp_dir: tmp_dir}, do: {:ok, dir: tmp_dir}
 
   test "refresh writes a dated corpus with fetched_at and source", %{dir: dir} do
     opts = [datasets_dir: dir, date: "2026-11-07", retry_sleep_ms: 0]
