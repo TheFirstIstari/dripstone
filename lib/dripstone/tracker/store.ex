@@ -64,6 +64,10 @@ defmodule Dripstone.Tracker.Store do
   @doc "Writes the whole tracker state back."
   @spec save(State.t()) :: :ok
   def save(%State{} = state) do
+    # Same table order as persist_all/1 and reset!/0: every path deletes then
+    # reinserts the tracker tables in one order, so concurrent writers never
+    # deadlock waiting on each other's locks. Rows go in with one `insert_all`
+    # per table (not one round-trip per row) to hold the transaction briefly.
     Repo.transaction(fn ->
       write_accounts(state)
       write_networks(state)
@@ -71,6 +75,7 @@ defmodule Dripstone.Tracker.Store do
       write_decisions(state)
       write_notes(state)
       write_history(state)
+      write_aux(state)
       write_findings(state)
 
       Repo.insert!(%MetaRow{key: @seq_key, value: state.seq},
@@ -85,18 +90,20 @@ defmodule Dripstone.Tracker.Store do
   @doc "Deletes every tracker row (used only by tests)."
   @spec reset!() :: :ok
   def reset! do
+    # Same table order as save/1 and persist_all/1 (accounts first, meta last),
+    # so the reset path never takes table locks in a conflicting order.
     for schema <- [
-          HistoryRow,
-          NoteRow,
-          DecisionRow,
-          AlertRow,
-          FindingRow,
-          MembershipRow,
-          LinkRow,
-          PostRow,
-          FeedRow,
-          NetworkRow,
           AccountRow,
+          NetworkRow,
+          MembershipRow,
+          AlertRow,
+          DecisionRow,
+          NoteRow,
+          HistoryRow,
+          PostRow,
+          LinkRow,
+          FeedRow,
+          FindingRow,
           MetaRow
         ] do
       Repo.delete_all(schema)
@@ -199,131 +206,153 @@ defmodule Dripstone.Tracker.Store do
   defp write_accounts(state) do
     Repo.delete_all(AccountRow)
 
-    Enum.each(state.accounts, fn {_id, %Account{} = a} ->
-      Repo.insert!(%AccountRow{
-        id: a.id,
-        feed_id: a.feed_id,
-        handle: a.handle,
-        display_name: a.display_name,
-        instance: a.instance,
-        risk_score: a.risk_score,
-        signals: Enum.map(a.signals, &signal_to_row/1),
-        first_seen_at: a.first_seen_at,
-        last_seen_at: a.last_seen_at,
-        last_checked_at: nil,
-        assessment: a.assessment && atomize_strings(a.assessment),
-        topic: a.topic
-      })
-    end)
+    rows =
+      Enum.map(state.accounts, fn {_id, %Account{} = a} ->
+        %{
+          id: a.id,
+          feed_id: a.feed_id,
+          handle: a.handle,
+          display_name: a.display_name,
+          instance: a.instance,
+          risk_score: a.risk_score,
+          signals: Enum.map(a.signals, &signal_to_row/1),
+          first_seen_at: a.first_seen_at,
+          last_seen_at: a.last_seen_at,
+          last_checked_at: nil,
+          assessment: a.assessment && atomize_strings(a.assessment),
+          topic: a.topic
+        }
+      end)
+
+    insert_all(AccountRow, rows)
   end
 
   defp write_networks(state) do
     Repo.delete_all(MembershipRow)
     Repo.delete_all(NetworkRow)
 
-    Enum.each(state.networks, fn {_id, %Network{} = n} ->
-      Repo.insert!(%NetworkRow{
-        id: n.id,
-        name: n.name,
-        detected_name: n.detected_name,
-        status: to_string(n.status),
-        confidence: n.confidence,
-        main_domain: n.main_domain,
-        summary_text: n.summary && n.summary.text,
-        summary_generated_at: n.summary && n.summary.generated_at,
-        platforms: n.platforms,
-        tags: n.tags,
-        related_ids: n.related_ids,
-        evidence: Enum.map(n.evidence, &evidence_to_row/1),
-        retired_into_id: n.retired_into,
-        first_seen_at: n.first_activity_at,
-        last_true_at: n.last_activity_at,
-        last_checked_at: nil,
-        inserted_at: n.inserted_at,
-        assessment: n.assessment && atomize_strings(n.assessment)
-      })
-
-      n.member_ids
-      |> Enum.with_index()
-      |> Enum.each(fn {account_id, position} ->
-        Repo.insert!(%MembershipRow{
-          network_id: n.id,
-          account_id: account_id,
-          joined_at: Map.get(n.joined_at, account_id),
-          position: position
-        })
+    networks =
+      Enum.map(state.networks, fn {_id, %Network{} = n} ->
+        %{
+          id: n.id,
+          name: n.name,
+          detected_name: n.detected_name,
+          status: to_string(n.status),
+          confidence: n.confidence,
+          main_domain: n.main_domain,
+          summary_text: n.summary && n.summary.text,
+          summary_generated_at: n.summary && n.summary.generated_at,
+          platforms: n.platforms,
+          tags: n.tags,
+          related_ids: n.related_ids,
+          evidence: Enum.map(n.evidence, &evidence_to_row/1),
+          retired_into_id: n.retired_into,
+          first_seen_at: n.first_activity_at,
+          last_true_at: n.last_activity_at,
+          last_checked_at: nil,
+          inserted_at: n.inserted_at,
+          assessment: n.assessment && atomize_strings(n.assessment)
+        }
       end)
-    end)
+
+    memberships =
+      Enum.flat_map(state.networks, fn {_id, %Network{} = n} ->
+        n.member_ids
+        |> Enum.with_index()
+        |> Enum.map(fn {account_id, position} ->
+          %{
+            network_id: n.id,
+            account_id: account_id,
+            joined_at: Map.get(n.joined_at, account_id),
+            position: position
+          }
+        end)
+      end)
+
+    insert_all(NetworkRow, networks)
+    insert_all(MembershipRow, memberships)
   end
 
   defp write_alerts(state) do
     Repo.delete_all(AlertRow)
 
-    Enum.each(state.alerts, fn {_id, %Alert{} = a} ->
-      Repo.insert!(%AlertRow{
-        id: a.id,
-        trigger_id: a.trigger_id,
-        network_id: a.network_id,
-        severity: to_string(a.severity),
-        status: to_string(a.status),
-        title: a.title,
-        raised_at: a.raised_at,
-        observed_at: a.observed_at,
-        updated_at: a.updated_at,
-        evidence: Enum.map(a.evidence, &evidence_to_row/1),
-        ai_rationale: a.ai_rationale && atomize_strings(a.ai_rationale),
-        comparison: a.comparison && atomize_strings(a.comparison),
-        previously_dismissed_id: a.previously_dismissed_alert_id,
-        decision_id: a.decision_id,
-        answers: a.answers && stringify(a.answers),
-        model: a.model,
-        finding_id: a.finding_id
-      })
-    end)
+    rows =
+      Enum.map(state.alerts, fn {_id, %Alert{} = a} ->
+        %{
+          id: a.id,
+          trigger_id: a.trigger_id,
+          network_id: a.network_id,
+          severity: to_string(a.severity),
+          status: to_string(a.status),
+          title: a.title,
+          raised_at: a.raised_at,
+          observed_at: a.observed_at,
+          updated_at: a.updated_at,
+          evidence: Enum.map(a.evidence, &evidence_to_row/1),
+          ai_rationale: a.ai_rationale && atomize_strings(a.ai_rationale),
+          comparison: a.comparison && atomize_strings(a.comparison),
+          previously_dismissed_id: a.previously_dismissed_alert_id,
+          decision_id: a.decision_id,
+          answers: a.answers && stringify(a.answers),
+          model: a.model,
+          finding_id: a.finding_id
+        }
+      end)
+
+    insert_all(AlertRow, rows)
   end
 
   defp write_decisions(state) do
     Repo.delete_all(DecisionRow)
 
-    Enum.each(state.decisions, fn {_id, %Decision{} = d} ->
-      Repo.insert!(%DecisionRow{
-        id: d.id,
-        alert_id: d.alert_id,
-        network_id: d.network_id,
-        action: to_string(d.action),
-        by: d.by,
-        at: d.at,
-        note: d.note,
-        previous_alert_status: d.previous_alert_status && to_string(d.previous_alert_status),
-        previous_network_status:
-          d.previous_network_status && to_string(d.previous_network_status),
-        resulting_network_status:
-          d.resulting_network_status && to_string(d.resulting_network_status)
-      })
-    end)
+    rows =
+      Enum.map(state.decisions, fn {_id, %Decision{} = d} ->
+        %{
+          id: d.id,
+          alert_id: d.alert_id,
+          network_id: d.network_id,
+          action: to_string(d.action),
+          by: d.by,
+          at: d.at,
+          note: d.note,
+          previous_alert_status: d.previous_alert_status && to_string(d.previous_alert_status),
+          previous_network_status:
+            d.previous_network_status && to_string(d.previous_network_status),
+          resulting_network_status:
+            d.resulting_network_status && to_string(d.resulting_network_status)
+        }
+      end)
+
+    insert_all(DecisionRow, rows)
   end
 
   defp write_notes(state) do
     Repo.delete_all(NoteRow)
 
-    Enum.each(state.notes, fn {_id, %Note{} = n} ->
-      Repo.insert!(%NoteRow{id: n.id, network_id: n.network_id, body: n.body, by: n.by, at: n.at})
-    end)
+    rows =
+      Enum.map(state.notes, fn {_id, %Note{} = n} ->
+        %{id: n.id, network_id: n.network_id, body: n.body, by: n.by, at: n.at}
+      end)
+
+    insert_all(NoteRow, rows)
   end
 
   defp write_history(state) do
     Repo.delete_all(HistoryRow)
 
-    Enum.each(state.history, fn %HistoryEntry{} = h ->
-      Repo.insert!(%HistoryRow{
-        id: h.id,
-        network_id: h.network_id,
-        actor: to_string(h.actor),
-        by: h.by,
-        at: h.at,
-        summary: h.summary
-      })
-    end)
+    rows =
+      Enum.map(state.history, fn %HistoryEntry{} = h ->
+        %{
+          id: h.id,
+          network_id: h.network_id,
+          actor: to_string(h.actor),
+          by: h.by,
+          at: h.at,
+          summary: h.summary
+        }
+      end)
+
+    insert_all(HistoryRow, rows)
   end
 
   defp write_aux(state) do
@@ -331,62 +360,76 @@ defmodule Dripstone.Tracker.Store do
     Repo.delete_all(LinkRow)
     Repo.delete_all(FeedRow)
 
-    Enum.each(state.posts, fn {account_id, posts} ->
-      Enum.each(posts, fn %Post{} = p ->
-        Repo.insert!(%PostRow{
-          id: p.id,
-          account_id: account_id,
-          post_id: p.post_id,
-          posted_at: p.posted_at,
-          text: p.text,
-          domain: p.domain
-        })
+    posts =
+      Enum.flat_map(state.posts, fn {account_id, posts} ->
+        Enum.map(posts, fn %Post{} = p ->
+          %{
+            id: p.id,
+            account_id: account_id,
+            post_id: p.post_id,
+            posted_at: p.posted_at,
+            text: p.text,
+            domain: p.domain
+          }
+        end)
       end)
-    end)
 
-    Enum.each(state.links, fn %Link{} = l ->
-      {a, b} = l.account_ids
+    links =
+      Enum.map(state.links, fn %Link{} = l ->
+        {a, b} = l.account_ids
 
-      Repo.insert!(%LinkRow{
-        account_a_id: a,
-        account_b_id: b,
-        kind: to_string(l.kind),
-        strength: to_string(l.strength),
-        provenance: Enum.map(l.provenance, &atomize_strings/1)
-      })
-    end)
+        %{
+          account_a_id: a,
+          account_b_id: b,
+          kind: to_string(l.kind),
+          strength: to_string(l.strength),
+          provenance: Enum.map(l.provenance, &atomize_strings/1)
+        }
+      end)
 
-    Enum.each(state.feed_health, fn %FeedHealth{} = f ->
-      Repo.insert!(%FeedRow{
-        feed_id: f.feed_id,
-        status: to_string(f.status),
-        last_item_at: f.last_item_at,
-        items_24h: f.items_24h,
-        window_started_at: f.window_started_at,
-        last_error: f.last_error,
-        last_error_at: f.last_error_at
-      })
-    end)
+    feeds =
+      Enum.map(state.feed_health, fn %FeedHealth{} = f ->
+        %{
+          feed_id: f.feed_id,
+          status: to_string(f.status),
+          last_item_at: f.last_item_at,
+          items_24h: f.items_24h,
+          window_started_at: f.window_started_at,
+          last_error: f.last_error,
+          last_error_at: f.last_error_at
+        }
+      end)
+
+    insert_all(PostRow, posts)
+    insert_all(LinkRow, links)
+    insert_all(FeedRow, feeds)
   end
 
   defp write_findings(state) do
     Repo.delete_all(FindingRow)
 
-    state.findings
-    |> Enum.with_index()
-    |> Enum.each(fn {entry, position} ->
-      Repo.insert!(%FindingRow{
-        id: entry.id,
-        kind: to_string(entry.kind),
-        observed_at: entry.observed_at,
-        model: entry.model,
-        network_id: entry.network_id,
-        accounts: Enum.map(entry.accounts, &stringify/1),
-        answers: entry.answers && stringify(entry.answers),
-        position: position
-      })
-    end)
+    rows =
+      state.findings
+      |> Enum.with_index()
+      |> Enum.map(fn {entry, position} ->
+        %{
+          id: entry.id,
+          kind: to_string(entry.kind),
+          observed_at: entry.observed_at,
+          model: entry.model,
+          network_id: entry.network_id,
+          accounts: Enum.map(entry.accounts, &stringify/1),
+          answers: entry.answers && stringify(entry.answers),
+          position: position
+        }
+      end)
+
+    insert_all(FindingRow, rows)
   end
+
+  # One bulk insert per table; skips the round-trip entirely for empty tables.
+  defp insert_all(_schema, []), do: {0, nil}
+  defp insert_all(schema, rows), do: Repo.insert_all(schema, rows)
 
   ## Rows to structs
 
