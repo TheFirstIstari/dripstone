@@ -180,6 +180,15 @@ defmodule DripstoneWeb.AlertLive.IndexTest do
       assert has_element?(view, "#alert-count", "9 open")
     end
 
+    test "a network rename refreshes the rows live", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/alerts")
+      [%{alert: alert, network: network} | _] = Tracker.list_alerts()
+
+      {:ok, _} = Tracker.rename_network(network.id, %{"name" => "Fresh Name"})
+
+      assert has_element?(view, "#alert-row-#{alert.id}", "Fresh Name")
+    end
+
     test "the highlight clears when the filters change", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/alerts")
       {:ok, %{alert: alert}} = Tracker.apply_finding(finding("high"))

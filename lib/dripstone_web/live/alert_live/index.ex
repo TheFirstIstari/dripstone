@@ -81,6 +81,10 @@ defmodule DripstoneWeb.AlertLive.Index do
     end
   end
 
+  # Rows hold network snapshots (name, platforms), so a rename/merge/tag change
+  # leaves them stale until reload. Re-run the query like the network index does.
+  def handle_tracker_event({:network_updated, _network_id}, socket), do: load(socket)
+
   def handle_tracker_event(_message, socket), do: socket
 
   defp matches_filters?(entry, alert, filters) do
