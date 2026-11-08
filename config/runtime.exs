@@ -20,8 +20,8 @@ if System.get_env("PHX_SERVER") do
   config :dripstone, DripstoneWeb.Endpoint, server: true
 end
 
+# Blank env (e.g. `PORT=`) must fall back, not raise at boot.
 port =
-  # Blank env (e.g. `PORT=`) must fall back, not raise at boot.
   case Integer.parse(System.get_env("PORT", "4000")) do
     {n, _} -> n
     :error -> 4000
@@ -74,7 +74,11 @@ if config_env() == :prod do
     # ssl: true,
     url: database_url,
     # Blank env (e.g. `POOL_SIZE=`) must fall back, not raise at boot.
-    pool_size: (case Integer.parse(System.get_env("POOL_SIZE", "10")) do {n, _} -> n; :error -> 10 end),
+    pool_size:
+      (case Integer.parse(System.get_env("POOL_SIZE", "10")) do
+         {n, _} -> n
+         :error -> 10
+       end),
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
@@ -158,7 +162,11 @@ if config_env() == :prod do
     adapter: Swoosh.Adapters.SMTP,
     relay: System.get_env("SMTP_HOST", "localhost"),
     # Blank env (e.g. `SMTP_PORT=`) must fall back, not raise at boot.
-    port: (case Integer.parse(System.get_env("SMTP_PORT", "25")) do {n, _} -> n; :error -> 25 end),
+    port:
+      (case Integer.parse(System.get_env("SMTP_PORT", "25")) do
+         {n, _} -> n
+         :error -> 25
+       end),
     username: smtp_username,
     password: System.get_env("SMTP_PASSWORD", ""),
     tls:
