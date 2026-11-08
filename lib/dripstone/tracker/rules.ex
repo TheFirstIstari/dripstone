@@ -598,15 +598,55 @@ defmodule Dripstone.Tracker.Rules do
 
   ## Accounts and posts
 
-  defp ensure_account(state, %{feed_id: feed_id, handle: handle}, now) do
-    case state.account_by_handle[{feed_id, handle}] do
-      nil ->
+  # Finds the account by its permanent id first (a Bluesky DID survives handle
+  # changes; a renamed account keeps its history and gets its new handle), then by
+  # feed and handle, else creates it.
+  defp ensure_account(state, %{feed_id: feed_id, handle: handle} = ref, now) do
+    external_id = Map.get(ref, :external_id)
+
+    by_external =
+      external_id &&
+        Enum.find(
+          Map.values(state.accounts),
+          &(&1.feed_id == feed_id and &1.external_id == external_id)
+        )
+
+    case {by_external, state.account_by_handle[{feed_id, handle}]} do
+      {%Account{handle: ^handle} = account, _} ->
+        {account, state}
+
+      {%Account{} = account, _} ->
+        renamed = %{account | handle: handle}
+
+        state = %{
+          state
+          | account_by_handle: Map.delete(state.account_by_handle, {feed_id, account.handle})
+        }
+
+        {renamed, State.put_account(state, renamed)}
+
+      {nil, nil} ->
         {id, state} = State.next_id(state, "acc")
-        account = %Account{id: id, feed_id: feed_id, handle: handle, first_seen_at: now}
+
+        account = %Account{
+          id: id,
+          feed_id: feed_id,
+          handle: handle,
+          external_id: external_id,
+          first_seen_at: now
+        }
+
         {account, State.put_account(state, account)}
 
-      id ->
-        {state.accounts[id], state}
+      {nil, id} ->
+        account = state.accounts[id]
+
+        if external_id && is_nil(account.external_id) do
+          account = %{account | external_id: external_id}
+          {account, State.put_account(state, account)}
+        else
+          {account, state}
+        end
     end
   end
 
@@ -614,12 +654,13 @@ defmodule Dripstone.Tracker.Rules do
   # newest first; posts whose timestamp can't be read are kept at the end (never
   # dropped, never given an invented time) so evidence isn't lost. Capped.
   defp merge_posts(state, account_id, raw_posts, limit) do
+    # A post's id comes from its account and the platform's own post id: stable
+    # across re-assessments, and it can't collide with the sample data's
+    # independently numbered "post-N" ids (which shared ids with State.next_id).
     {fresh, state} =
       Enum.map_reduce(raw_posts, state, fn raw, state ->
-        {id, state} = State.next_id(state, "post")
-
         post = %Post{
-          id: id,
+          id: "post-#{account_id}-#{raw.id}",
           account_id: account_id,
           post_id: raw.id,
           posted_at: posted_at(raw.published_at),

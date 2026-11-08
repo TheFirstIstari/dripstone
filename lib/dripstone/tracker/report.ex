@@ -204,12 +204,16 @@ defmodule Dripstone.Tracker.Report do
       not text?(feed_id) -> {:error, "feed_id can't be blank"}
       not text?(handle) -> {:error, "handle can't be blank"}
       is_nil(Feeds.get(feed_id)) -> {:error, "unknown feed #{inspect(feed_id)}"}
-      true -> {:ok, %{feed_id: feed_id, handle: handle}}
+      true -> {:ok, external_id(%{feed_id: feed_id, handle: handle}, get(ref, :external_id))}
     end
   end
 
   defp ref(nil), do: {:error, "is required for an account finding"}
   defp ref(_ref), do: {:error, "must be a map with feed_id and handle"}
+
+  # Optional permanent account id (e.g. a Bluesky DID); handles can change.
+  defp external_id(ref, id) when is_binary(id) and id != "", do: Map.put(ref, :external_id, id)
+  defp external_id(ref, _id), do: ref
 
   defp post(%{} = post) do
     id = get(post, :id)

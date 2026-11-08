@@ -16,7 +16,9 @@ config :dripstone, Dripstone.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   # LiveView channel processes fan out full-state Store.load/Store.save
   # traffic over the single shared sandbox connection; tolerate the queue.
-  pool_size: System.schedulers_online() * 2,
+  # Capped: CI jobs on the self-hosted runner host share one Postgres (100
+  # connections); schedulers*2 is 64 there, so two overlapping jobs ran out.
+  pool_size: min(System.schedulers_online() * 2, 20),
   queue_target: 5_000,
   queue_interval: 2_000
 

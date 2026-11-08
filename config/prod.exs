@@ -32,5 +32,8 @@ config :logger, level: :info
 # findings are never written into it (#50).
 config :dripstone, :load_sample_data, false
 
+# Live discovery runs in production (Bluesky Jetstream, no credentials needed).
+config :dripstone, Dripstone.Discovery, enabled: true
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.

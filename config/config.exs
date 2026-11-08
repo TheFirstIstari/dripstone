@@ -147,11 +147,20 @@ config :dripstone, Dripstone.AIClient,
 # the memory-only Demo dataset instead (DemoStore); prod.exs pins false (#50).
 config :dripstone, :load_sample_data, false
 
+# Live discovery (Bluesky Jetstream -> bursts -> DiscoverWorker). Off by default;
+# prod.exs turns it on, dev turns it on with DRIPSTONE_DISCOVERY=1.
+config :dripstone, Dripstone.Discovery, enabled: false
+
 # Oban background jobs. Test env overrides with `testing: :manual`;
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.
 config :dripstone, Oban,
   repo: Dripstone.Repo,
-  queues: [default: 10]
+  queues: [default: 10],
+  plugins: [
+    # Live networks get a trend re-check every 6 hours (add-bluesky-live-pipeline).
+    {Oban.Plugins.Cron, crontab: [{"0 */6 * * *", Dripstone.Workers.TrendWorker}]},
+    Oban.Plugins.Pruner
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
