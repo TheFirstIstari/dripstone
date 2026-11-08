@@ -36,6 +36,10 @@ defmodule Dripstone.Tracker.Simulator do
   @default_assess_interval 120_000
   @default_first_assess 5_000
 
+  # Fixed pool of simulator handles so overnight ticks reuse accounts
+  # instead of growing `accounts` without bound.
+  @sim_pool_size 200
+
   @handles [
     {"stub_x", "promo_daily"},
     {"stub_x", "deal_hunter_88"},
@@ -154,7 +158,7 @@ defmodule Dripstone.Tracker.Simulator do
   end
 
   defp new_accounts(feed, n),
-    do: for(_ <- 1..n, do: %{feed_id: feed, handle: "sim_#{System.unique_integer([:positive])}"})
+    do: for(_ <- 1..n, do: %{feed_id: feed, handle: "sim_#{:rand.uniform(@sim_pool_size)}"})
 
   defp noul(p), do: %{"type" => "noul", "noul" => p}
 
