@@ -7,8 +7,14 @@ by platform reads the feed registry, so adding a platform takes two steps.
 
 Built in: X, Reddit, Bluesky, Mastodon, Telegram, Facebook (`lib/dripstone/feeds/`).
 
-> Feeds describe platforms only. Fetching posts from a platform (ingestion) is not
-> part of the feed contract yet; it will be added when the ingestion design exists.
+> Feeds describe platforms only. Fetching posts is a separate **adapter** behind
+> `Dripstone.Adapters` (`fetch_posts(handle, opts) :: {:ok, posts} | {:error, reason}`),
+> which must go through `Dripstone.Adapters.Polite` for rate limits, robots.txt and 429
+> back-off. **Bluesky has a real fetcher** (`Dripstone.Adapters.Bluesky`, public AppView,
+> no authentication); X and Reddit are still stubs. To give a platform a real fetcher:
+> write the adapter, register it in `Dripstone.Adapters`, in `AssessWorker`'s feed map
+> and in the refresh task's platforms, and record a seed corpus with
+> `mix dripstone.refresh <platform> --handle <handle>` for fixture-first tests.
 
 ## 1. Write the module
 

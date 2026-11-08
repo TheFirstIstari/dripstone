@@ -21,7 +21,8 @@ defmodule Dripstone.Workers.AssessWorker do
   # Which tracker feed each fetch adapter's accounts belong to.
   @feeds %{
     Dripstone.Adapters.StubX => "x",
-    Dripstone.Adapters.StubReddit => "reddit"
+    Dripstone.Adapters.StubReddit => "reddit",
+    Dripstone.Adapters.Bluesky => "bluesky"
   }
 
   @impl Oban.Worker

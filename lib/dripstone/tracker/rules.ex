@@ -617,15 +617,55 @@ defmodule Dripstone.Tracker.Rules do
 
   ## Accounts and posts
 
-  defp ensure_account(state, %{feed_id: feed_id, handle: handle}, now) do
-    case state.account_by_handle[{feed_id, handle}] do
-      nil ->
+  # Finds the account by its permanent id first (a Bluesky DID survives handle
+  # changes; a renamed account keeps its history and gets its new handle), then by
+  # feed and handle, else creates it.
+  defp ensure_account(state, %{feed_id: feed_id, handle: handle} = ref, now) do
+    external_id = Map.get(ref, :external_id)
+
+    by_external =
+      external_id &&
+        Enum.find(
+          Map.values(state.accounts),
+          &(&1.feed_id == feed_id and &1.external_id == external_id)
+        )
+
+    case {by_external, state.account_by_handle[{feed_id, handle}]} do
+      {%Account{handle: ^handle} = account, _} ->
+        {account, state}
+
+      {%Account{} = account, _} ->
+        renamed = %{account | handle: handle}
+
+        state = %{
+          state
+          | account_by_handle: Map.delete(state.account_by_handle, {feed_id, account.handle})
+        }
+
+        {renamed, State.put_account(state, renamed)}
+
+      {nil, nil} ->
         {id, state} = State.next_id(state, "acc")
-        account = %Account{id: id, feed_id: feed_id, handle: handle, first_seen_at: now}
+
+        account = %Account{
+          id: id,
+          feed_id: feed_id,
+          handle: handle,
+          external_id: external_id,
+          first_seen_at: now
+        }
+
         {account, State.put_account(state, account)}
 
-      id ->
-        {state.accounts[id], state}
+      {nil, id} ->
+        account = state.accounts[id]
+
+        if external_id && is_nil(account.external_id) do
+          account = %{account | external_id: external_id}
+          {account, State.put_account(state, account)}
+        else
+          {account, state}
+        end
     end
   end
 
@@ -642,10 +682,14 @@ defmodule Dripstone.Tracker.Rules do
       raw_posts
       |> Enum.uniq_by(& &1.id)
       |> Enum.map_reduce(state, fn raw, state ->
+        # Reuse the stored id when the post was seen before (stable across
+        # re-assessments); otherwise derive it from account + platform post id
+        # so new ids can't collide with the sample data's "post-N" ids, which
+        # share State.next_id's namespace.
         {id, state} =
           case Map.fetch(existing, raw.id) do
             {:ok, id} -> {id, state}
-            :error -> State.next_id(state, "post")
+            :error -> {"post-#{account_id}-#{raw.id}", state}
           end
 
         post = %Post{

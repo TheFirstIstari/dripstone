@@ -5,7 +5,9 @@ defmodule Dripstone.Tracker.Account do
   `risk_score` is 0–100; `signals` are the contributions behind it, largest first.
   `assessment` holds the latest account finding's parsed answers, model and time
   (`nil` until one arrives); `topic` is its `topic` answer label, if any.
-  `instance` is only used by federated platforms such as Mastodon.
+  `instance` is only used by federated platforms such as Mastodon. `external_id` is
+  the platform's permanent account id where it has one (a Bluesky DID), since
+  handles can change.
   """
 
   alias Dripstone.Tracker.Signal
@@ -17,6 +19,7 @@ defmodule Dripstone.Tracker.Account do
     :handle,
     :display_name,
     :instance,
+    :external_id,
     :first_seen_at,
     :last_seen_at,
     :assessment,
@@ -31,6 +34,7 @@ defmodule Dripstone.Tracker.Account do
           handle: String.t(),
           display_name: String.t() | nil,
           instance: String.t() | nil,
+          external_id: String.t() | nil,
           first_seen_at: DateTime.t() | nil,
           last_seen_at: DateTime.t() | nil,
           assessment:

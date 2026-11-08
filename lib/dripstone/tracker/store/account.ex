@@ -12,6 +12,7 @@ defmodule Dripstone.Tracker.Store.Account do
     field :handle, :string
     field :display_name, :string
     field :instance, :string
+    field :external_id, :string
     field :risk_score, :integer, default: 0
     field :signals, {:array, :map}, default: []
     field :first_seen_at, :utc_datetime

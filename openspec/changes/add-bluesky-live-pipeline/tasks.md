@@ -3,7 +3,7 @@
 ## 1. Groundwork
 
 - [x] 1.1 Revise this draft against the merged code: persistence (#111, #216), the corpus and refresh task (#201), the politeness layer (#220), the test harness (#224) and the seeding fix (#230). Proposal, design and tasks were updated on 2026-11-08 against `main` at `4151328`. Verified with `openspec validate add-bluesky-live-pipeline --strict`.
-- [ ] 1.2 Add the approved WebSocket dependency (`mint_web_socket` unless decided otherwise). Verify that `mix deps.get` succeeds and `mix precommit` passes, including the unused-deps check.
+- [x] 1.2 Add the approved WebSocket dependency (`mint_web_socket` unless decided otherwise). Verify that `mix deps.get` succeeds and `mix precommit` passes, including the unused-deps check.
 - [x] 1.3 Fix the politeness layer (design §5):
   - a supervised `Polite.Gate` owns the ETS table;
   - rate slots are reserved atomically;
@@ -29,18 +29,18 @@
 
 ## 3. Bluesky fetcher
 
-- [ ] 3.1 Add `Dripstone.Adapters.Bluesky.fetch_posts/2` (AppView `getAuthorFeed`, no auth, through `Polite.get/2`), mapping to canonical posts with link extraction. Register it in `Dripstone.Adapters` and in the refresh task's platforms. Verify with fixture-first tests under `HttpGuard` (`Req.Test` stubs) for "Recent posts fetched" and "Rate limited".
-- [ ] 3.2 Check in a small Bluesky seed corpus (`priv/datasets/bluesky/<date>.jsonl`, recorded with `mix dripstone.refresh bluesky --handle <public handle>`). Verify that its lines carry the envelope fields (`fetched_at`, `source`), and that `Dripstone.Test.Corpus.latest("bluesky")` resolves it.
+- [x] 3.1 Add `Dripstone.Adapters.Bluesky.fetch_posts/2` (AppView `getAuthorFeed`, no auth, through `Polite.get/2`), mapping to canonical posts with link extraction. Register it in `Dripstone.Adapters` and in the refresh task's platforms. Verify with fixture-first tests under `HttpGuard` (`Req.Test` stubs) for "Recent posts fetched" and "Rate limited".
+- [x] 3.2 Check in a small Bluesky seed corpus (`priv/datasets/bluesky/<date>.jsonl`, recorded with `mix dripstone.refresh bluesky --handle <public handle>`). Verify that its lines carry the envelope fields (`fetched_at`, `source`), and that `Dripstone.Test.Corpus.latest("bluesky")` resolves it.
 
 ## 4. Live discovery
 
-- [ ] 4.1 Add `Dripstone.Discovery.Bursts`: windows of distinct DIDs per link, threshold, cooldown, common-domain list, bounded tracking (design §7). Verify with unit tests for:
+- [x] 4.1 Add `Dripstone.Discovery.Bursts`: windows of distinct DIDs per link, threshold, cooldown, common-domain list, bounded tracking (design §7). Verify with unit tests for:
   - "Five accounts share a link within ten minutes";
   - "Common domain ignored";
   - "Cooldown";
   - a single account repeating a link counting once;
   - the tracked-link bound.
-- [ ] 4.2 Add the Jetstream consumer: config-enabled, keeps linked posts, URL normalisation, reconnect with cursor, and feed-health counters flushed to Live once a minute in one write (design §6). Verify with tests driving it from recorded Jetstream frames (no network) for:
+- [x] 4.2 Add the Jetstream consumer: config-enabled, keeps linked posts, URL normalisation, reconnect with cursor, and feed-health counters flushed to Live once a minute in one write (design §6). Verify with tests driving it from recorded Jetstream frames (no network) for:
   - "Linked posts are kept";
   - "Disabled by configuration";
   - "Stream disconnected";
@@ -48,18 +48,18 @@
 
 ## 5. Assessing candidates
 
-- [ ] 5.1 Add `Tracker.report_findings/1`: one load, each finding through `Report` and `Rules` in order, one save, then broadcasts. A rejected finding rejects the batch (design §8). Verify with tests that a batch of an account and a group finding makes exactly one `Store.save`, and that a bad finding changes nothing.
-- [ ] 5.2 Add `tracker_accounts.external_id` (migration plus `Account` field plus the `Store` row mapping; design §10). Verify with a store round-trip test.
-- [ ] 5.3 Add `DiscoverWorker`: caps, DID-to-handle resolution, member fetch, account findings and a group finding with computed `domains`, reported in one batch (design §8). Verify with tests (stubbed HTTP and Jev) for:
+- [x] 5.1 Add `Tracker.report_findings/1`: one load, each finding through `Report` and `Rules` in order, one save, then broadcasts. A rejected finding rejects the batch (design §8). Verify with tests that a batch of an account and a group finding makes exactly one `Store.save`, and that a bad finding changes nothing.
+- [x] 5.2 Add `tracker_accounts.external_id` (migration plus `Account` field plus the `Store` row mapping; design §10). Verify with a store round-trip test.
+- [x] 5.3 Add `DiscoverWorker`: caps, DID-to-handle resolution, member fetch, account findings and a group finding with computed `domains`, reported in one batch (design §8). Verify with tests (stubbed HTTP and Jev) for:
   - "A candidate group raises a real alert";
   - "Unreachable account";
   - "Hourly cap reached";
   - "Large burst trimmed".
-- [ ] 5.4 Add `Oban.Plugins.Cron` and `Pruner` to the Oban config (`config.exs` **and** `runtime.exs`) and `TrendWorker` every 6 hours, capped and batched (design §9). Verify with a test for "Active network re-checked" (inactive networks skipped), and that the prod Oban config includes the cron entry.
+- [x] 5.4 Add `Oban.Plugins.Cron` and `Pruner` to the Oban config (`config.exs` **and** `runtime.exs`) and `TrendWorker` every 6 hours, capped and batched (design §9). Verify with a test for "Active network re-checked" (inactive networks skipped), and that the prod Oban config includes the cron entry.
 
 ## 6. Docs and integration checks
 
-- [ ] 6.1 Update `openspec/docs/FEEDS.md` (a feed with a real fetcher), `DETECTION_INTERFACE.md` ("Not covered yet") and the README (modes, enabling discovery, caps, and `mix ecto.reset` once in dev). Verify that the doc tests pass and that the README commands run as written.
+- [x] 6.1 Update `openspec/docs/FEEDS.md` (a feed with a real fetcher), `DETECTION_INTERFACE.md` ("Not covered yet") and the README (modes, enabling discovery, caps, and `mix ecto.reset` once in dev). Verify that the doc tests pass and that the README commands run as written.
 - [ ] 6.2 Run `mix precommit` (warning-free). Then, with discovery enabled against the real Jetstream, run the app for at least 30 minutes:
   - Bluesky feed health is live;
   - any burst produces candidates within the caps;

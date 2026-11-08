@@ -61,6 +61,10 @@ config :dripstone, simulate_alerts: System.get_env("DRIPSTONE_SIMULATE") == "1"
 
 # DRIPSTONE_SAMPLE=showcase seeds an empty dev database from the hand-built
 # showcase corpus instead of the generated sample rows.
+if System.get_env("DRIPSTONE_DISCOVERY") == "1" do
+  config :dripstone, Dripstone.Discovery, enabled: true
+end
+
 if System.get_env("DRIPSTONE_SAMPLE") == "showcase" do
   config :dripstone, :load_sample_data, :showcase
 end

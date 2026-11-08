@@ -46,6 +46,49 @@ defmodule Dripstone.Tracker do
     end)
   end
 
+  @doc """
+  Reports several findings in **one** write: loads once, runs each through `Report`
+  and `Rules` in order (later findings see earlier ones' effects), saves once, then
+  broadcasts. Every write rewrites the whole Live database, so live discovery
+  reports a candidate group's account and group findings together.
+
+  Returns `{:ok, results}` (one per finding, in order). If any finding is rejected,
+  the whole batch is: `{:error, {index, errors}}`, with nothing changed.
+  """
+  @spec report_findings([map()]) :: {:ok, [map()]} | {:error, {non_neg_integer(), map()}}
+  def report_findings(findings) when is_list(findings) do
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, results, new_state} <- run_findings(state, findings) do
+        :ok = Store.save(new_state)
+
+        results
+        |> Enum.flat_map(&report_messages/1)
+        |> Enum.uniq()
+        |> Enum.each(&broadcast/1)
+
+        {:ok, results}
+      end
+    end)
+  end
+
+  defp run_findings(state, findings) do
+    findings
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, [], state}, fn {attrs, index}, {:ok, acc, state} ->
+      with {:ok, report} <- Report.cast(attrs, state),
+           {:ok, result, state} <- Rules.run(state, report, now()) do
+        {:cont, {:ok, [result | acc], state}}
+      else
+        {:error, errors} -> {:halt, {:error, {index, errors}}}
+      end
+    end)
+    |> case do
+      {:ok, results, state} -> {:ok, Enum.reverse(results), state}
+      error -> error
+    end
+  end
+
   @doc false
   # Runs one *internal* finding straight through the intake. Detection never
   # calls this; it exists for tests that need a specific alert.

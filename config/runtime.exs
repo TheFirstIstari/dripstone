@@ -86,7 +86,10 @@ if config_env() == :prod do
   config :dripstone, Oban,
     repo: Dripstone.Repo,
     queues: [default: 10],
-    plugins: [Oban.Plugins.Pruner]
+    plugins: [
+      {Oban.Plugins.Cron, crontab: [{"0 */6 * * *", Dripstone.Workers.TrendWorker}]},
+      Oban.Plugins.Pruner
+    ]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

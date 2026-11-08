@@ -16,10 +16,18 @@ defmodule Mix.Tasks.Dripstone.Datasets.Refresh do
 
   use Mix.Task
 
-  @platforms %{"x" => Dripstone.Adapters.StubX, "reddit" => Dripstone.Adapters.StubReddit}
+  @platforms %{
+    "x" => Dripstone.Adapters.StubX,
+    "reddit" => Dripstone.Adapters.StubReddit,
+    "bluesky" => Dripstone.Adapters.Bluesky
+  }
 
   @impl Mix.Task
   def run(args) do
+    # Real fetchers make HTTP requests, so the HTTP client must be running (the
+    # stubs never needed it).
+    {:ok, _} = Application.ensure_all_started(:req)
+
     {opts, rest, _} =
       OptionParser.parse(args,
         strict: [platform: :string, handle: :string, all: :boolean, date: :string]
