@@ -21,6 +21,10 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           cache: false
+          # Pinned: GitHub's download edge serves a cached 504 for the
+          # v2026.11.4 release asset, which failed every CI run. Tool versions
+          # come from mise.toml either way; bump this when downloads recover.
+          version: 2026.11.3
       - run: mix local.hex --force && mix local.rebar --force
       - run: mix deps.get
       - run: mix deps.unlock --unused --check-unused
