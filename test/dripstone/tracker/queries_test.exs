@@ -126,6 +126,14 @@ defmodule Dripstone.Tracker.QueriesTest do
       assert raised == Enum.sort(raised, {:desc, DateTime})
     end
 
+    test "count_alerts matches list_alerts length without building entries", %{state: state} do
+      for params <- [%{}, %{status: :all}, %{status: :confirmed}, %{trigger: "network_growth"}] do
+        assert Queries.count_alerts(state, params) == length(Queries.list_alerts(state, params))
+      end
+
+      assert Queries.count_alerts(state) == 10
+    end
+
     test "filters by status, severity, trigger and platform", %{state: state} do
       assert length(Queries.list_alerts(state, %{status: :all})) == map_size(state.alerts)
 

@@ -53,6 +53,15 @@ defmodule Dripstone.Tracker.Queries do
   `:severity`, `:trigger` (catalog id) and `:platform` (feed id).
   """
   def list_alerts(%State{} = state, params) do
+    state |> matching_alerts(params) |> newest_first() |> Enum.map(&alert_entry(state, &1))
+  end
+
+  @doc "Count of `list_alerts(params)` without building entries (for badges/toasts)."
+  def count_alerts(%State{} = state, params \\ %{}) do
+    state |> matching_alerts(params) |> Enum.count()
+  end
+
+  defp matching_alerts(%State{} = state, params) do
     status = Map.get(params, :status, :open)
 
     state.alerts
@@ -65,8 +74,6 @@ defmodule Dripstone.Tracker.Queries do
         matches?(params, :trigger, alert.trigger_id) and
         (is_nil(params[:platform]) or params[:platform] in network.platforms)
     end)
-    |> newest_first()
-    |> Enum.map(&alert_entry(state, &1))
   end
 
   def get_alert(%State{} = state, id) do
