@@ -29,10 +29,13 @@ defmodule Dripstone.Tracker.DetectionInterfaceDocTest do
     }
 
     :ok =
-      SampleStore.put_state(%State{
-        accounts: Map.new(members, &{&1.id, &1}),
-        networks: %{"net-example" => network}
-      })
+      SampleStore.put_state(
+        %State{
+          accounts: Map.new(members, &{&1.id, &1}),
+          networks: %{"net-example" => network}
+        }
+        |> State.reindex()
+      )
 
     on_exit(fn -> SampleStore.put_state(previous) end)
     :ok

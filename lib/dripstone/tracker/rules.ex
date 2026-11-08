@@ -99,11 +99,10 @@ defmodule Dripstone.Tracker.Rules do
         assessment: %{answers: answers, model: report.model, observed_at: report.observed_at}
     }
 
-    state = %{
+    state =
       state
-      | accounts: Map.put(state.accounts, account.id, account),
-        posts: Map.put(state.posts, account.id, posts)
-    }
+      |> State.put_account(account)
+      |> Map.update!(:posts, &Map.put(&1, account.id, posts))
 
     {:ok, result(ctx, alerts: [], account_ids: [account.id]), state}
   end
@@ -591,7 +590,7 @@ defmodule Dripstone.Tracker.Rules do
 
         _ ->
           alert = %{alert | answers: report.answers, model: report.model, finding_id: ctx_id}
-          state = %{state | alerts: Map.put(state.alerts, alert.id, alert)}
+          state = State.put_alert(state, alert)
           {:ok, state, [%{action: action, alert: alert}], skipped, nil}
       end
     end
@@ -600,14 +599,14 @@ defmodule Dripstone.Tracker.Rules do
   ## Accounts and posts
 
   defp ensure_account(state, %{feed_id: feed_id, handle: handle}, now) do
-    case Enum.find(Map.values(state.accounts), &(&1.feed_id == feed_id and &1.handle == handle)) do
+    case state.account_by_handle[{feed_id, handle}] do
       nil ->
         {id, state} = State.next_id(state, "acc")
         account = %Account{id: id, feed_id: feed_id, handle: handle, first_seen_at: now}
-        {account, %{state | accounts: Map.put(state.accounts, id, account)}}
+        {account, State.put_account(state, account)}
 
-      account ->
-        {account, state}
+      id ->
+        {state.accounts[id], state}
     end
   end
 

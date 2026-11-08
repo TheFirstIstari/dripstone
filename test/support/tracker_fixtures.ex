@@ -72,6 +72,7 @@ defmodule Dripstone.TrackerFixtures do
       ])
 
     %State{accounts: Map.new(ids, &{&1, %Account{id: &1, feed_id: "x", handle: &1}})}
+    |> State.reindex()
   end
 
   def update_network(state, id, fun),
@@ -90,14 +91,10 @@ defmodule Dripstone.TrackerFixtures do
       at: dismissed_at
     }
 
-    %{
-      state
-      | alerts:
-          Map.put(state.alerts, alert.id, %{alert | status: :dismissed, decision_id: "dec-1"}),
-        decisions: Map.put(state.decisions, "dec-1", decision),
-        networks:
-          Map.update!(state.networks, id, fn %Network{} = n -> %{n | status: :dismissed} end)
-    }
+    state
+    |> State.put_alert(%{alert | status: :dismissed, decision_id: "dec-1"})
+    |> State.put_decision(decision)
+    |> update_network(id, fn %Network{} = n -> %{n | status: :dismissed} end)
   end
 
   @doc "Recursively converts atom keys to strings and DateTimes to ISO 8601 (like JSON)."

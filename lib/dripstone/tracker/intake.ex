@@ -17,7 +17,7 @@ defmodule Dripstone.Tracker.Intake do
     4. Every change is recorded in the network's history, marked `:system`.
   """
 
-  alias Dripstone.Tracker.{Alert, Decision, Finding, Network, State}
+  alias Dripstone.Tracker.{Alert, Finding, Network, State}
 
   @detection "Detection"
   @severity_rank %{low: 1, medium: 2, high: 3}
@@ -78,12 +78,7 @@ defmodule Dripstone.Tracker.Intake do
   defp dismissal(_state, nil), do: nil
   defp dismissal(_state, %Network{status: status}) when status != :dismissed, do: nil
 
-  defp dismissal(state, %Network{id: id}) do
-    state.decisions
-    |> Map.values()
-    |> Enum.filter(&match?(%Decision{network_id: ^id, action: :dismiss}, &1))
-    |> Enum.max_by(& &1.at, DateTime, fn -> nil end)
-  end
+  defp dismissal(state, %Network{id: id}), do: state.latest_dismissal[id]
 
   ## Networks
 
@@ -238,14 +233,13 @@ defmodule Dripstone.Tracker.Intake do
   end
 
   defp open_alert(state, network_id, trigger_id) do
-    state.alerts
-    |> Map.values()
-    |> Enum.find(
-      &match?(%Alert{network_id: ^network_id, trigger_id: ^trigger_id, status: :open}, &1)
-    )
+    case state.open_by_trigger[{network_id, trigger_id}] do
+      nil -> nil
+      id -> state.alerts[id]
+    end
   end
 
-  defp put_alert(state, alert), do: %{state | alerts: Map.put(state.alerts, alert.id, alert)}
+  defp put_alert(state, alert), do: State.put_alert(state, alert)
 
   defp reopen(state, network, _alert, now) do
     network = %{network | status: :suspected}

@@ -43,12 +43,10 @@ defmodule Dripstone.Tracker.Decisions do
       network = %{state.networks[decision.network_id] | status: decision.previous_network_status}
 
       state =
-        %{
-          state
-          | alerts: Map.put(state.alerts, alert.id, alert),
-            networks: Map.put(state.networks, network.id, network),
-            decisions: Map.delete(state.decisions, decision_id)
-        }
+        state
+        |> State.put_alert(alert)
+        |> State.delete_decision(decision_id)
+        |> Map.update!(:networks, &Map.put(&1, network.id, network))
         |> State.add_history(
           network.id,
           :analyst,
@@ -89,12 +87,10 @@ defmodule Dripstone.Tracker.Decisions do
       network = %{network | status: decision.resulting_network_status}
 
       state =
-        %{
-          state
-          | alerts: Map.put(state.alerts, alert.id, alert),
-            networks: Map.put(state.networks, network.id, network),
-            decisions: Map.put(state.decisions, id, decision)
-        }
+        state
+        |> State.put_alert(alert)
+        |> State.put_decision(decision)
+        |> Map.update!(:networks, &Map.put(&1, network.id, network))
         |> State.add_history(
           network.id,
           :analyst,
@@ -126,12 +122,14 @@ defmodule Dripstone.Tracker.Decisions do
   defp network_status(_state, _network, _alert, :confirm), do: :confirmed
 
   defp network_status(state, network, alert, :dismiss) do
-    confirmed? =
-      Enum.any?(state.alerts, fn {id, a} ->
-        id != alert.id and a.network_id == network.id and a.status == :confirmed
-      end)
+    other_confirmed? =
+      case state.confirmed_by_network[network.id] do
+        nil -> false
+        count when alert.status == :confirmed -> count > 1
+        count -> count > 0
+      end
 
-    if confirmed?, do: network.status, else: :dismissed
+    if other_confirmed?, do: network.status, else: :dismissed
   end
 
   defp past(:confirm), do: "confirmed"

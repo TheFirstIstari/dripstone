@@ -159,6 +159,7 @@ defmodule Dripstone.Tracker.Store do
       cache: %{},
       seq: seq()
     }
+    |> State.reindex()
   end
 
   defp seq do
