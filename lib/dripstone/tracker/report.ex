@@ -258,10 +258,16 @@ defmodule Dripstone.Tracker.Report do
   defp errors(changeset) do
     traverse_errors(changeset, fn {message, opts} ->
       Enum.reduce(opts, message, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
+        String.replace(acc, "%{#{key}}", format(value))
       end)
     end)
   end
+
+  # Same crash as Finding.errors/1: cast failures keep non-string values (like
+  # `{:array, :map}`) in the message options, and `to_string/1` on them raises.
+  defp format(value) when is_binary(value), do: value
+  defp format(value) when is_atom(value) or is_number(value), do: to_string(value)
+  defp format(value), do: inspect(value)
 
   ## Helpers
 

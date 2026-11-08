@@ -240,6 +240,26 @@ defmodule Dripstone.Tracker.IntakeTest do
     end
   end
 
+  describe "retired networks" do
+    test "a finding for a merged-away network is rejected and changes nothing" do
+      second =
+        new_network_finding(%{
+          new_network: %{id: "net-2", name: "Cluster #2", member_ids: ["a4", "a5"], confidence: 70}
+        })
+
+      state = with_accounts(state_with_network(), second)
+      {:ok, _result, state} = Intake.run(state, second, at(1))
+
+      {:ok, _merged, state, _} =
+        Dripstone.Tracker.Curation.merge(state, "net-1", "net-2", at(2))
+
+      assert state.networks["net-1"].retired_into == "net-2"
+
+      assert {:error, %{network_id: ["network \"net-1\" was merged into \"net-2\""]}} =
+               Intake.run(state, finding("net-1"), at(3))
+    end
+  end
+
   describe "lookup indexes" do
     test "O(1) reads agree with full scans and stay current across writes" do
       state = state_with_network()
