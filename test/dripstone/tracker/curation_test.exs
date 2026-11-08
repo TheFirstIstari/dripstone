@@ -180,7 +180,7 @@ defmodule Dripstone.Tracker.CurationTest do
 
     test "membership edits reindex platforms so filters and badges stay correct" do
       before = network("net-c0421")
-      by_feed = Enum.group_by(before.member_ids, &(Tracker.get_account(&1).account.feed_id))
+      by_feed = Enum.group_by(before.member_ids, &Tracker.get_account(&1).account.feed_id)
 
       {feed, ids} =
         Enum.find(by_feed, fn {_feed, ids} -> length(ids) < length(before.member_ids) end) ||
