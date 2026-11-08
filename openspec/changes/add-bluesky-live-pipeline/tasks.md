@@ -59,7 +59,7 @@
 
 ## 6. Docs and integration checks
 
-- [ ] 6.1 Update `openspec/docs/FEEDS.md` (a feed with a real fetcher), `DETECTION_INTERFACE.md` ("Not covered yet") and the README (modes, enabling discovery, caps, and `mix ecto.reset` once in dev). Verify that the doc tests pass and that the README commands run as written.
+- [x] 6.1 Update `openspec/docs/FEEDS.md` (a feed with a real fetcher), `DETECTION_INTERFACE.md` ("Not covered yet") and the README (modes, enabling discovery, caps, and `mix ecto.reset` once in dev). Verify that the doc tests pass and that the README commands run as written.
 - [ ] 6.2 Run `mix precommit` (warning-free). Then, with discovery enabled against the real Jetstream, run the app for at least 30 minutes:
   - Bluesky feed health is live;
   - any burst produces candidates within the caps;
