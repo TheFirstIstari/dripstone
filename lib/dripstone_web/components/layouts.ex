@@ -138,6 +138,18 @@ defmodule DripstoneWeb.Layouts do
 
         <main id="main" class="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div class="mx-auto max-w-7xl">
+            <div
+              :if={mode(@nav) == :demo}
+              id="demo-banner"
+              role="status"
+              class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-status-suspected/40 bg-status-suspected/10 px-4 py-2.5 text-sm text-ink"
+            >
+              <span>
+                <span class="font-semibold">Demo data</span>
+                — not real detections. Alerts here come from the simulator.
+              </span>
+              <.mode_switch id="demo-banner-switch" mode={:demo} />
+            </div>
             {render_slot(@inner_block)}
           </div>
         </main>
@@ -245,11 +257,49 @@ defmodule DripstoneWeb.Layouts do
     </nav>
 
     <div class="border-t border-line px-5 py-4">
-      <p id={@source_id} class="flex items-center gap-2 text-xs font-medium text-ink-muted">
-        <span class="size-2 rounded-full bg-status-suspected" aria-hidden="true"></span> Sample data
+      <p
+        id={@source_id}
+        data-mode={mode(@nav)}
+        class="flex items-center gap-2 text-xs font-medium text-ink-muted"
+      >
+        <span
+          class={[
+            "size-2 rounded-full",
+            if(mode(@nav) == :demo, do: "bg-status-suspected", else: "bg-accent")
+          ]}
+          aria-hidden="true"
+        ></span>
+        {if mode(@nav) == :demo, do: "Demo", else: "Live"}
       </p>
-      <p class="mt-1 text-xs text-ink-faint">Resets when the app restarts.</p>
+      <p class="mt-1 text-xs text-ink-faint">
+        {if mode(@nav) == :demo,
+          do: "Sample data, kept in memory only.",
+          else: "Real detections."}
+      </p>
+      <.mode_switch id={"#{@source_id}-switch"} mode={mode(@nav)} class="mt-2" />
     </div>
+    """
+  end
+
+  # The session's dataset, from DripstoneWeb.Nav (Live when unknown).
+  defp mode(nav), do: Map.get(nav, :mode, :live)
+
+  attr :id, :string, required: true
+  attr :mode, :atom, required: true
+  attr :class, :any, default: nil
+
+  # Posts to /mode, which flips the session to the other dataset and comes back.
+  defp mode_switch(assigns) do
+    ~H"""
+    <.form for={%{}} action={~p"/mode"} method="post" id={@id} class={@class}>
+      <input type="hidden" name="mode" value={if @mode == :demo, do: "live", else: "demo"} />
+      <button
+        type="submit"
+        class="cursor-pointer text-xs font-medium text-accent underline-offset-2 hover:underline"
+      >
+        Switch to {if @mode == :demo, do: "Live", else: "Demo"}
+      </button>
+    </.form>
     """
   end
 

@@ -64,6 +64,7 @@ defmodule DripstoneWeb.Router do
     end
 
     post "/users/update-password", UserSessionController, :update_password
+    post "/mode", ModeController, :update
   end
 
   # The root is public so deploy checks see a 200: logged-out visitors get a

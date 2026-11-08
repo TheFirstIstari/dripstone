@@ -3,6 +3,10 @@
 Follow the README setup (`.env` with `ANALYST_PASSWORD`, then `mise run
 db-up`, `mise run db-setup`, `mise run dev`).
 
+(AI calls go to the OpenCode Console `systemone` endpoint with a bearer key
+— never to a local vLLM host. Without a key, calls fail to `{:error, _}` and
+the app silently falls back to heuristics.)
+
 ## GitHub runner (deploy only)
 
 - Labels: `self-hosted, Linux, X64, cachyos-x8664, deploy` — only the deploy
