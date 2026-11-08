@@ -80,7 +80,10 @@ defmodule Dripstone.Adapters.Bluesky do
           do: feature["uri"]
 
     embed_links =
-      [get_in(record, ["embed", "external", "uri"]), get_in(record, ["embed", "media", "external", "uri"])]
+      [
+        get_in(record, ["embed", "external", "uri"]),
+        get_in(record, ["embed", "media", "external", "uri"])
+      ]
       |> Enum.filter(&is_binary/1)
 
     Enum.uniq(facet_links ++ embed_links)
@@ -104,5 +107,6 @@ defmodule Dripstone.Adapters.Bluesky do
   # Handles are stored as shown ("@alice.bsky.social"); the API wants them bare.
   defp actor(handle), do: String.trim_leading(handle, "@")
 
-  defp polite_opts(opts), do: Keyword.take(opts, [:plug, :sleep, :min_interval_ms, :robots, :max_retries])
+  defp polite_opts(opts),
+    do: Keyword.take(opts, [:plug, :sleep, :min_interval_ms, :robots, :max_retries])
 end
