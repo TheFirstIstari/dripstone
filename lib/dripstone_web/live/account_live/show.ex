@@ -33,7 +33,7 @@ defmodule DripstoneWeb.AccountLive.Show do
           networks: detail.networks,
           link_count: length(detail.links),
           post_count: length(detail.posts),
-          page_title: handle(detail.account)
+          page_title: format_handle(detail.account)
         )
         |> stream(:links, detail.links, reset: true)
         |> stream(:posts, detail.posts, reset: true)
@@ -89,7 +89,7 @@ defmodule DripstoneWeb.AccountLive.Show do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
-      <.page_header title={handle(@account)} back={~p"/accounts"} back_label="Accounts">
+      <.page_header title={format_handle(@account)} back={~p"/accounts"} back_label="Accounts">
         <:subtitle>{@account.display_name}</:subtitle>
         <:meta>
           <.platform_badge feed_id={@account.feed_id} />
@@ -175,7 +175,7 @@ defmodule DripstoneWeb.AccountLive.Show do
                   navigate={~p"/accounts/#{link.account.id}"}
                   class="min-w-0 flex-1 truncate font-mono text-sm text-ink hover:text-accent"
                 >
-                  {handle(link.account)}
+                  {format_handle(link.account)}
                 </.link>
                 <span class="flex flex-wrap gap-1">
                   <span
@@ -265,7 +265,7 @@ defmodule DripstoneWeb.AccountLive.Show do
       </div>
 
       <.modal :if={@picker} id="network-picker" show on_cancel={JS.push("cancel_picker")}>
-        <:title>Add {handle(@account)} to a network</:title>
+        <:title>Add {format_handle(@account)} to a network</:title>
         <.form for={@picker} id="network-picker-form" phx-submit="add_to_network">
           <.input
             field={@picker[:network]}
@@ -319,11 +319,4 @@ defmodule DripstoneWeb.AccountLive.Show do
   defp post_url(feed, account, post),
     do:
       feed.post_url(%{handle: account.handle, instance: account.instance, post_id: post.post_id})
-
-  defp handle(account) do
-    case Feeds.get(account.feed_id) do
-      nil -> account.handle
-      feed -> feed.format_handle(account)
-    end
-  end
 end

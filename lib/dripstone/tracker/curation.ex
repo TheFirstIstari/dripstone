@@ -353,8 +353,11 @@ defmodule Dripstone.Tracker.Curation do
   defp done(state, reply, network_ids),
     do: {:ok, reply, state, network_ids |> Enum.uniq() |> Enum.map(&{:network_updated, &1})}
 
-  defp count([_], noun), do: "1 #{noun}"
-  defp count(list, noun), do: "#{length(list)} #{noun}s"
+  @doc "Counts items with a noun (1 member, 3 members)."
+  def count(1, noun), do: "1 #{noun}"
+  def count(n, noun) when is_integer(n), do: "#{n} #{noun}s"
+  def count([_], noun), do: "1 #{noun}"
+  def count(list, noun), do: "#{length(list)} #{noun}s"
 
   defp earliest(nil, b), do: b
   defp earliest(a, nil), do: a

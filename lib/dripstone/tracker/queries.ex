@@ -9,7 +9,7 @@ defmodule Dripstone.Tracker.Queries do
 
   alias Dripstone.Alerts
   alias Dripstone.Feeds
-  alias Dripstone.Tracker.{Alert, FeedHealth, Link, Network, State}
+  alias Dripstone.Tracker.{Alert, Evidence, FeedHealth, Link, Network, State}
 
   @per_page 50
   @strength_rank %{weak: 1, moderate: 2, strong: 3}
@@ -81,10 +81,7 @@ defmodule Dripstone.Tracker.Queries do
       network = state.networks[alert.network_id]
 
       %{
-        alert: %{
-          alert
-          | evidence: Enum.sort_by(alert.evidence, &@strength_rank[&1.strength], :desc)
-        },
+        alert: %{alert | evidence: Evidence.sort(alert.evidence)},
         network: network,
         trigger_type: Alerts.get_trigger_type(alert.trigger_id),
         decision: alert.decision_id && state.decisions[alert.decision_id],

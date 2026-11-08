@@ -15,14 +15,11 @@ defmodule DripstoneWeb.NetworkLive.Show do
   """
   use DripstoneWeb, :live_view
 
-  alias Dripstone.Alerts
-  alias Dripstone.Feeds
   alias Dripstone.Tracker
-  alias Dripstone.Tracker.Link
+  alias Dripstone.Tracker.{Curation, Evidence, Link}
 
   @views %{"summary" => :summary, "graph" => :graph, "notes" => :notes, "history" => :history}
   @kinds Map.new(Link.kinds(), &{Atom.to_string(&1), &1})
-  @strength_rank %{weak: 1, moderate: 2, strong: 3}
 
   ## Lifecycle
 
@@ -106,7 +103,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
     hidden = socket.assigns.hidden_kinds
     visible = Enum.reject(graph.edges, &(&1.kind in hidden))
     connected = visible |> Enum.flat_map(&[&1.a, &1.b]) |> MapSet.new()
-    labels = Map.new(graph.nodes, &{&1.id, handle(socket.assigns.member_accounts[&1.id])})
+    labels = Map.new(graph.nodes, &{&1.id, format_handle(socket.assigns.member_accounts[&1.id])})
 
     assign(socket,
       graph_visible: visible,
@@ -359,8 +356,8 @@ defmodule DripstoneWeb.NetworkLive.Show do
     with %{network: target} <- target_id != "" && Tracker.get_network(target_id) do
       n = assigns.network
 
-      "Moves #{plural(length(n.member_ids), "member")}, #{plural(assigns.alert_count, "alert")}, " <>
-        "#{plural(assigns.note_count, "note")} and #{plural(length(n.tags), "tag")} into #{target.name}. " <>
+      "Moves #{Curation.count(length(n.member_ids), "member")}, #{Curation.count(assigns.alert_count, "alert")}, " <>
+        "#{Curation.count(assigns.note_count, "note")} and #{Curation.count(length(n.tags), "tag")} into #{target.name}. " <>
         "#{n.name} will be retired and its page will point to #{target.name}."
     else
       _ -> nil
@@ -369,7 +366,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
 
   defp impact(%{type: :move, params: %{"target" => target_id}}, assigns) do
     with %{network: target} <- target_id != "" && Tracker.get_network(target_id) do
-      "Moves #{plural(MapSet.size(assigns.selected), "member")} from #{assigns.network.name} to #{target.name}. " <>
+      "Moves #{Curation.count(MapSet.size(assigns.selected), "member")} from #{assigns.network.name} to #{target.name}. " <>
         "Detection won't add them back to #{assigns.network.name}."
     else
       _ -> nil
@@ -380,12 +377,12 @@ defmodule DripstoneWeb.NetworkLive.Show do
     count = MapSet.size(assigns.selected)
     remaining = length(assigns.network.member_ids) - count
 
-    "Creates a new Suspected network with #{plural(count, "member")}. " <>
-      "#{assigns.network.name} keeps #{plural(remaining, "member")}."
+    "Creates a new Suspected network with #{Curation.count(count, "member")}. " <>
+      "#{assigns.network.name} keeps #{Curation.count(remaining, "member")}."
   end
 
   defp impact(%{type: :remove}, assigns) do
-    "Removes #{plural(MapSet.size(assigns.selected), "member")} from #{assigns.network.name}. " <>
+    "Removes #{Curation.count(MapSet.size(assigns.selected), "member")} from #{assigns.network.name}. " <>
       "Detection won't add them back."
   end
 
@@ -429,7 +426,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
            socket.assigns.current_scope.user.email
          ) do
       {:ok, %{to: to}} ->
-        {:noreply, done(socket, "Moved #{plural(length(ids), "member")} to #{to.name}.")}
+        {:noreply, done(socket, "Moved #{Curation.count(length(ids), "member")} to #{to.name}.")}
 
       {:error, reason} ->
         {:noreply, assign(socket, :pending, %{pending | error: message(reason)})}
@@ -446,7 +443,8 @@ defmodule DripstoneWeb.NetworkLive.Show do
            socket.assigns.current_scope.user.email
          ) do
       {:ok, split} ->
-        {:noreply, done(socket, "Split #{plural(length(ids), "member")} into #{split.name}.")}
+        {:noreply,
+         done(socket, "Split #{Curation.count(length(ids), "member")} into #{split.name}.")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :pending, %{pending | error: changeset_message(changeset)})}
@@ -465,7 +463,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
            socket.assigns.current_scope.user.email
          ) do
       {:ok, _} ->
-        {:noreply, done(socket, "Removed #{plural(length(ids), "member")}.")}
+        {:noreply, done(socket, "Removed #{Curation.count(length(ids), "member")}.")}
 
       {:error, reason} ->
         {:noreply, assign(socket, :pending, %{pending | error: message(reason)})}
@@ -511,9 +509,6 @@ defmodule DripstoneWeb.NetworkLive.Show do
     end)
     |> Enum.join(". ")
   end
-
-  defp plural(1, noun), do: "1 #{noun}"
-  defp plural(n, noun), do: "#{n} #{noun}s"
 
   ## Render
 
@@ -606,7 +601,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
                 patch={~p"/networks/#{@network.id}" <> "#alert-history"}
                 class="font-medium text-sev-high hover:underline"
               >
-                {plural(@open_alerts, "open alert")}
+                {Curation.count(@open_alerts, "open alert")}
               </.link>
             </div>
             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-ink-faint">
@@ -772,13 +767,13 @@ defmodule DripstoneWeb.NetworkLive.Show do
                   phx-click="toggle_member"
                   phx-value-id={entry.account.id}
                   class="size-4 rounded accent-[var(--color-accent)] cursor-pointer"
-                  aria-label={"Select #{handle(entry.account)}"}
+                  aria-label={"Select #{format_handle(entry.account)}"}
                 />
                 <.link
                   navigate={~p"/accounts/#{entry.account.id}"}
                   class="min-w-0 flex-1 truncate font-mono text-sm text-ink hover:text-accent"
                 >
-                  {handle(entry.account)}
+                  {format_handle(entry.account)}
                 </.link>
                 <.platform_badge feed_id={entry.account.feed_id} />
                 <.risk_badge score={entry.account.risk_score} />
@@ -797,14 +792,14 @@ defmodule DripstoneWeb.NetworkLive.Show do
                 No shared evidence recorded.
               </li>
               <li
-                :for={{item, i} <- Enum.with_index(sort_evidence(@network.evidence))}
+                :for={{item, i} <- Enum.with_index(Evidence.sort(@network.evidence))}
                 id={"shared-evidence-#{i}"}
                 class="space-y-1.5 px-4 py-3"
               >
                 <.strength_badge strength={item.strength} />
                 <p class="text-sm text-ink">{item.explanation}</p>
                 <p class="text-xs text-ink-faint">
-                  involving {plural(length(item.account_ids), "member")}
+                  involving {Curation.count(length(item.account_ids), "member")}
                 </p>
               </li>
             </ul>
@@ -917,7 +912,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
         </div>
         <.card id="node-panel" title="Account" class="self-start">
           <%= if account = @selected_node && @member_accounts[@selected_node] do %>
-            <p class="font-mono text-sm font-medium text-ink">{handle(account)}</p>
+            <p class="font-mono text-sm font-medium text-ink">{format_handle(account)}</p>
             <div class="mt-2 flex items-center gap-2">
               <.platform_badge feed_id={account.feed_id} />
               <.risk_badge score={account.risk_score} />
@@ -1070,7 +1065,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
             id={"add-result-#{account.id}"}
             class="flex items-center gap-2 px-3 py-2"
           >
-            <span class="min-w-0 flex-1 truncate font-mono text-sm text-ink">{handle(account)}</span>
+            <span class="min-w-0 flex-1 truncate font-mono text-sm text-ink">{format_handle(account)}</span>
             <.platform_badge feed_id={account.feed_id} />
             <.button phx-click="add_member" phx-value-id={account.id} size="sm">Add</.button>
           </li>
@@ -1125,8 +1120,6 @@ defmodule DripstoneWeb.NetworkLive.Show do
     for {name, id} <- Tracker.list_network_options(), id != current_id, do: {name, id}
   end
 
-  defp sort_evidence(evidence), do: Enum.sort_by(evidence, &@strength_rank[&1.strength], :desc)
-
   defp node_links(%{adjacency: adjacency}, id) do
     case Map.fetch(adjacency, id) do
       {:ok, pairs} ->
@@ -1134,29 +1127,6 @@ defmodule DripstoneWeb.NetworkLive.Show do
 
       :error ->
         []
-    end
-  end
-
-  defp node_links(graph, id) do
-    graph.edges
-    |> Enum.filter(&(id in [&1.a, &1.b]))
-    |> Enum.frequencies_by(& &1.kind)
-    |> Enum.sort_by(fn {_kind, n} -> -n end)
-  end
-
-  defp trigger_name(id) do
-    case Alerts.get_trigger_type(id) do
-      nil -> id
-      type -> type.name
-    end
-  end
-
-  defp handle(nil), do: "unknown"
-
-  defp handle(account) do
-    case Feeds.get(account.feed_id) do
-      nil -> account.handle
-      feed -> feed.format_handle(account)
     end
   end
 end

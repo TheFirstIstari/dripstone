@@ -529,7 +529,26 @@ defmodule DripstoneWeb.TrackerComponents do
     |> String.reverse()
   end
 
-  def format_number(other), do: to_string(other)
+  @doc "Feed-aware display handle, falling back to the raw handle."
+  def format_handle(%{feed_id: _, handle: _} = account) do
+    case Feeds.get(account.feed_id) do
+      nil -> account.handle
+      feed -> feed.format_handle(account)
+    end
+  end
+
+  def format_handle(nil), do: "unknown"
+
+  @doc "Human name for a trigger id or an alert detail map, falling back to the id."
+  def trigger_name(%{trigger_type: nil, alert: alert}), do: alert.trigger_id
+  def trigger_name(%{trigger_type: type}), do: type.name
+
+  def trigger_name(id) do
+    case Dripstone.Alerts.get_trigger_type(id) do
+      nil -> id
+      type -> type.name
+    end
+  end
 
   @doc "An explanatory empty state for a list, table or chart with nothing to show."
   attr :id, :string, default: nil
