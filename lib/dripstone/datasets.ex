@@ -80,8 +80,10 @@ defmodule Dripstone.Datasets do
           })
         end)
 
+      body = if lines == [], do: "", else: Enum.map_join(lines, "\n", & &1) <> "\n"
+
       with :ok <- File.mkdir_p(Path.dirname(path)),
-           :ok <- File.write(path, Enum.map_join(lines, "\n", & &1) <> "\n") do
+           :ok <- File.write(path, body) do
         {:ok, path}
       end
     end
