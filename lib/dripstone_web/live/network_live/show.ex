@@ -496,6 +496,10 @@ defmodule DripstoneWeb.NetworkLive.Show do
   defp message(:retired), do: "That network has been merged into another one."
   defp message(:not_found), do: "Pick a network first."
   defp message(:same_network), do: "Pick a different network."
+
+  defp message(:too_many_tags),
+    do: "Those networks have too many tags to merge. Remove some tags first."
+
   defp message(:cannot_split_all), do: "Leave at least one member behind, or merge instead."
   defp message(:no_members_selected), do: "Select at least one member first."
   defp message(:not_a_member), do: "Some selected accounts are no longer members."
