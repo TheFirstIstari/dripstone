@@ -17,15 +17,15 @@
 
 ## 2. Demo and Live data modes
 
-- [ ] 2.1 Add `Dripstone.Tracker.DemoStore` (memory-only, started on demand under a `DynamicSupervisor`, seeded from `SampleLoader`, serialising its own writes). Add `Tracker.dataset/0` and `Tracker.with_dataset/2`. Make `Store.load/0`, `save/1` and `write/1` dispatch by dataset, and give PubSub one topic per dataset (design §1). Verify with tests:
+- [x] 2.1 Add `Dripstone.Tracker.DemoStore` (memory-only, started on demand under a `DynamicSupervisor`, seeded from `SampleLoader`, serialising its own writes). Add `Tracker.dataset/0` and `Tracker.with_dataset/2`. Make `Store.load/0`, `save/1` and `write/1` dispatch by dataset, and give PubSub one topic per dataset (design §1). Verify with tests:
   - Demo starts once and is reused;
   - a change in Demo leaves the database untouched ("Isolated changes", "Demo is never persisted");
   - code with no dataset set reads Live;
   - Demo broadcasts don't reach Live subscribers.
-- [ ] 2.2 Make the `:load_sample_data` default `false`, keeping `true` in `config/test.exs` (design §2). Verify with a store test that a dev/prod-configured empty database starts with no accounts ("Live starts without sample data"), and that the existing seeded-store tests still pass.
-- [ ] 2.3 Set the dataset per LiveView from the session in `DripstoneWeb.Nav`, subscribing to that dataset's topic. Add `POST /mode`, which stores the mode and redirects back (design §3). Verify with LiveView tests for "Switch to Demo" (another session stays on Live) and "Fresh session" (Live by default).
-- [ ] 2.4 Replace the hard-coded sidebar label with the Live/Demo indicator and switch, and add the Demo banner (design §11). Verify with tests for the ui-shell "Data source indicator" scenarios and "Demo on screen".
-- [ ] 2.5 Start the simulator with the Demo store and target Demo for its feed refreshes, canned findings and `AssessWorker` jobs (`"dataset"` arg, default `"live"`; design §4). Verify with "Simulator writes to Demo only", and that the database is unchanged after a simulator tick.
+- [x] 2.2 Make the `:load_sample_data` default `false`, keeping `true` in `config/test.exs` (design §2). Verify with a store test that a dev/prod-configured empty database starts with no accounts ("Live starts without sample data"), and that the existing seeded-store tests still pass.
+- [x] 2.3 Set the dataset per LiveView from the session in `DripstoneWeb.Nav`, subscribing to that dataset's topic. Add `POST /mode`, which stores the mode and redirects back (design §3). Verify with LiveView tests for "Switch to Demo" (another session stays on Live) and "Fresh session" (Live by default).
+- [x] 2.4 Replace the hard-coded sidebar label with the Live/Demo indicator and switch, and add the Demo banner (design §11). Verify with tests for the ui-shell "Data source indicator" scenarios and "Demo on screen".
+- [x] 2.5 Start the simulator with the Demo store and target Demo for its feed refreshes, canned findings and `AssessWorker` jobs (`"dataset"` arg, default `"live"`; design §4). Verify with "Simulator writes to Demo only", and that the database is unchanged after a simulator tick.
 
 ## 3. Bluesky fetcher
 

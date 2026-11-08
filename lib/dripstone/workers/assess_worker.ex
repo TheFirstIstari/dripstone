@@ -25,7 +25,13 @@ defmodule Dripstone.Workers.AssessWorker do
   }
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"adapter" => adapter, "handle" => handle} = args}) do
+  def perform(%Oban.Job{args: %{"adapter" => _, "handle" => _} = args}) do
+    # Jobs queued by the Demo simulator report into Demo; everything else is Live.
+    dataset = if args["dataset"] == "demo", do: :demo, else: :live
+    Dripstone.Tracker.with_dataset(dataset, fn -> assess(args) end)
+  end
+
+  defp assess(%{"adapter" => adapter, "handle" => handle} = args) do
     with {:ok, module} <- adapter(adapter),
          {:ok, posts} <- module.fetch_posts(handle) do
       opts = scorer_opts(args)
