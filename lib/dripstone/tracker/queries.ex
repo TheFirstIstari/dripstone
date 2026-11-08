@@ -172,18 +172,19 @@ defmodule Dripstone.Tracker.Queries do
     |> Enum.sort()
   end
 
-  def get_network(%State{} = state, id) do
+  @doc """
+  Network detail for a screen view. Alerts, notes and history are cheap filters
+  and always loaded (the header and tabs need their counts); the expensive parts
+  are branched: `:summary` adds members, related networks and the heatmap (a full
+  posts scan); `:graph` adds members for node labels but skips the heatmap;
+  `:notes` and `:history` skip members and the heatmap.
+  """
+  def get_network(%State{} = state, id, view \\ :summary) do
     with %Network{} = network <- state.networks[id] do
-      members =
-        network.member_ids
-        |> Enum.map(&%{account: state.accounts[&1], joined_at: network.joined_at[&1]})
-        |> Enum.reject(&is_nil(&1.account))
-        |> Enum.sort_by(&{-&1.account.risk_score, &1.account.id})
-
-      %{
+      detail = %{
         network: network,
-        members: members,
         last_activity_at: network.last_activity_at,
+        retired_into: network.retired_into && state.networks[network.retired_into],
         alerts:
           state.alerts |> Map.values() |> Enum.filter(&(&1.network_id == id)) |> newest_first(),
         notes:
@@ -191,11 +192,37 @@ defmodule Dripstone.Tracker.Queries do
           |> Map.values()
           |> Enum.filter(&(&1.network_id == id))
           |> Enum.sort_by(&{&1.at, &1.id}, &later_or_equal?/2),
-        history: Enum.filter(state.history, &(&1.network_id == id)),
-        related: network.related_ids |> Enum.map(&state.networks[&1]) |> Enum.reject(&is_nil/1),
-        retired_into: network.retired_into && state.networks[network.retired_into],
-        heatmap: heatmap(state, network)
+        history: Enum.filter(state.history, &(&1.network_id == id))
       }
+
+      case view do
+        :summary ->
+          members =
+            network.member_ids
+            |> Enum.map(&%{account: state.accounts[&1], joined_at: network.joined_at[&1]})
+            |> Enum.reject(&is_nil(&1.account))
+            |> Enum.sort_by(&{-&1.account.risk_score, &1.account.id})
+
+          Map.merge(detail, %{
+            members: members,
+            related:
+              network.related_ids |> Enum.map(&state.networks[&1]) |> Enum.reject(&is_nil/1),
+            heatmap: heatmap(state, network)
+          })
+
+        :graph ->
+          members =
+            network.member_ids
+            |> Enum.map(&%{account: state.accounts[&1], joined_at: network.joined_at[&1]})
+            |> Enum.reject(&is_nil(&1.account))
+            |> Enum.sort_by(&{-&1.account.risk_score, &1.account.id})
+
+          Map.put(detail, :members, members)
+
+        # `:header`, `:notes`, `:history`: cheap fields only.
+        _ ->
+          detail
+      end
     end
   end
 

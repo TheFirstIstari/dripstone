@@ -36,12 +36,25 @@ defmodule DripstoneWeb.NetworkLive.Index do
   end
 
   defp load(socket) do
-    entries =
-      socket.assigns.filters |> Map.reject(fn {_k, v} -> is_nil(v) end) |> Tracker.list_networks()
+    entries = entries(socket)
 
     socket
     |> assign(:count, length(entries))
+    |> assign(:tags, tags(entries, socket.assigns.filters[:tag]))
     |> stream(:networks, entries, reset: true)
+  end
+
+  defp entries(socket),
+    do:
+      socket.assigns.filters
+      |> Map.reject(fn {_k, v} -> is_nil(v) end)
+      |> Tracker.list_networks()
+
+  # Tags ride on the already-loaded entries, so broadcasts never pay for a
+  # second `list_tags` scan; the URL-selected tag is kept even with no match.
+  defp tags(entries, selected) do
+    tags = entries |> Enum.flat_map(& &1.network.tags) |> Enum.uniq() |> Enum.sort()
+    if selected in tags or is_nil(selected), do: tags, else: [selected | tags] |> Enum.sort()
   end
 
   @impl true
@@ -55,8 +68,11 @@ defmodule DripstoneWeb.NetworkLive.Index do
   end
 
   @doc false
-  # Called by DripstoneWeb.Nav for every tracker change.
-  def handle_tracker_event(_message, socket), do: load(assign(socket, :tags, Tracker.list_tags()))
+  # Called by DripstoneWeb.Nav for every tracker change. One `list_networks`
+  # scan refreshes both rows and tags; other messages need no tag refresh.
+  def handle_tracker_event({:network_updated, _id}, socket), do: load(socket)
+
+  def handle_tracker_event(_message, socket), do: socket
 
   defp form_params(filters) do
     %{

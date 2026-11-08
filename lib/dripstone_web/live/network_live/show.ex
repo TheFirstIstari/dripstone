@@ -53,8 +53,8 @@ defmodule DripstoneWeb.NetworkLive.Show do
     {:noreply, socket |> assign(:view, view) |> load()}
   end
 
-  defp load(socket) do
-    case Tracker.get_network(socket.assigns.network_id) do
+  defp load(%{assigns: %{view: view}} = socket) do
+    case Tracker.get_network(socket.assigns.network_id, view) do
       nil ->
         assign(socket, network: nil, page_title: "Network not found")
 
@@ -64,16 +64,17 @@ defmodule DripstoneWeb.NetworkLive.Show do
           network: detail.network,
           page_title: detail.network.name,
           retired_into: detail.retired_into,
-          related: detail.related,
-          heatmap: detail.heatmap,
+          related: Map.get(detail, :related, []),
+          heatmap: Map.get(detail, :heatmap),
           last_activity_at: detail.last_activity_at,
-          open_alerts: Enum.count(detail.alerts, &(&1.status == :open)),
+          open_alerts: detail.alerts |> Enum.count(&(&1.status == :open)),
           alert_count: length(detail.alerts),
           note_count: length(detail.notes),
-          member_accounts: Map.new(detail.members, &{&1.account.id, &1.account})
+          member_accounts:
+            detail |> Map.get(:members, []) |> Map.new(&{&1.account.id, &1.account})
         )
         |> update(:selected, &MapSet.intersection(&1, MapSet.new(detail.network.member_ids)))
-        |> stream(:members, detail.members, reset: true)
+        |> stream(:members, Map.get(detail, :members, []), reset: true)
         |> stream(:alerts, detail.alerts, reset: true)
         |> stream(:notes, detail.notes, reset: true)
         |> stream(:history, detail.history, reset: true)
