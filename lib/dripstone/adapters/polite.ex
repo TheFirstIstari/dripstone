@@ -52,8 +52,12 @@ defmodule Dripstone.Adapters.Polite do
 
   defp parse_url(url) when is_binary(url) do
     case URI.parse(url) do
-      %URI{host: host} when is_binary(host) and host != "" -> {:ok, URI.parse(url)}
-      _ -> {:error, {:invalid_args, "url must be an absolute http(s) URL"}}
+      %URI{scheme: s, host: host}
+      when s in ["http", "https"] and is_binary(host) and host != "" ->
+        {:ok, URI.parse(url)}
+
+      _ ->
+        {:error, {:invalid_args, "url must be an absolute http(s) URL"}}
     end
   end
 
