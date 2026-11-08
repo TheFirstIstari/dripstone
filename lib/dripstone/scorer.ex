@@ -16,9 +16,21 @@ defmodule Dripstone.Scorer do
 
   @doc "Pure heuristics: volume (40) + link ratio (30) + timing regularity (30)."
   def score(posts) when is_list(posts) do
-    count = length(posts)
-    ratio = link_ratio(posts)
-    regularity = regularity_points(posts)
+    {count, link_count, times} =
+      Enum.reduce(posts, {0, 0, []}, fn post, {c, l, ts} ->
+        links = if has_link?(post), do: 1, else: 0
+        # Prepend; sorted later, so order here does not matter.
+        times =
+          case to_unix(post) do
+            nil -> ts
+            t -> [t | ts]
+          end
+
+        {c + 1, l + links, times}
+      end)
+
+    ratio = if count == 0, do: 0.0, else: link_count / count
+    regularity = regularity_points(times)
 
     total =
       min(count / 50, 1.0) * 40 +
@@ -31,7 +43,7 @@ defmodule Dripstone.Scorer do
       |> maybe(count > 0 and ratio > 0.5, "high_link_ratio")
       |> maybe(regularity > 15, "regular_timing")
 
-    %{score: round(min(total, 100)), labels: labels}
+    %{score: round(min(total, 100)), labels: Enum.reverse(labels)}
   end
 
   def score(_posts), do: {:error, {:invalid_args, "posts must be a list"}}
@@ -210,40 +222,40 @@ defmodule Dripstone.Scorer do
   # +1 for the "\n" join separator.
   defp over_budget?(size, line), do: size + byte_size(line) + 1 > @state_cap
 
-  defp link_ratio([]), do: 0.0
+  defp regularity_points(times) when is_list(times) do
+    sorted = Enum.sort(times)
 
-  defp link_ratio(posts) do
-    Enum.count(posts, &(urls(&1) != [])) / length(posts)
-  end
+    # Single pass: sum/sumsq over consecutive intervals.
+    {n, sum, sumsq, _} =
+      Enum.reduce(sorted, {0, 0, 0, nil}, fn t, {k, s, ss, prev} ->
+        case prev do
+          nil -> {k, s, ss, t}
+          p -> {k + 1, s + (t - p), ss + (t - p) * (t - p), t}
+        end
+      end)
 
-  defp regularity_points(posts) do
-    times = posts |> Enum.map(&to_unix/1) |> Enum.reject(&is_nil/1) |> Enum.sort()
-
-    intervals =
-      times |> Enum.chunk_every(2, 1, :discard) |> Enum.map(fn [a, b] -> b - a end)
-
-    if length(intervals) < 2 do
+    if n < 2 do
       0.0
     else
-      mean = Enum.sum(intervals) / length(intervals)
+      mean = sum / n
 
       if mean == 0 do
         0.0
       else
-        var =
-          Enum.reduce(intervals, 0.0, fn i, acc -> acc + (i - mean) * (i - mean) end) /
-            length(intervals)
-
+        var = max(sumsq / n - mean * mean, 0.0)
         cv = :math.sqrt(var) / mean
         max(0.0, 1.0 - cv) * 30
       end
     end
   end
 
+  defp has_link?(post), do: post |> fetch(:urls) |> List.wrap() |> Enum.any?(&is_binary/1)
+
   defp urls(post), do: fetch(post, :urls) |> List.wrap() |> Enum.filter(&is_binary/1)
 
-  defp fetch(post, key) when is_map(post) do
-    Map.get(post, key, Map.get(post, Atom.to_string(key)))
+  # Only stringifies the key on an atom-key miss (no binary alloc per hit).
+  defp fetch(post, key) when is_map(post) and is_atom(key) do
+    Map.get_lazy(post, key, fn -> Map.get(post, Atom.to_string(key)) end)
   end
 
   defp fetch(_post, _key), do: nil
@@ -264,6 +276,6 @@ defmodule Dripstone.Scorer do
     end
   end
 
-  defp maybe(list, true, label), do: list ++ [label]
+  defp maybe(list, true, label), do: [label | list]
   defp maybe(list, _, _), do: list
 end
