@@ -14,7 +14,7 @@ defmodule DripstoneWeb.DigestLive do
      socket
      |> assign(:page_title, "Digest")
      |> stream_configure(:items,
-       dom_id: &"digest-#{&1.kind}-#{&1.network_id}-#{DateTime.to_unix(&1.at)}"
+       dom_id: &"digest-#{&1.kind}-#{&1.network_id}-#{&1.id}"
      )
      |> load()}
   end

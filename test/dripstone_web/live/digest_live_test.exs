@@ -42,4 +42,34 @@ defmodule DripstoneWeb.DigestLiveTest do
     assert html =~ "digest-new_edge-"
     refute html =~ "quieta"
   end
+
+  test "two same-second items on one network both render with distinct ids", %{conn: conn} do
+    noul = fn -> %{"type" => "noul", "noul" => 0.95} end
+    now = DateTime.utc_now()
+
+    for handles <- [["samea", "sameb"], ["samea", "samec"]] do
+      assert {:ok, _} =
+               Tracker.report_finding(%{
+                 "kind" => "group",
+                 "observed_at" => DateTime.to_iso8601(now),
+                 "accounts" => Enum.map(handles, &%{"feed_id" => "x", "handle" => &1}),
+                 "answers" => %{"coordinated" => noul.()}
+               })
+    end
+
+    items = Tracker.change_digest()
+    assert length(items) >= 2
+
+    dom_ids =
+      Enum.map(items, &"digest-#{&1.kind}-#{&1.network_id}-#{&1.id}")
+
+    assert length(Enum.uniq(dom_ids)) == length(dom_ids)
+
+    {:ok, view, _html} = live(conn, "/digest")
+    html = render(view)
+    rows = Regex.scan(~r/id="(digest-[^"]+)"/, html) |> Enum.map(&hd(tl(&1)))
+
+    assert length(Enum.uniq(rows)) == length(rows)
+    assert length(rows) >= 2
+  end
 end

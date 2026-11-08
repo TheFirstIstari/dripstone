@@ -14,6 +14,7 @@ defmodule Dripstone.Tracker.Digest do
 
   @type item :: %{
           kind: :new_edge | :flipped_label | :re_alert,
+          id: String.t(),
           at: DateTime.t(),
           network_id: String.t(),
           summary: String.t(),
@@ -74,6 +75,7 @@ defmodule Dripstone.Tracker.Digest do
   defp item(kind, entry) do
     %{
       kind: kind,
+      id: entry.id,
       at: entry.at,
       network_id: entry.network_id,
       summary: entry.summary,
@@ -108,6 +110,7 @@ defmodule Dripstone.Tracker.Digest do
 
       %{
         kind: :re_alert,
+        id: alert.id,
         at: alert.raised_at,
         network_id: alert.network_id,
         summary: "Re-alerted: #{alert.title} (#{(network && network.name) || alert.network_id})",
