@@ -46,6 +46,7 @@ defmodule Dripstone.Tracker do
   def get_alert(id), do: read(&Queries.get_alert(&1, id))
   def alert_neighbors(id, params \\ %{}), do: read(&Queries.alert_neighbors(&1, id, params))
   def list_networks(params \\ %{}), do: read(&Queries.list_networks(&1, params))
+  def list_network_options, do: read(&Queries.list_network_options/1)
   def get_network(id), do: read(&Queries.get_network(&1, id))
   def network_graph(id), do: SampleStore.network_graph(id)
   def list_accounts(params \\ %{}), do: read(&Queries.list_accounts(&1, params))

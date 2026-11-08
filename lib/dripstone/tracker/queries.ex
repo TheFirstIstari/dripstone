@@ -150,11 +150,19 @@ defmodule Dripstone.Tracker.Queries do
     |> Enum.map(fn network ->
       %{
         network: network,
-        last_activity_at: last_activity(state, network),
+        last_activity_at: network.last_activity_at,
         open_alerts: Map.get(open_counts, network.id, 0)
       }
     end)
     |> Enum.sort_by(&{&1.last_activity_at, &1.network.id}, &later_or_equal?/2)
+  end
+
+  @doc "Active networks as `{name, id}` options for filter dropdowns, sorted by name."
+  def list_network_options(%State{} = state) do
+    state
+    |> active_networks()
+    |> Enum.map(&{&1.name, &1.id})
+    |> Enum.sort()
   end
 
   def get_network(%State{} = state, id) do
@@ -168,7 +176,7 @@ defmodule Dripstone.Tracker.Queries do
       %{
         network: network,
         members: members,
-        last_activity_at: last_activity(state, network),
+        last_activity_at: network.last_activity_at,
         alerts:
           state.alerts |> Map.values() |> Enum.filter(&(&1.network_id == id)) |> newest_first(),
         notes:
@@ -199,23 +207,27 @@ defmodule Dripstone.Tracker.Queries do
   defp active_networks(state),
     do: state.networks |> Map.values() |> Enum.filter(&is_nil(&1.retired_into))
 
-  defp last_activity(state, network) do
-    network.member_ids
-    |> Enum.flat_map(&Enum.take(Map.get(state.posts, &1, []), 1))
-    |> Enum.flat_map(&List.wrap(&1.posted_at))
-    |> Enum.concat(List.wrap(network.last_activity_at))
-    |> Enum.max(DateTime, fn -> nil end)
-  end
-
   @doc false
   def heatmap(state, network) do
-    posts =
-      network.member_ids
-      |> Enum.flat_map(&Map.get(state.posts, &1, []))
-      |> Enum.filter(& &1.posted_at)
+    {cells, by_hour, weekend_hours} =
+      Enum.reduce(network.member_ids, {%{}, %{}, MapSet.new()}, fn id, acc ->
+        Enum.reduce(Map.get(state.posts, id, []), acc, fn
+          %{posted_at: nil}, acc ->
+            acc
 
-    cells = Enum.frequencies_by(posts, &{Date.day_of_week(&1.posted_at), &1.posted_at.hour})
-    by_hour = Enum.frequencies_by(posts, & &1.posted_at.hour)
+          post, {cells, by_hour, weekend_hours} ->
+            key = {Date.day_of_week(post.posted_at), post.posted_at.hour}
+
+            {
+              Map.update(cells, key, 1, &(&1 + 1)),
+              Map.update(by_hour, post.posted_at.hour, 1, &(&1 + 1)),
+              if(elem(key, 0) > 5,
+                do: MapSet.put(weekend_hours, post.posted_at.hour),
+                else: weekend_hours
+              )
+            }
+        end)
+      end)
 
     busiest =
       case Enum.max_by(by_hour, fn {_hour, n} -> n end, fn -> nil end) do
@@ -223,8 +235,7 @@ defmodule Dripstone.Tracker.Queries do
           nil
 
         {hour, _n} ->
-          weekend? = Enum.any?(cells, fn {{day, h}, _n} -> h == hour and day > 5 end)
-          days = if weekend?, do: "Every day", else: "Weekdays"
+          days = if MapSet.member?(weekend_hours, hour), do: "Every day", else: "Weekdays"
           "#{days} #{pad(hour)}:00–#{pad(rem(hour + 1, 24))}:00 UTC"
       end
 
