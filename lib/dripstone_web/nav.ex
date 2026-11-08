@@ -108,5 +108,5 @@ defmodule DripstoneWeb.Nav do
 
   defp toast(socket, _alert), do: socket
 
-  defp open_alerts, do: length(Tracker.list_alerts(%{status: :open}))
+  defp open_alerts, do: Tracker.count_alerts(%{status: :open})
 end

@@ -43,6 +43,7 @@ defmodule Dripstone.Tracker do
 
   def overview, do: read(&Queries.overview(&1, DateTime.utc_now()))
   def list_alerts(params \\ %{}), do: read(&Queries.list_alerts(&1, params))
+  def count_alerts(params \\ %{}), do: read(&Queries.count_alerts(&1, params))
   def get_alert(id), do: read(&Queries.get_alert(&1, id))
   def alert_neighbors(id, params \\ %{}), do: read(&Queries.alert_neighbors(&1, id, params))
   def list_networks(params \\ %{}), do: read(&Queries.list_networks(&1, params))
