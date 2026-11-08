@@ -90,10 +90,17 @@ defmodule Dripstone.AccountsTest do
   describe "sudo_mode?/2" do
     test "validates the authenticated_at time" do
       now = DateTime.utc_now()
+      window = Accounts.sudo_window_minutes()
 
       assert Accounts.sudo_mode?(%User{authenticated_at: DateTime.utc_now()})
-      assert Accounts.sudo_mode?(%User{authenticated_at: DateTime.add(now, -19, :minute)})
-      refute Accounts.sudo_mode?(%User{authenticated_at: DateTime.add(now, -21, :minute)})
+
+      assert Accounts.sudo_mode?(%User{
+               authenticated_at: DateTime.add(now, -(window - 1), :minute)
+             })
+
+      refute Accounts.sudo_mode?(%User{
+               authenticated_at: DateTime.add(now, -(window + 1), :minute)
+             })
 
       # minute override
       refute Accounts.sudo_mode?(
