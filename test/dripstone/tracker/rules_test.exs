@@ -1,5 +1,5 @@
 defmodule Dripstone.Tracker.RulesTest do
-  # Scenarios from openspec/changes/add-jev-intake/specs/alert-intake/spec.md.
+  # Scenarios from openspec/specs/alert-intake/spec.md (added by add-jev-intake).
   # Some tests change the Rules config, so not async.
   use ExUnit.Case, async: false
 

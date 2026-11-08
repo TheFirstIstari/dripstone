@@ -1,23 +1,5 @@
 This is a web application written using the Phoenix web framework.
 
-## In-flight change: read before touching detection or the tracker
-
-`openspec/changes/add-jev-intake` replaces the findings intake with one shaped around
-Jev's typed answers (account, group and trend findings), and moves alert rules into
-the app.
-
-- **It supersedes issues #49 and #53.** Don't implement those against the current code:
-  #49's "findings with full fields" is replaced by the new contract, and #53's pair
-  questions move to a new `Scorer.assess_group/2` rather than being dropped.
-- **It keeps the fixes already on main for #59, #63, #65 and #66** (post merging, graph
-  cache clearing, history and evidence caps, the 24h item window). Don't undo them.
-- **It changes the data #48 (persistence) would store.** Build #48 on the new shape.
-- **Read the change first** before working on any of those issues, or on
-  `lib/dripstone/tracker/`, `lib/dripstone/scorer.ex` or
-  `lib/dripstone/workers/assess_worker.ex`.
-
-Remove this section once the change is archived.
-
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues
