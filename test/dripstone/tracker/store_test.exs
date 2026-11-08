@@ -10,12 +10,12 @@ defmodule Dripstone.Tracker.StoreTest do
   end
 
   test "save |> load round-trips the showcase state losslessly" do
-    seeded = Store.load()
+    {:ok, seeded} = Store.load()
     assert map_size(seeded.accounts) > 0
     assert map_size(seeded.networks) > 0
 
     :ok = Store.save(seeded)
-    loaded = Store.load()
+    {:ok, loaded} = Store.load()
 
     assert map_size(loaded.accounts) == map_size(seeded.accounts)
     assert map_size(loaded.networks) == map_size(seeded.networks)
@@ -31,7 +31,7 @@ defmodule Dripstone.Tracker.StoreTest do
   end
 
   test "temporal columns and edge provenance persist" do
-    state = Store.load()
+    {:ok, state} = Store.load()
     assert Store.seeded?()
 
     {_id, network} = Enum.at(state.networks, 0)
@@ -41,33 +41,47 @@ defmodule Dripstone.Tracker.StoreTest do
   end
 
   test "cleared (dismissed) status persists distinctly from suspected" do
-    state = Store.load()
+    {:ok, state} = Store.load()
     dismissed = Enum.find(state.networks, fn {_id, n} -> n.status == :dismissed end)
 
     if dismissed do
       {id, _} = dismissed
       :ok = Store.save(state)
-      assert Store.load().networks[id].status == :dismissed
+      {:ok, reloaded} = Store.load()
+      assert reloaded.networks[id].status == :dismissed
     end
   end
 
   test "reset! clears seeded state and load reseeds" do
-    _ = Store.load()
+    {:ok, _} = Store.load()
     assert Store.seeded?()
     :ok = Store.reset!()
     refute Store.seeded?()
-    reseeded = Store.load()
+    {:ok, reseeded} = Store.load()
     assert map_size(reseeded.accounts) > 0
   end
 
   test "legacy/unknown status strings load with defaults instead of raising" do
-    state = Store.load()
+    {:ok, state} = Store.load()
     {_id, network} = Enum.at(state.networks, 0)
 
     Dripstone.Repo.get!(Store.Network, network.id)
     |> Ecto.Changeset.change(%{status: "cleared_legacy_never_atomized"})
     |> Dripstone.Repo.update!()
 
-    assert Store.load().networks[network.id].status == :suspected
+    assert {:ok, reloaded} = Store.load()
+    assert reloaded.networks[network.id].status == :suspected
+  end
+
+  test "missing corpus returns an error instead of raising" do
+    path = Dripstone.Showcase.corpus_path("v1.json")
+    backup = path <> ".bak"
+    File.rename!(path, backup)
+
+    try do
+      assert {:error, _} = Store.load()
+    after
+      File.rename!(backup, path)
+    end
   end
 end
