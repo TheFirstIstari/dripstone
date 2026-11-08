@@ -111,9 +111,7 @@ defmodule DripstoneWeb.UserLive.Login do
   def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
     key = DripstoneWeb.LoginThrottle.key(email || "")
 
-    if DripstoneWeb.LoginThrottle.allowed?(key) do
-      DripstoneWeb.LoginThrottle.record(key)
-
+    if DripstoneWeb.LoginThrottle.check_and_record(key) == :ok do
       if user = Accounts.get_user_by_email(email) do
         Accounts.deliver_login_instructions(
           user,

@@ -12,14 +12,36 @@ defmodule DripstoneWeb.LoginThrottle do
 
   @window_ms 60_000
   @max_attempts 5
+  # Bounds memory when attackers cycle random emails: once the map exceeds
+  # this, a write also sweeps keys whose attempts all expired.
+  @sweep_threshold 1_000
 
   def start_link(_opts), do: Agent.start_link(fn -> %{} end, name: __MODULE__)
 
   def key(email) when is_binary(email), do: email |> String.trim() |> String.downcase()
 
   def allowed?(key) do
-    Agent.get(__MODULE__, fn attempts ->
-      length(recent(Map.get(attempts, key, []))) < @max_attempts
+    Agent.get_and_update(__MODULE__, fn attempts ->
+      case recent(Map.get(attempts, key, [])) do
+        [] -> {true, Map.delete(attempts, key)}
+        timestamps -> {length(timestamps) < @max_attempts, Map.put(attempts, key, timestamps)}
+      end
+    end)
+  end
+
+  # Atomic check-and-record: avoids the allowed? -> record race where N
+  # concurrent requests at count 4 would all pass.
+  def check_and_record(key) do
+    now = System.monotonic_time(:millisecond)
+
+    Agent.get_and_update(__MODULE__, fn attempts ->
+      case recent(Map.get(attempts, key, [])) do
+        timestamps when length(timestamps) >= @max_attempts ->
+          {:throttled, Map.put(attempts, key, timestamps)}
+
+        timestamps ->
+          {:ok, Map.put(attempts, key, [now | timestamps])}
+      end
     end)
   end
 
@@ -27,7 +49,8 @@ defmodule DripstoneWeb.LoginThrottle do
     now = System.monotonic_time(:millisecond)
 
     Agent.update(__MODULE__, fn attempts ->
-      Map.update(attempts, key, [now], &[now | recent(&1)])
+      attempts = Map.put(attempts, key, [now | recent(Map.get(attempts, key, []))])
+      if map_size(attempts) > @sweep_threshold, do: sweep(attempts), else: attempts
     end)
   end
 
@@ -39,5 +62,9 @@ defmodule DripstoneWeb.LoginThrottle do
   defp recent(timestamps) do
     cutoff = System.monotonic_time(:millisecond) - @window_ms
     Enum.filter(timestamps, &(&1 > cutoff))
+  end
+
+  defp sweep(attempts) do
+    Map.reject(attempts, fn {_key, timestamps} -> recent(timestamps) == [] end)
   end
 end
