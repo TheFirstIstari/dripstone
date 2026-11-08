@@ -232,6 +232,24 @@ defmodule Dripstone.Tracker.QueriesTest do
       assert detail.heatmap.max > 0
     end
 
+    test "network detail branches by view: notes/history/header skip members and heatmap",
+         %{state: state} do
+      summary = Queries.get_network(state, "net-sunrise", :summary)
+      assert Map.has_key?(summary, :members) and Map.has_key?(summary, :heatmap)
+
+      graph = Queries.get_network(state, "net-sunrise", :graph)
+      assert Map.has_key?(graph, :members) and not Map.has_key?(graph, :heatmap)
+
+      for view <- [:notes, :history, :header] do
+        detail = Queries.get_network(state, "net-sunrise", view)
+        assert detail.network.id == "net-sunrise"
+        assert not Map.has_key?(detail, :members) and not Map.has_key?(detail, :heatmap)
+        assert detail.alerts == summary.alerts
+        assert detail.notes == summary.notes
+        assert detail.history == summary.history
+      end
+    end
+
     test "list_tags/1 suggests tags by prefix", %{state: state} do
       assert Queries.list_tags(state, "disc") == ["discount-spam"]
       assert Queries.list_tags(state, "") == ["coordinated-promo", "discount-spam"]

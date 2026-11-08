@@ -14,7 +14,7 @@ defmodule DripstoneWeb.AlertLive.Index do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(page_title: "Alerts", new_ids: MapSet.new())
+     |> assign(page_title: "Alerts", new_ids: MapSet.new(), visible_ids: MapSet.new())
      |> stream_configure(:alerts, dom_id: &"alert-row-#{&1.alert.id}")}
   end
 
@@ -34,6 +34,7 @@ defmodule DripstoneWeb.AlertLive.Index do
 
     socket
     |> assign(:count, length(entries))
+    |> assign(:visible_ids, MapSet.new(entries, & &1.alert.id))
     |> stream(:alerts, entries, reset: true)
   end
 
@@ -44,27 +45,53 @@ defmodule DripstoneWeb.AlertLive.Index do
   end
 
   @doc false
-  # Called by DripstoneWeb.Nav for every tracker change.
-  def handle_tracker_event({event, %{id: id}}, socket)
+  # Called by DripstoneWeb.Nav for every tracker change. Inserts or deletes from
+  # the payload instead of re-running `list_alerts` on every event.
+  def handle_tracker_event({event, %{id: id} = alert}, socket)
       when event in [:alert_raised, :alert_updated] do
-    entries = Tracker.list_alerts(Filters.to_tracker(socket.assigns.filters))
-    socket = assign(socket, :count, length(entries))
+    filters = Filters.to_tracker(socket.assigns.filters)
 
-    case Enum.find(entries, &(&1.alert.id == id)) do
-      nil ->
-        stream_delete_by_dom_id(socket, :alerts, "alert-row-#{id}")
+    entry =
+      case Tracker.get_network(alert.network_id, :header) do
+        %{network: network} -> %{alert: alert, network: network}
+        nil -> nil
+      end
 
-      entry when event == :alert_raised ->
+    matches = entry != nil and matches_filters?(entry, alert, filters)
+    visible? = MapSet.member?(socket.assigns.visible_ids, id)
+
+    cond do
+      matches and not visible? ->
         socket
-        |> update(:new_ids, &MapSet.put(&1, id))
+        |> assign(:count, socket.assigns.count + 1)
+        |> assign(:visible_ids, MapSet.put(socket.assigns.visible_ids, id))
+        |> update(:new_ids, &if(event == :alert_raised, do: MapSet.put(&1, id), else: &1))
         |> stream_insert(:alerts, entry, at: 0)
 
-      entry ->
+      matches ->
         stream_insert(socket, :alerts, entry)
+
+      not visible? ->
+        socket
+
+      true ->
+        socket
+        |> assign(:count, max(socket.assigns.count - 1, 0))
+        |> assign(:visible_ids, MapSet.delete(socket.assigns.visible_ids, id))
+        |> stream_delete_by_dom_id(:alerts, "alert-row-#{id}")
     end
   end
 
   def handle_tracker_event(_message, socket), do: socket
+
+  defp matches_filters?(entry, alert, filters) do
+    status = Map.get(filters, :status, :open)
+
+    (status == :all or alert.status == status) and
+      (is_nil(filters[:severity]) or alert.severity == filters[:severity]) and
+      (is_nil(filters[:trigger]) or alert.trigger_id == filters[:trigger]) and
+      (is_nil(filters[:platform]) or filters[:platform] in entry.network.platforms)
+  end
 
   @impl true
   def render(assigns) do
