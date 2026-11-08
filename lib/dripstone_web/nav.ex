@@ -40,10 +40,21 @@ defmodule DripstoneWeb.Nav do
     DripstoneWeb.FeedLive.Index => :feeds
   }
 
-  def on_mount(:default, _params, _session, socket) do
+  def on_mount(:default, _params, session, socket) do
+    # Live or Demo for this session (set by POST /mode). Everything this LiveView
+    # reads, writes and subscribes to follows it.
+    mode = if session["data_mode"] == "demo", do: :demo, else: :live
+    :ok = Tracker.put_dataset(mode)
+    if mode == :demo, do: :ok = Dripstone.Tracker.DemoStore.ensure_started()
+
     if connected?(socket), do: Tracker.subscribe()
 
-    nav = %{active: Map.get(@sections, socket.view), open_alerts: open_alerts(), toasts: []}
+    nav = %{
+      active: Map.get(@sections, socket.view),
+      open_alerts: open_alerts(),
+      toasts: [],
+      mode: mode
+    }
 
     {:cont,
      socket
