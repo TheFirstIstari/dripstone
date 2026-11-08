@@ -20,8 +20,9 @@ defmodule DripstoneWeb.FeedLive.Index do
   defp load(socket), do: stream(socket, :feeds, Tracker.feed_health(), reset: true)
 
   @doc false
-  # Called by DripstoneWeb.Nav for every tracker change.
-  def handle_tracker_event(_message, socket), do: load(socket)
+  # Feed health only changes on simulator ticks (which send no broadcast), so
+  # alert/account/network traffic must not reset the list (#248).
+  def handle_tracker_event(_message, socket), do: socket
 
   @impl true
   def render(assigns) do

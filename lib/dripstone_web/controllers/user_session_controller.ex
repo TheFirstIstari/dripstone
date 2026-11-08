@@ -12,21 +12,41 @@ defmodule DripstoneWeb.UserSessionController do
     create(conn, params, "Welcome back!")
   end
 
-  # magic link login
+  # Magic link login: throttled per client IP so token guessing has a rate
+  # signal, like the password branch (#247).
   defp create(conn, %{"user" => %{"token" => token} = user_params}, info) do
-    case Accounts.login_user_by_magic_link(token) do
-      {:ok, {user, tokens_to_disconnect}} ->
-        UserAuth.disconnect_sessions(tokens_to_disconnect)
-        DripstoneWeb.LoginThrottle.reset(DripstoneWeb.LoginThrottle.key(user.email))
+    key = "magic-link:" <> client_ip(conn)
 
+    cond do
+      not DripstoneWeb.LoginThrottle.allowed?(key) ->
         conn
-        |> put_flash(:info, info)
-        |> UserAuth.log_in_user(user, user_params)
-
-      _ ->
-        conn
-        |> put_flash(:error, "The link is invalid or it has expired.")
+        |> put_flash(:error, "Too many login attempts. Try again in a minute.")
         |> redirect(to: ~p"/users/log-in")
+
+      true ->
+        case DripstoneWeb.LoginThrottle.check_and_record(key) do
+          :throttled ->
+            conn
+            |> put_flash(:error, "Too many login attempts. Try again in a minute.")
+            |> redirect(to: ~p"/users/log-in")
+
+          :ok ->
+            case Accounts.login_user_by_magic_link(token) do
+              {:ok, {user, tokens_to_disconnect}} ->
+                UserAuth.disconnect_sessions(tokens_to_disconnect)
+                DripstoneWeb.LoginThrottle.reset(key)
+                DripstoneWeb.LoginThrottle.reset(DripstoneWeb.LoginThrottle.key(user.email))
+
+                conn
+                |> put_flash(:info, info)
+                |> UserAuth.log_in_user(user, user_params)
+
+              _ ->
+                conn
+                |> put_flash(:error, "The link is invalid or it has expired.")
+                |> redirect(to: ~p"/users/log-in")
+            end
+        end
     end
   end
 
@@ -63,6 +83,12 @@ defmodule DripstoneWeb.UserSessionController do
             |> redirect(to: ~p"/users/log-in")
         end
     end
+  end
+
+  defp client_ip(conn) do
+    conn.remote_ip |> Tuple.to_list() |> Enum.join(".")
+  rescue
+    _ -> "unknown"
   end
 
   def update_password(conn, %{"user" => user_params} = params) do

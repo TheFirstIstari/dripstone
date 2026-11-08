@@ -29,8 +29,13 @@ defmodule DripstoneWeb.OverviewLive do
   end
 
   @doc false
-  # Called by DripstoneWeb.Nav for every tracker change.
-  def handle_tracker_event(_message, socket), do: load(socket)
+  # Overview aggregates open alerts, networks and feeds; only alert and network
+  # events can change it. Account findings without an alert leave it alone (#248).
+  def handle_tracker_event({event, _}, socket)
+      when event in [:alert_raised, :alert_updated, :network_updated],
+      do: load(socket)
+
+  def handle_tracker_event(_message, socket), do: socket
 
   defp load(socket) do
     overview = Tracker.overview()

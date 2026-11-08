@@ -4,8 +4,11 @@
 2. `docker compose up -d` (starts postgres:17).
 3. `mix deps.get`
 4. `mix ecto.setup`
-5. `mix phx.server` (AI calls use OpenCode Console via `OPENCODE_API_KEY` in `.env`;
-   without a key they fail to `{:error, _}` and the app falls back to heuristics)
+5. `mix phx.server` (AI calls go to the OpenCode Console `systemone` endpoint
+   with a bearer key — never a local vLLM host. Put
+   `OPENCODE_API_KEY=<your-key>` in `.env`; without a key calls fail to
+   `{:error, _}` and the app falls back to heuristics. If assessments look
+   heuristic-only, check the key first.)
 6. Validate: `curl localhost:4000` returns 200.
 
 ## GitHub runner (deploy only)
