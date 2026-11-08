@@ -718,7 +718,8 @@ defmodule Dripstone.Tracker.Store do
   # through except answers (rebuilt above) and datetimes, which parse back.
   defp to_assessment(%{} = map) do
     Map.new(map, fn
-      {"answers", v} -> {:answers, deatomize_answers(v)}
+      {"answers", v} when is_map(v) -> {:answers, deatomize_answers(v)}
+      {"answers", v} -> {:answers, v}
       {"observed_at", v} -> {:observed_at, parse_at(v)}
       {"group_observed_at", v} -> {:group_observed_at, parse_at(v)}
       {"trend_observed_at", v} -> {:trend_observed_at, parse_at(v)}
