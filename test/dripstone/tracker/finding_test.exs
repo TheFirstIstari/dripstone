@@ -160,6 +160,13 @@ defmodule Dripstone.Tracker.FindingTest do
       assert {:error, errors} = cast(attrs)
       assert Map.keys(errors) |> Enum.sort() == [:evidence, :severity, :trigger]
     end
+
+    test "non-list evidence is rejected without raising" do
+      # A map fails the {:array, :map} cast, whose message options carry the raw
+      # type tuple; interpolating it used to raise and escape the intake.
+      attrs = new_network_finding(%{evidence: %{not: "a list"}})
+      assert {:error, %{evidence: ["must contain at least one item", "is invalid"]}} = cast(attrs)
+    end
   end
 
   describe "rejection leaves state unchanged" do

@@ -41,9 +41,13 @@ defmodule DripstoneWeb.AccountLive.Show do
   end
 
   @doc false
-  # Called by DripstoneWeb.Nav for every tracker change.
-  def handle_tracker_event({:network_updated, _id}, %{assigns: %{account: %{}}} = socket),
-    do: load(socket)
+  # Only this account's own update — or a network it belongs to changing —
+  # reloads the detail; other networks' churn leaves it alone (#248).
+  def handle_tracker_event({:network_updated, id}, %{assigns: %{account: %{}}} = socket) do
+    if Enum.any?(socket.assigns[:networks] || [], &(&1.id == id)),
+      do: load(socket),
+      else: socket
+  end
 
   def handle_tracker_event({:account_updated, id}, %{assigns: %{account: %{id: id}}} = socket),
     do: load(socket)

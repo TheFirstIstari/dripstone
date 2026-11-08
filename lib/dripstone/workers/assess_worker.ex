@@ -35,14 +35,12 @@ defmodule Dripstone.Workers.AssessWorker do
 
   defp assess(%{"adapter" => adapter, "handle" => handle} = args) do
     with {:ok, module} <- adapter(adapter),
-         {:ok, posts} <- module.fetch_posts(handle, fetch_opts(args)) do
-      opts = scorer_opts(args)
-      assessment = Scorer.assess(posts, opts)
-
+         {:ok, posts} <- module.fetch_posts(handle, fetch_opts(args)),
+         {:ok, assessment} <- assess(posts, args) do
       finding = %{
         kind: "account",
         observed_at: DateTime.utc_now(),
-        model: if(assessment.ai_answers, do: model(opts)),
+        model: if(assessment.ai_answers, do: model(scorer_opts(args))),
         account: %{feed_id: Map.fetch!(@feeds, module), handle: handle},
         posts: posts,
         heuristics: %{score: assessment.score, labels: assessment.labels},
@@ -53,6 +51,16 @@ defmodule Dripstone.Workers.AssessWorker do
         {:ok, _result} -> :ok
         {:error, reason} -> {:error, reason}
       end
+    end
+  end
+
+  # Scorer.assess/2 returns {:error, _} for non-list posts and Job callers need
+  # a clean failure, not a BadMapError crash-loop on `.score` (#137).
+  defp assess(posts, args) do
+    case Scorer.assess(posts, scorer_opts(args)) do
+      %{score: _, labels: _, ai_answers: _} = assessment -> {:ok, assessment}
+      {:error, _} = error -> error
+      other -> {:error, {:invalid_assessment, other}}
     end
   end
 

@@ -12,28 +12,40 @@ defmodule DripstoneWeb.UserSessionController do
     create(conn, params, "Welcome back!")
   end
 
-  # magic link login
+  # Magic link login: throttled per client IP so token guessing has a rate
+  # signal, like the password branch (#247).
   defp create(conn, %{"user" => %{"token" => token} = user_params}, info)
        when is_binary(token) do
-    # verify_magic_link_token_query returns :error (not {:ok, _}) for
-    # non-base64 tokens, which login_user_by_magic_link/1 match-asserts on;
-    # screen here to stay on the invalid-link branch instead of MatchError.
-    case Base.url_decode64(token, padding: false) do
-      :error ->
-        invalid_link(conn)
+    key = throttle_key(conn, "magic-link")
 
-      {:ok, _} ->
-        case Accounts.login_user_by_magic_link(token) do
-          {:ok, {user, tokens_to_disconnect}} ->
-            UserAuth.disconnect_sessions(tokens_to_disconnect)
-            DripstoneWeb.LoginThrottle.reset(throttle_key(conn, user.email))
+    case DripstoneWeb.LoginThrottle.check_and_record(key) do
+      :throttled ->
+        conn
+        |> put_flash(:error, "Too many login attempts. Try again in a minute.")
+        |> redirect(to: ~p"/users/log-in")
 
-            conn
-            |> put_flash(:info, info)
-            |> UserAuth.log_in_user(user, user_params)
-
-          _ ->
+      :ok ->
+        # verify_magic_link_token_query returns :error (not {:ok, _}) for
+        # non-base64 tokens, which login_user_by_magic_link/1 match-asserts on;
+        # screen here to stay on the invalid-link branch instead of MatchError.
+        case Base.url_decode64(token, padding: false) do
+          :error ->
             invalid_link(conn)
+
+          {:ok, _} ->
+            case Accounts.login_user_by_magic_link(token) do
+              {:ok, {user, tokens_to_disconnect}} ->
+                UserAuth.disconnect_sessions(tokens_to_disconnect)
+                DripstoneWeb.LoginThrottle.reset(key)
+                DripstoneWeb.LoginThrottle.reset(throttle_key(conn, user.email))
+
+                conn
+                |> put_flash(:info, info)
+                |> UserAuth.log_in_user(user, user_params)
+
+              _ ->
+                invalid_link(conn)
+            end
         end
     end
   end

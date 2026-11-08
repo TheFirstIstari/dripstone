@@ -99,6 +99,7 @@ Read the project and deploy specs before changing either.
 
 ## Deploy
 
-Prod is three containers on the CachyOS host: app, Postgres 17, tunnel.
-Redeploys are pull, rebuild, migrate, restart. Full layout, env file
-handling, and checks live in `openspec/specs/deploy/spec.md`.
+Prod is two containers on the CachyOS host (app, Postgres 17) plus the
+`cloudflared` tunnel binary. Redeploys are pull, rebuild, migrate, restart.
+Full layout, env file handling, and checks live in
+`openspec/specs/deploy/spec.md`.

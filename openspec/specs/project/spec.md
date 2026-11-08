@@ -2,8 +2,8 @@
 
 ## Purpose
 Botfarm social tracker built on Elixir Phoenix 1.8 with Postgres 17 and Oban.
-Hosted on a CachyOS x86_64 host fronted by Tailscale + Caddy. AI decisions come
-from OpenCode Console (Jev); no self-hosted GPU anywhere.
+Hosted on a CachyOS x86_64 host fronted by Cloudflare Tunnel. AI decisions
+come from OpenCode Console (Jev); no self-hosted GPU anywhere.
 
 ## Requirements
 

@@ -20,6 +20,15 @@ if System.get_env("PHX_SERVER") do
   config :dripstone, DripstoneWeb.Endpoint, server: true
 end
 
+# Blank env (e.g. `PORT=`) must fall back, not raise at boot.
+port =
+  case Integer.parse(System.get_env("PORT", "4000")) do
+    {n, _} -> n
+    :error -> 4000
+  end
+
+config :dripstone, DripstoneWeb.Endpoint, http: [port: port]
+
 # AI decision endpoint — re-read at boot in all envs so releases pick up
 # the host environment. Never commit a key value.
 ai_base_url = System.get_env("INTERNAL_AI_URL", "https://opencode.ai/inference/systemone/v1")
@@ -64,7 +73,12 @@ if config_env() == :prod do
   config :dripstone, Dripstone.Repo,
     # ssl: true,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+    # Blank env (e.g. `POOL_SIZE=`) must fall back, not raise at boot.
+    pool_size:
+      (case Integer.parse(System.get_env("POOL_SIZE", "10")) do
+         {n, _} -> n
+         :error -> 10
+       end),
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
@@ -89,7 +103,12 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host =
+    System.get_env("PHX_HOST") ||
+      raise """
+      environment variable PHX_HOST is missing.
+      For example: PHX_HOST=dripstone.dev
+      """
 
   config :dripstone, DripstoneWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
@@ -145,7 +164,12 @@ if config_env() == :prod do
   config :dripstone, Dripstone.Mailer,
     adapter: Swoosh.Adapters.SMTP,
     relay: System.get_env("SMTP_HOST", "localhost"),
-    port: String.to_integer(System.get_env("SMTP_PORT", "25")),
+    # Blank env (e.g. `SMTP_PORT=`) must fall back, not raise at boot.
+    port:
+      (case Integer.parse(System.get_env("SMTP_PORT", "25")) do
+         {n, _} -> n
+         :error -> 25
+       end),
     username: smtp_username,
     password: System.get_env("SMTP_PASSWORD", ""),
     tls:

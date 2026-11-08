@@ -253,7 +253,7 @@ defmodule Dripstone.Tracker do
     Store.write(fn ->
       with {:ok, state} <- Store.load(),
            {:ok, reply, %Dripstone.Tracker.State{} = new_state, messages} <- fun.(state) do
-        :ok = Store.save(%{new_state | cache: %{}})
+        :ok = Store.save(new_state)
         Enum.each(messages, &broadcast/1)
         {:ok, reply}
       end

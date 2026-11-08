@@ -16,24 +16,30 @@ defmodule Dripstone.Feeds.Mastodon do
   def name, do: "Mastodon"
 
   @impl true
-  def format_handle(ref) do
+  def format_handle(%{handle: _} = ref) do
     case split(ref) do
       {user, nil} -> "@" <> user
       {user, instance} -> "@#{user}@#{instance}"
     end
   end
 
+  def format_handle(_), do: nil
+
   @impl true
-  def profile_url(ref) do
+  def profile_url(%{handle: _} = ref) do
     {user, instance} = split(ref)
     URL.build(base(instance), [{:prefixed, "@", user}])
   end
 
+  def profile_url(_), do: nil
+
   @impl true
-  def post_url(%{post_id: post_id} = ref) do
+  def post_url(%{handle: _, post_id: post_id} = ref) do
     {user, instance} = split(ref)
     URL.build(base(instance), [{:prefixed, "@", user}, post_id])
   end
+
+  def post_url(_), do: nil
 
   @impl true
   def expected_interval, do: 120

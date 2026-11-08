@@ -82,13 +82,17 @@ defmodule Dripstone.Accounts do
 
   ## Settings
 
+  @doc "Minutes after authentication during which sensitive pages skip re-login."
+  def sudo_window_minutes, do: 10
+
   @doc """
   Checks whether the user is in sudo mode.
 
   The user is in sudo mode when the last authentication was done no further
-  than 20 minutes ago. The limit can be given as second argument in minutes.
+  than `sudo_window_minutes/0` minutes ago. The limit can be given as second
+  argument in minutes.
   """
-  def sudo_mode?(user, minutes \\ -20)
+  def sudo_mode?(user, minutes \\ -sudo_window_minutes())
 
   def sudo_mode?(%User{authenticated_at: ts}, minutes) when is_struct(ts, DateTime) do
     DateTime.after?(ts, DateTime.utc_now() |> DateTime.add(minutes, :minute))

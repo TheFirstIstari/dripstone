@@ -32,10 +32,6 @@ defmodule Dripstone.Tracker.Graph do
   @doc "Most nodes the graph draws."
   def max_nodes, do: @max_nodes
 
-  @doc "Cache key: changes whenever the network's membership changes (order-insensitive)."
-  def cache_key(%Network{id: id, member_ids: member_ids}),
-    do: {:graph, id, :erlang.phash2(Enum.sort(member_ids))}
-
   @doc "Builds the layout from the network and the full link list."
   @spec build(Network.t(), [Link.t()]) :: t()
   def build(%Network{} = network, links) do
