@@ -10,6 +10,12 @@ defmodule DripstoneWeb.NetworkLive.ShowTest do
   alias Dripstone.Tracker.SampleStore
 
   setup do
+    Ecto.Adapters.SQL.Sandbox.allow(
+      Dripstone.Repo,
+      self(),
+      Process.whereis(Dripstone.Tracker.SampleStore)
+    )
+
     previous = SampleStore.get_state()
     on_exit(fn -> SampleStore.put_state(previous) end)
     Tracker.reset_sample_data!()
