@@ -117,10 +117,22 @@ defmodule Dripstone.Tracker.Finding do
         add_error(changeset, :network_id, "give network_id or new_network")
 
       {id, nil} ->
-        if Map.has_key?(networks, id) do
-          validate_nested(changeset, :network_updates, &network_updates(&1, accounts))
-        else
-          add_error(changeset, :network_id, "unknown network #{inspect(id)}")
+        case Map.fetch(networks, id) do
+          :error ->
+            add_error(changeset, :network_id, "unknown network #{inspect(id)}")
+
+          {:ok, network} ->
+            case network do
+              %{retired_into: into} when is_binary(into) ->
+                add_error(
+                  changeset,
+                  :network_id,
+                  "network #{inspect(id)} was merged into #{inspect(into)}"
+                )
+
+              _ ->
+                validate_nested(changeset, :network_updates, &network_updates(&1, accounts))
+            end
         end
 
       {nil, new} ->
@@ -291,10 +303,18 @@ defmodule Dripstone.Tracker.Finding do
   defp errors(changeset) do
     traverse_errors(changeset, fn {message, opts} ->
       Enum.reduce(opts, message, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
+        String.replace(acc, "%{#{key}}", format(value))
       end)
     end)
   end
+
+  # Cast failures keep the Ecto type (like `{:array, :map}`) in the message
+  # options; interpolating it with `to_string/1` raises, and the exception
+  # escaping intake would discard analyst changes. Only strings, atoms and
+  # numbers keep their `to_string/1` rendering; anything else is inspected.
+  defp format(value) when is_binary(value), do: value
+  defp format(value) when is_atom(value) or is_number(value), do: to_string(value)
+  defp format(value), do: inspect(value)
 
   # Reads a key given as an atom or its string form, without creating atoms.
   defp get(map, key), do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
