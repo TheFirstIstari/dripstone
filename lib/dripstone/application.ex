@@ -13,6 +13,7 @@ defmodule Dripstone.Application do
         Dripstone.Repo,
         {Phoenix.PubSub, name: Dripstone.PubSub},
         {Oban, Application.fetch_env!(:dripstone, Oban)},
+        Dripstone.Tracker.Writer,
         DripstoneWeb.LoginThrottle
       ] ++
         simulator() ++

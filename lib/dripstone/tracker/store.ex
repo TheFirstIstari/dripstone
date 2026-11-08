@@ -93,6 +93,18 @@ defmodule Dripstone.Tracker.Store do
     :ok
   end
 
+  @doc """
+  Runs `fun` as the tracker's single writer.
+
+  Every load-modify-save path (`Tracker.change/1`, `report_finding/1`,
+  `apply_finding/1`, the simulator) runs inside this serializer, so
+  concurrent writes queue instead of interleaving and losing one update.
+  """
+  # shortcut: BEAM-local serializer only; clustered nodes sharing the DB could
+  # still race — upgrade to `pg_advisory_xact_lock` if we ever run those.
+  @spec write((-> result)) :: result when result: var
+  def write(fun), do: Dripstone.Tracker.Writer.run(fun)
+
   @doc "Writes the whole tracker state back."
   @spec save(State.t()) :: :ok
   def save(%State{} = state) do

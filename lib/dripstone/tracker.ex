@@ -35,25 +35,29 @@ defmodule Dripstone.Tracker do
   """
   @spec report_finding(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
   def report_finding(attrs) do
-    with {:ok, state} <- Store.load(),
-         {:ok, report} <- Report.cast(attrs, state),
-         {:ok, result, new_state} <- Rules.run(state, report, now()) do
-      :ok = Store.save(new_state)
-      Enum.each(report_messages(result), &broadcast/1)
-      {:ok, result}
-    end
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, report} <- Report.cast(attrs, state),
+           {:ok, result, new_state} <- Rules.run(state, report, now()) do
+        :ok = Store.save(new_state)
+        Enum.each(report_messages(result), &broadcast/1)
+        {:ok, result}
+      end
+    end)
   end
 
   @doc false
   # Runs one *internal* finding straight through the intake. Detection never
   # calls this; it exists for tests that need a specific alert.
   def apply_finding(attrs) do
-    with {:ok, state} <- Store.load(),
-         {:ok, result, new_state} <- Intake.run(state, attrs, now()) do
-      :ok = Store.save(new_state)
-      Enum.each(messages(result), &broadcast/1)
-      {:ok, result}
-    end
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, result, new_state} <- Intake.run(state, attrs, now()) do
+        :ok = Store.save(new_state)
+        Enum.each(messages(result), &broadcast/1)
+        {:ok, result}
+      end
+    end)
   end
 
   ## Reads
@@ -168,12 +172,14 @@ defmodule Dripstone.Tracker do
   # Writes load the persisted state, apply `fun`, save the result and broadcast
   # its messages. A rejected change saves nothing.
   defp change(fun) do
-    with {:ok, state} <- Store.load(),
-         {:ok, reply, %Dripstone.Tracker.State{} = new_state, messages} <- fun.(state) do
-      :ok = Store.save(%{new_state | cache: %{}})
-      Enum.each(messages, &broadcast/1)
-      {:ok, reply}
-    end
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, reply, %Dripstone.Tracker.State{} = new_state, messages} <- fun.(state) do
+        :ok = Store.save(%{new_state | cache: %{}})
+        Enum.each(messages, &broadcast/1)
+        {:ok, reply}
+      end
+    end)
   end
 
   defp report_messages(result) do
