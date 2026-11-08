@@ -128,9 +128,10 @@ previous statuses.
 - **THEN** the alert is Open again and the network has its previous status
 
 ### Requirement: Keyboard workflow
-On the alert detail page the keys `c` (confirm), `d` (dismiss), `j` (next alert in the
-inbox) and `k` (previous alert in the inbox) SHALL work, and SHALL be shown next to their
-controls. Keys SHALL be ignored while a text field has focus.
+On the alert detail page the keys `c` (confirm), `d` (dismiss), `j` (previous alert in
+the inbox) and `k` (next alert in the inbox) SHALL work, and SHALL be shown next to their
+controls. `j`, the left key, sits with the left (previous) arrow and `k`, the right key,
+with the right (next) arrow. Keys SHALL be ignored while a text field has focus.
 
 #### Scenario: Confirm by keyboard
 - **WHEN** an analyst presses `c` on an Open alert while not typing in the note field
@@ -139,6 +140,10 @@ controls. Keys SHALL be ignored while a text field has focus.
 #### Scenario: Typing a note
 - **WHEN** an analyst types `d` inside the note field
 - **THEN** the character is added to the note and the alert is not dismissed
+
+#### Scenario: Moving through the inbox by keyboard
+- **WHEN** an analyst presses `k` on an alert that has a next alert in the inbox
+- **THEN** the next alert opens, and pressing `j` there returns to the previous one
 
 ### Requirement: Decision attribution
 Each confirmation or dismissal SHALL record who made it. Until user sign-in exists, the

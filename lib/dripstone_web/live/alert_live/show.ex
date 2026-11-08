@@ -4,7 +4,8 @@ defmodule DripstoneWeb.AlertLive.Show do
   values and the AI rationale, with Confirm / Dismiss (optional note), Undo for the
   last decision, and `j`/`k` to move through the inbox it was opened from.
 
-  Keyboard: `c` confirm, `d` dismiss, `j` next, `k` previous, via the colocated
+  Keyboard: `c` confirm, `d` dismiss, `j` previous, `k` next (each key on the same
+  side as its arrow: `j` is the left key, `k` the right), via the colocated
   `.AlertShortcuts` hook, which ignores keys typed into text fields.
   """
   use DripstoneWeb, :live_view
@@ -149,7 +150,8 @@ defmodule DripstoneWeb.AlertLive.Show do
                   decision: {note: note ? note.value : ""}
                 })
               } else if (key === "j" || key === "k") {
-                this.pushEvent("navigate", {to: key === "j" ? "next" : "prev"})
+                // j is the left key (previous, ←), k the right key (next, →).
+                this.pushEvent("navigate", {to: key === "j" ? "prev" : "next"})
               } else {
                 return
               }
@@ -191,7 +193,7 @@ defmodule DripstoneWeb.AlertLive.Show do
               class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-ink-muted hover:bg-surface-raised hover:text-ink"
             >
               <.icon name="hero-chevron-left-mini" />
-              <.kbd>k</.kbd>
+              <.kbd>j</.kbd>
             </.link>
             <span
               :if={@neighbors.position}
@@ -206,7 +208,7 @@ defmodule DripstoneWeb.AlertLive.Show do
               navigate={~p"/alerts/#{@neighbors.next}?#{@query}"}
               class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-ink-muted hover:bg-surface-raised hover:text-ink"
             >
-              <.kbd>j</.kbd>
+              <.kbd>k</.kbd>
               <.icon name="hero-chevron-right-mini" />
             </.link>
           </nav>
