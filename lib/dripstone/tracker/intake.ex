@@ -17,7 +17,7 @@ defmodule Dripstone.Tracker.Intake do
     4. Every change is recorded in the network's history, marked `:system`.
   """
 
-  alias Dripstone.Tracker.{Alert, Finding, Network, State}
+  alias Dripstone.Tracker.{Alert, Curation, Finding, Network, State}
 
   @detection "Detection"
   @severity_rank %{low: 1, medium: 2, high: 3}
@@ -164,12 +164,9 @@ defmodule Dripstone.Tracker.Intake do
             joined_at: Map.merge(network.joined_at, Map.new(new_ids, &{&1, at}))
         }
 
-        {network, ["Added #{members_text(length(new_ids))}" | changes], skipped}
+        {network, ["Added #{Curation.count(new_ids, "member")}" | changes], skipped}
     end
   end
-
-  defp members_text(1), do: "1 member"
-  defp members_text(n), do: "#{n} members"
 
   defp rename(acc, nil), do: acc
   defp rename({%Network{name: name} = n, changes, skipped}, name), do: {n, changes, skipped}

@@ -183,7 +183,7 @@ defmodule DripstoneWeb.AccountLive.Index do
               navigate={~p"/accounts/#{entry.account.id}"}
               class="block font-mono text-sm text-ink hover:text-accent"
             >
-              {handle(entry.account)}
+              {format_handle(entry.account)}
             </.link>
             <span class="text-xs text-ink-muted">{entry.account.display_name}</span>
           </:col>
@@ -223,12 +223,5 @@ defmodule DripstoneWeb.AccountLive.Index do
       </.card>
     </Layouts.app>
     """
-  end
-
-  defp handle(account) do
-    case Feeds.get(account.feed_id) do
-      nil -> account.handle
-      feed -> feed.format_handle(account)
-    end
   end
 end

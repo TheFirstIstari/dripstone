@@ -6,7 +6,6 @@ defmodule DripstoneWeb.AlertLive.Index do
   """
   use DripstoneWeb, :live_view
 
-  alias Dripstone.Alerts
   alias Dripstone.Tracker
   alias DripstoneWeb.AlertLive.Filters
 
@@ -210,13 +209,6 @@ defmodule DripstoneWeb.AlertLive.Index do
       </.card>
     </Layouts.app>
     """
-  end
-
-  defp trigger_name(id) do
-    case Alerts.get_trigger_type(id) do
-      nil -> id
-      type -> type.name
-    end
   end
 
   defp status_word(:all, 1), do: "alert"

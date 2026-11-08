@@ -9,6 +9,10 @@ defmodule Dripstone.Tracker.Evidence do
 
   @enforce_keys [:explanation, :strength]
   defstruct [:explanation, :strength, :source, kind: :other, account_ids: []]
+  @strength_rank %{weak: 1, moderate: 2, strong: 3}
+
+  @doc "Strongest first. Stable, so ties keep their written order."
+  def sort(evidence), do: Enum.sort_by(evidence, &@strength_rank[&1.strength], :desc)
 
   @type t :: %__MODULE__{
           explanation: String.t(),

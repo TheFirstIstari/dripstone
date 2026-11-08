@@ -10,11 +10,8 @@ defmodule DripstoneWeb.AlertLive.Show do
   """
   use DripstoneWeb, :live_view
 
-  alias Dripstone.Feeds
   alias Dripstone.Tracker
   alias DripstoneWeb.AlertLive.Filters
-
-  @max_accounts 6
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -255,14 +252,19 @@ defmodule DripstoneWeb.AlertLive.Show do
                 >
                   <span class="text-ink-faint">{length(item.account_ids)} accounts:</span>
                   <.link
-                    :for={account <- evidence_accounts(item, @detail.accounts)}
+                    :for={
+                      account <-
+                        Enum.take(item.account_ids, 6)
+                        |> Enum.map(&Map.get(@detail.accounts, &1))
+                        |> Enum.reject(&is_nil/1)
+                    }
                     navigate={~p"/accounts/#{account.id}"}
                     class="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-ink-muted hover:text-accent"
                   >
-                    {handle(account)}
+                    {format_handle(account)}
                   </.link>
-                  <span :if={length(item.account_ids) > max_accounts()} class="text-ink-faint">
-                    +{length(item.account_ids) - max_accounts()} more
+                  <span :if={length(item.account_ids) > 6} class="text-ink-faint">
+                    +{length(item.account_ids) - 6} more
                   </span>
                 </div>
               </li>
@@ -422,23 +424,4 @@ defmodule DripstoneWeb.AlertLive.Show do
     ]}>{render_slot(@inner_block)}</kbd>
     """
   end
-
-  defp max_accounts, do: @max_accounts
-
-  defp evidence_accounts(item, accounts) do
-    item.account_ids
-    |> Enum.take(@max_accounts)
-    |> Enum.map(&Map.get(accounts, &1))
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp handle(account) do
-    case Feeds.get(account.feed_id) do
-      nil -> account.handle
-      feed -> feed.format_handle(account)
-    end
-  end
-
-  defp trigger_name(%{trigger_type: nil, alert: alert}), do: alert.trigger_id
-  defp trigger_name(%{trigger_type: type}), do: type.name
 end
