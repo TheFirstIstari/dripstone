@@ -14,6 +14,10 @@ defmodule Dripstone.Application do
         {Phoenix.PubSub, name: Dripstone.PubSub},
         {Oban, Application.fetch_env!(:dripstone, Oban)},
         Dripstone.Tracker.Writer,
+        # Owns the politeness layer's rate slots and robots.txt cache.
+        Dripstone.Adapters.Polite.Gate,
+        # The Demo dataset (memory-only) and its simulator start here on demand.
+        {DynamicSupervisor, name: Dripstone.Tracker.DemoSupervisor, strategy: :one_for_one},
         DripstoneWeb.LoginThrottle
       ] ++
         simulator() ++
@@ -29,9 +33,11 @@ defmodule Dripstone.Application do
   end
 
   # Dev-only fake detection; see Dripstone.Tracker.Simulator.
+  # DRIPSTONE_SIMULATE=1 (dev) warms up Demo at boot; otherwise Demo and its
+  # simulator start the first time someone switches to Demo.
   defp simulator do
     if Application.get_env(:dripstone, :simulate_alerts, false),
-      do: [Dripstone.Tracker.Simulator],
+      do: [{Task, fn -> Dripstone.Tracker.DemoStore.ensure_started() end}],
       else: []
   end
 

@@ -633,9 +633,18 @@ defmodule Dripstone.Tracker.Rules do
   # newest first; posts whose timestamp can't be read are kept at the end (never
   # dropped, never given an invented time) so evidence isn't lost. Capped.
   defp merge_posts(state, account_id, raw_posts, limit) do
+    existing =
+      state.posts |> Map.get(account_id, []) |> Map.new(&{&1.post_id, &1.id})
+
     {fresh, state} =
-      Enum.map_reduce(raw_posts, state, fn raw, state ->
-        {id, state} = State.next_id(state, "post")
+      raw_posts
+      |> Enum.uniq_by(& &1.id)
+      |> Enum.map_reduce(state, fn raw, state ->
+        {id, state} =
+          case Map.fetch(existing, raw.id) do
+            {:ok, id} -> {id, state}
+            :error -> State.next_id(state, "post")
+          end
 
         post = %Post{
           id: id,

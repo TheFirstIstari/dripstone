@@ -114,9 +114,12 @@ defmodule Dripstone.Tracker.Intake do
     updates = finding.network_updates || %{}
     {network, changes, skipped} = apply_updates(network, updates, finding.observed_at)
 
+    # Detection growth also changes membership, so re-derive platforms the
+    # same way analyst edits do; stale entries would corrupt filters/badges.
     network = %{
       network
-      | last_activity_at: latest(network.last_activity_at, finding.observed_at)
+      | platforms: member_platforms(state, network.member_ids),
+        last_activity_at: latest(network.last_activity_at, finding.observed_at)
     }
 
     state = %{state | networks: Map.put(state.networks, network.id, network)}
@@ -141,6 +144,14 @@ defmodule Dripstone.Tracker.Intake do
     |> then(fn {network, changes, skipped} ->
       {network, Enum.reverse(changes), Enum.reverse(skipped)}
     end)
+  end
+
+  defp member_platforms(state, member_ids) do
+    member_ids
+    |> Enum.map(&state.accounts[&1])
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(& &1.feed_id)
+    |> Enum.uniq()
   end
 
   defp add_members({network, changes, skipped}, ids, at) do

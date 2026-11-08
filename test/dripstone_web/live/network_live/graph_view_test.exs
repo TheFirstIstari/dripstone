@@ -79,6 +79,24 @@ defmodule DripstoneWeb.NetworkLive.GraphViewTest do
     refute has_element?(view, "#node-account-link")
   end
 
+  test "a focused node is selected with Enter and toggled with Space", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/networks/net-c0421?view=graph")
+    [node | _] = Tracker.network_graph("net-c0421").nodes
+
+    view
+    |> element("#network-graph-node-#{node.id}")
+    |> render_keydown(%{key: "Enter", id: node.id})
+
+    assert has_element?(view, "#network-graph-node-#{node.id}[data-selected]")
+    assert has_element?(view, ~s(#node-account-link[href="/accounts/#{node.id}"]))
+
+    view
+    |> element("#network-graph-node-#{node.id}")
+    |> render_keydown(%{key: " ", id: node.id})
+
+    refute has_element?(view, "#node-account-link")
+  end
+
   test "a 400-member network draws 150 members and says 250 are not shown", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/networks/net-lumen?view=graph")
 
