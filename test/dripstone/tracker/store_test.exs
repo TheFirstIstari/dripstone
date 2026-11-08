@@ -74,14 +74,14 @@ defmodule Dripstone.Tracker.StoreTest do
   end
 
   test "missing corpus returns an error instead of raising" do
-    path = Dripstone.Showcase.corpus_path("v1.json")
-    backup = path <> ".bak"
-    File.rename!(path, backup)
+    Store.reset!()
+    dir = Path.join(System.tmp_dir!(), "showcase-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
 
     try do
-      assert {:error, _} = Store.load()
+      assert {:error, _} = Store.load(showcase_dir: dir)
     after
-      File.rename!(backup, path)
+      File.rm_rf!(dir)
     end
   end
 end

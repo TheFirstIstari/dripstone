@@ -17,9 +17,9 @@ defmodule Dripstone.Showcase do
   @corpus "v1.json"
 
   @doc "Loads the named showcase corpus file into a tracker state."
-  @spec load(String.t()) :: {:ok, State.t()} | {:error, term()}
-  def load(name \\ @corpus) do
-    with {:ok, raw} <- File.read(corpus_path(name)),
+  @spec load(String.t(), keyword()) :: {:ok, State.t()} | {:error, term()}
+  def load(name \\ @corpus, opts \\ []) do
+    with {:ok, raw} <- File.read(corpus_path(name, opts)),
          {:ok, %{"findings" => findings}} when is_list(findings) <- Jason.decode(raw) do
       replay_findings(%State{}, findings)
     else
