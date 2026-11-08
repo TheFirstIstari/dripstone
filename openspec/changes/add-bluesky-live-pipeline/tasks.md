@@ -29,8 +29,8 @@
 
 ## 3. Bluesky fetcher
 
-- [ ] 3.1 Add `Dripstone.Adapters.Bluesky.fetch_posts/2` (AppView `getAuthorFeed`, no auth, through `Polite.get/2`), mapping to canonical posts with link extraction. Register it in `Dripstone.Adapters` and in the refresh task's platforms. Verify with fixture-first tests under `HttpGuard` (`Req.Test` stubs) for "Recent posts fetched" and "Rate limited".
-- [ ] 3.2 Check in a small Bluesky seed corpus (`priv/datasets/bluesky/<date>.jsonl`, recorded with `mix dripstone.refresh bluesky --handle <public handle>`). Verify that its lines carry the envelope fields (`fetched_at`, `source`), and that `Dripstone.Test.Corpus.latest("bluesky")` resolves it.
+- [x] 3.1 Add `Dripstone.Adapters.Bluesky.fetch_posts/2` (AppView `getAuthorFeed`, no auth, through `Polite.get/2`), mapping to canonical posts with link extraction. Register it in `Dripstone.Adapters` and in the refresh task's platforms. Verify with fixture-first tests under `HttpGuard` (`Req.Test` stubs) for "Recent posts fetched" and "Rate limited".
+- [x] 3.2 Check in a small Bluesky seed corpus (`priv/datasets/bluesky/<date>.jsonl`, recorded with `mix dripstone.refresh bluesky --handle <public handle>`). Verify that its lines carry the envelope fields (`fetched_at`, `source`), and that `Dripstone.Test.Corpus.latest("bluesky")` resolves it.
 
 ## 4. Live discovery
 
