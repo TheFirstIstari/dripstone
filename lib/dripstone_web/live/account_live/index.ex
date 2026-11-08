@@ -22,8 +22,8 @@ defmodule DripstoneWeb.AccountLive.Index do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    networks = Tracker.list_networks()
-    network_ids = MapSet.new(networks, & &1.network.id)
+    options = Tracker.list_network_options()
+    network_ids = MapSet.new(options, &elem(&1, 1))
 
     filters = %{
       q: params |> Map.get("q", "") |> String.trim() |> String.slice(0, 100),
@@ -36,7 +36,7 @@ defmodule DripstoneWeb.AccountLive.Index do
 
     {:noreply,
      socket
-     |> assign(filters: filters, networks: networks)
+     |> assign(filters: filters, networks: options)
      |> assign(:form, to_form(form_params(filters), as: :filters))
      |> load()}
   end
@@ -159,7 +159,7 @@ defmodule DripstoneWeb.AccountLive.Index do
               prompt="Any"
               options={[
                 {"In any network", "any"},
-                {"Not in a network", "none"} | Enum.map(@networks, &{&1.network.name, &1.network.id})
+                {"Not in a network", "none"} | @networks
               ]}
             />
           </div>

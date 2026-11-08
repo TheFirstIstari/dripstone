@@ -291,7 +291,7 @@ defmodule DripstoneWeb.AccountLive.Show do
 
   defp network_options(current) do
     current_ids = MapSet.new(current, & &1.id)
-    for %{network: n} <- Tracker.list_networks(), n.id not in current_ids, do: {n.name, n.id}
+    for {name, id} <- Tracker.list_network_options(), id not in current_ids, do: {name, id}
   end
 
   defp signals_title(score) do

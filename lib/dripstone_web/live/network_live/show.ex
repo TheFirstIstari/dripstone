@@ -1121,7 +1121,7 @@ defmodule DripstoneWeb.NetworkLive.Show do
   defp confirm_label(:relate), do: "Mark related"
 
   defp network_options(current_id) do
-    for %{network: n} <- Tracker.list_networks(), n.id != current_id, do: {n.name, n.id}
+    for {name, id} <- Tracker.list_network_options(), id != current_id, do: {name, id}
   end
 
   defp sort_evidence(evidence), do: Enum.sort_by(evidence, &@strength_rank[&1.strength], :desc)
