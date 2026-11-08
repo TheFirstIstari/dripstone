@@ -56,7 +56,12 @@ defmodule Dripstone.Scorer do
   Each member is `%{feed_id:, handle:, posts:}` (atom or string keys).
   On `{:error, _}` returns heuristics-only.
   """
-  def assess_group(members, opts \\ []) when is_list(members) do
+  def assess_group(members, opts \\ [])
+
+  def assess_group([], _opts),
+    do: %{score: 0, labels: [], ai_answers: nil, source: :heuristics_only}
+
+  def assess_group(members, opts) when is_list(members) do
     %{score: s, labels: l} = members |> Enum.flat_map(&member_posts/1) |> score()
     run_decision(group_state(members), group_questions(members), %{score: s, labels: l}, opts)
   end
