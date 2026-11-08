@@ -24,4 +24,8 @@ jobs:
       - run: |
           docker rm -f dripstone-app || true
           docker run -d --name dripstone-app --network dripstone-net --restart unless-stopped --log-opt max-size=10m --log-opt max-file=3 --env-file ~/.dripstone-prod.env -p 127.0.0.1:4000:4000 dripstone:latest
-      - run: sleep 8; curl -fsS -o /dev/null http://127.0.0.1:4000/
+      - run: |
+          sleep 8
+          curl -fsS -o /dev/null http://127.0.0.1:4000/
+          curl -fsS -o /dev/null https://dripstone.dev/
+          curl -fsS -o /dev/null https://www.dripstone.dev/
