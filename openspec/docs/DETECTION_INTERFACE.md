@@ -103,7 +103,8 @@ A coordinated group also links every pair of members. The link type is the `rela
 label, with no link for `none`, and the strength comes from `coordinated`. Each link
 records the finding id, the question, the model and the time.
 
-Each alert's evidence is written by the app from the answers. When a finding merges
+Each alert's evidence is written by the app from the answers, naming the `model` that
+answered (e.g. "jev-1.13: these 4 accounts post in a coordinated way (91%)"). When a finding merges
 into an open alert, the newer answers' evidence replaces the older answers' evidence.
 Each alert keeps its newest 100 evidence items.
 

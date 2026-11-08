@@ -226,11 +226,25 @@ defmodule Dripstone.Tracker.RulesTest do
       assert [coordinated, relation] = alert.evidence
       assert coordinated.strength == :strong
       assert coordinated.explanation =~ "coordinated way (88%)"
+      assert coordinated.explanation =~ ~r/^jev-1\.13: /
       assert coordinated.source == :answers
       assert relation.explanation =~ "shared-link"
       assert relation.strength == :moderate
       assert relation.kind == :shared_link
       assert length(relation.account_ids) == 3
+    end
+
+    test "evidence names the model that answered, not always Jev" do
+      answers = %{"coordinated" => noul(0.9)}
+
+      {%{alerts: [%{alert: sim}]}, _} =
+        run(%State{}, group(handles(2), answers, %{"model" => "simulator"}))
+
+      {%{alerts: [%{alert: unnamed}]}, _} =
+        run(%State{}, Map.delete(group(handles(2), answers), "model"))
+
+      assert hd(sim.evidence).explanation =~ ~r/^simulator: /
+      assert hd(unnamed.evidence).explanation =~ ~r/^The model: /
     end
 
     test "names the network from its members' topics and feeds" do
