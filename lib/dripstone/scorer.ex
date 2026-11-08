@@ -132,8 +132,9 @@ defmodule Dripstone.Scorer do
     )
   end
 
-  # shortcut: trajectory options are the three the trend rules read (forming,
-  # stable, fading); extend when the intake learns new ones.
+  # Trajectory options are the four labels the intake's trend rules read: `forming`
+  # (or `increasing`) raises an alert, which is a reactivation when the previous
+  # trajectory was `fading` or `none`.
   defp trend_questions do
     %{
       increasing: %{
@@ -146,7 +147,8 @@ defmodule Dripstone.Scorer do
         criteria: %{
           "forming" => "Coordination is forming and ramping up.",
           "stable" => "Activity is steady with no clear change.",
-          "fading" => "Activity is fading; the network is going quiet."
+          "fading" => "Activity is fading; the network is going quiet.",
+          "none" => "No coordinated activity at all in this period."
         }
       }
     }

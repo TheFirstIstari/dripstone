@@ -191,7 +191,13 @@ defmodule Dripstone.ScorerTest do
 
       trajectory = body["questions"]["trajectory"]
       assert trajectory["type"] == "choice"
-      assert Map.keys(trajectory["criteria"]) |> Enum.sort() == ["fading", "forming", "stable"]
+
+      assert Map.keys(trajectory["criteria"]) |> Enum.sort() == [
+               "fading",
+               "forming",
+               "none",
+               "stable"
+             ]
 
       Req.Test.json(conn, %{
         "answers" => %{
