@@ -62,4 +62,11 @@ defmodule Dripstone.Tracker.GraphTest do
     refute Graph.cache_key(network) ==
              Graph.cache_key(%{network | member_ids: tl(network.member_ids)})
   end
+
+  test "the cache key ignores member order", %{state: state} do
+    network = state.networks["net-c0422"]
+
+    assert Graph.cache_key(network) ==
+             Graph.cache_key(%{network | member_ids: Enum.reverse(network.member_ids)})
+  end
 end

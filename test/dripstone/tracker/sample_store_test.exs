@@ -92,6 +92,17 @@ defmodule Dripstone.Tracker.SampleStoreTest do
     assert Tracker.network_graph("net-nope") == nil
   end
 
+  test "reordered membership reuses the one cached graph entry" do
+    graph = Tracker.network_graph("net-c0422")
+    state = SampleStore.get_state()
+    network = state.networks["net-c0422"]
+    reordered = %{network | member_ids: Enum.reverse(network.member_ids)}
+    SampleStore.put_state(%{state | networks: Map.put(state.networks, "net-c0422", reordered)})
+
+    assert Tracker.network_graph("net-c0422") == graph
+    assert map_size(SampleStore.get_state().cache) == 1
+  end
+
   test "history is capped at the newest entries" do
     now = DateTime.utc_now()
     state = SampleStore.get_state()
