@@ -210,6 +210,18 @@ defmodule Dripstone.Tracker.RulesTest do
       assert length(state.networks[result.network_id].member_ids) == 5
     end
 
+    test "repeat members resolve via the account index without new accounts (#146)" do
+      {_, state} = run(%State{}, group(handles(4), %{"coordinated" => noul(0.9)}))
+      count = map_size(state.accounts)
+
+      {result, state2} = run(state, group(handles(4), %{"coordinated" => noul(0.9)}))
+      assert map_size(state2.accounts) == count
+
+      for h <- handles(4) do
+        assert state2.account_by_handle[{"x", h}] in result.account_ids
+      end
+    end
+
     test "severity follows the configured bands (spec: Severity from probability)" do
       for {p, severity} <- [{0.95, :high}, {0.83, :medium}, {0.72, :low}] do
         {%{alerts: [%{alert: alert}]}, _} =
