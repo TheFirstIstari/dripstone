@@ -166,6 +166,16 @@ defmodule DripstoneWeb.AlertLive.ShowTest do
       assert has_element?(view, ~s(#next-alert[href="/alerts/#{third}"]))
     end
 
+    test "j sits with the previous (←) arrow and k with the next (→) arrow", %{conn: conn} do
+      [_first, second | _] = Tracker.list_alerts(%{status: :open}) |> Enum.map(& &1.alert.id)
+      {:ok, view, _html} = live(conn, "/alerts/#{second}")
+
+      assert has_element?(view, "#prev-alert kbd", "j")
+      assert has_element?(view, "#next-alert kbd", "k")
+      refute has_element?(view, "#prev-alert kbd", "k")
+      refute has_element?(view, "#next-alert kbd", "j")
+    end
+
     test "the inbox filters are carried along", %{conn: conn} do
       [a, b] = Tracker.list_alerts(%{trigger: "network_growth"}) |> Enum.map(& &1.alert.id)
       {:ok, view, _html} = live(conn, "/alerts/#{a}?trigger=network_growth")
