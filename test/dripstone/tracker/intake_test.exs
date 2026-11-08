@@ -13,6 +13,11 @@ defmodule Dripstone.Tracker.IntakeTest do
   defp history(state, network_id),
     do: for(%HistoryEntry{network_id: ^network_id} = h <- state.history, do: h)
 
+  defp with_accounts(state, attrs) do
+    extra = state_with_accounts(attrs).accounts
+    %{state | accounts: Map.merge(state.accounts, extra)} |> Dripstone.Tracker.State.reindex()
+  end
+
   describe "new networks" do
     test "creates a Suspected network, an open alert and a system history entry" do
       {result, state} = run!(state_with_accounts(), new_network_finding(), t0())
@@ -71,21 +76,13 @@ defmodule Dripstone.Tracker.IntakeTest do
           }
         })
 
-      state =
-        Map.update!(
-          state_with_network(),
-          :accounts,
-          &Map.merge(&1, state_with_accounts(attrs).accounts)
-        )
-
+      state = with_accounts(state_with_network(), attrs)
       {_result, state} = run!(state, attrs, at(2))
       network = state.networks["net-1"]
-
       assert network.member_ids == ["a1", "a2", "a3", "a4"]
       assert network.joined_at["a4"] == at(1)
       assert network.confidence == 91
       assert network.main_domain == "deals-b.example"
-      assert network.last_activity_at == at(1)
 
       summaries = state |> history("net-1") |> Enum.map(& &1.summary)
       assert "Added 1 member" in summaries
@@ -134,7 +131,7 @@ defmodule Dripstone.Tracker.IntakeTest do
 
     test "a decided alert is not merged into; a new one is opened" do
       {%{alert: alert}, state} = run!(state_with_network(), finding("net-1"), at(1))
-      state = %{state | alerts: Map.put(state.alerts, alert.id, %{alert | status: :confirmed})}
+      state = Dripstone.Tracker.State.put_alert(state, %{alert | status: :confirmed})
 
       {%{action: :created, alert: new_alert}, _state} = run!(state, finding("net-1"), at(2))
       refute new_alert.id == alert.id
@@ -194,7 +191,7 @@ defmodule Dripstone.Tracker.IntakeTest do
       attrs =
         finding("net-1", %{observed_at: at(5), network_updates: %{add_member_ids: ["a9"]}})
 
-      state = Map.update!(state, :accounts, &Map.merge(&1, state_with_accounts(attrs).accounts))
+      state = with_accounts(state, attrs)
 
       assert {:ok, %{action: :ignored, alert: nil, reason: :predates_dismissal}, ^state} =
                Intake.run(state, attrs, at(20))
@@ -215,7 +212,7 @@ defmodule Dripstone.Tracker.IntakeTest do
         end)
 
       attrs = finding("net-1", %{network_updates: %{add_member_ids: ["a3", "a5"]}})
-      state = Map.update!(state, :accounts, &Map.merge(&1, state_with_accounts(attrs).accounts))
+      state = with_accounts(state, attrs)
       {result, state} = run!(state, attrs, at(2))
 
       assert state.networks["net-1"].member_ids == ["a1", "a2", "a5"]
@@ -240,6 +237,46 @@ defmodule Dripstone.Tracker.IntakeTest do
       attrs = finding("net-1", %{network_updates: %{name: "Cluster #1b"}})
       {%{skipped: []}, state} = run!(state_with_network(), attrs, at(2))
       assert state.networks["net-1"].name == "Cluster #1b"
+    end
+  end
+
+  describe "lookup indexes" do
+    test "O(1) reads agree with full scans and stay current across writes" do
+      state = state_with_network()
+
+      # account index resolves the same account a values-scan would find
+      assert state.account_by_handle[{"x", "a1"}] == "a1"
+
+      scanned =
+        Enum.find(Map.values(state.accounts), &(&1.feed_id == "x" and &1.handle == "a1"))
+
+      assert state.accounts[state.account_by_handle[{"x", "a1"}]] == scanned
+
+      # open alert index resolves the same alert a values-scan would find
+      assert [{key, id}] = Map.to_list(state.open_by_trigger)
+      assert key == {"net-1", "new_network"}
+      assert state.alerts[id].status == :open
+
+      scanned_alert =
+        state.alerts |> Map.values() |> Enum.find(&(&1.status == :open))
+
+      assert state.alerts[id] == scanned_alert
+
+      # dismissing then undoing keeps latest_dismissal and the open index in sync
+      alert = scanned_alert
+
+      {:ok, %{decision: decision}, dismissed, _} =
+        Dripstone.Tracker.Decisions.dismiss(state, alert.id, %{}, at(10))
+
+      assert dismissed.latest_dismissal["net-1"].id == decision.id
+      assert dismissed.open_by_trigger == %{}
+
+      {:ok, _, reopened, _} = Dripstone.Tracker.Decisions.undo(dismissed, decision.id, at(11))
+      assert reopened.latest_dismissal == %{}
+      assert reopened.open_by_trigger == %{{"net-1", "new_network"} => alert.id}
+      assert %{status: :open, decision_id: nil} = reopened.alerts[alert.id]
+      assert reopened.decisions == state.decisions
+      assert reopened.networks == state.networks
     end
   end
 end

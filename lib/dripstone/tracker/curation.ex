@@ -341,6 +341,7 @@ defmodule Dripstone.Tracker.Curation do
         decisions: move.(state.decisions),
         notes: move.(state.notes)
     }
+    |> State.reindex()
   end
 
   defp put_network(state, network),

@@ -13,17 +13,19 @@ defmodule Dripstone.Tracker.SampleLoader do
   def load(now \\ DateTime.utc_now()) do
     data = SampleData.generate(now)
 
-    base = %State{
-      accounts: Map.new(data.accounts, &{&1.id, &1}),
-      posts:
-        data.posts
-        |> Enum.group_by(& &1.account_id)
-        |> Map.new(fn {id, posts} ->
-          {id, Enum.sort_by(posts, & &1.posted_at, {:desc, DateTime})}
-        end),
-      links: data.links,
-      feed_health: data.feed_health
-    }
+    base =
+      %State{
+        accounts: Map.new(data.accounts, &{&1.id, &1}),
+        posts:
+          data.posts
+          |> Enum.group_by(& &1.account_id)
+          |> Map.new(fn {id, posts} ->
+            {id, Enum.sort_by(posts, & &1.posted_at, {:desc, DateTime})}
+          end),
+        links: data.links,
+        feed_health: data.feed_health
+      }
+      |> State.reindex()
 
     Enum.reduce(data.events, base, &replay/2)
   end
