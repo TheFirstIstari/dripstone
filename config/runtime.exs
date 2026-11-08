@@ -134,19 +134,23 @@ if config_env() == :prod do
   #
   # Production delivers via SMTP, configured from the environment so no
   # credentials live in the repo. Dev/test keep the Local/Test adapters.
+  # Unauthenticated relays (e.g. local forwarder) must not attempt AUTH LOGIN
+  # with blank credentials, and STARTTLS must stay opportunistic unless asked.
+  smtp_username = System.get_env("SMTP_USERNAME", "")
+
   config :dripstone, Dripstone.Mailer,
     adapter: Swoosh.Adapters.SMTP,
     relay: System.get_env("SMTP_HOST", "localhost"),
     port: String.to_integer(System.get_env("SMTP_PORT", "25")),
-    username: System.get_env("SMTP_USERNAME", ""),
+    username: smtp_username,
     password: System.get_env("SMTP_PASSWORD", ""),
     tls:
-      (case System.get_env("SMTP_TLS", "always") do
+      (case System.get_env("SMTP_TLS", "if_available") do
          "never" -> :never
-         "if_available" -> :if_available
-         _ -> :always
+         "always" -> :always
+         _ -> :if_available
        end),
     ssl: System.get_env("SMTP_SSL", "false") in ~w(true 1),
-    auth: :always,
+    auth: if(smtp_username == "", do: :never, else: :always),
     from: System.get_env("MAIL_FROM", "noreply@localhost")
 end
