@@ -3,7 +3,7 @@
 ## 1. Groundwork
 
 - [x] 1.1 Revise this draft against the merged code: persistence (#111, #216), the corpus and refresh task (#201), the politeness layer (#220), the test harness (#224) and the seeding fix (#230). Proposal, design and tasks were updated on 2026-11-08 against `main` at `4151328`. Verified with `openspec validate add-bluesky-live-pipeline --strict`.
-- [ ] 1.2 Add the approved WebSocket dependency (`mint_web_socket` unless decided otherwise). Verify that `mix deps.get` succeeds and `mix precommit` passes, including the unused-deps check.
+- [x] 1.2 Add the approved WebSocket dependency (`mint_web_socket` unless decided otherwise). Verify that `mix deps.get` succeeds and `mix precommit` passes, including the unused-deps check.
 - [x] 1.3 Fix the politeness layer (design §5):
   - a supervised `Polite.Gate` owns the ETS table;
   - rate slots are reserved atomically;
@@ -40,7 +40,7 @@
   - "Cooldown";
   - a single account repeating a link counting once;
   - the tracked-link bound.
-- [ ] 4.2 Add the Jetstream consumer: config-enabled, keeps linked posts, URL normalisation, reconnect with cursor, and feed-health counters flushed to Live once a minute in one write (design §6). Verify with tests driving it from recorded Jetstream frames (no network) for:
+- [x] 4.2 Add the Jetstream consumer: config-enabled, keeps linked posts, URL normalisation, reconnect with cursor, and feed-health counters flushed to Live once a minute in one write (design §6). Verify with tests driving it from recorded Jetstream frames (no network) for:
   - "Linked posts are kept";
   - "Disabled by configuration";
   - "Stream disconnected";

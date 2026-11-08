@@ -23,6 +23,7 @@ defmodule Dripstone.Application do
         DripstoneWeb.LoginThrottle
       ] ++
         simulator() ++
+        discovery() ++
         [
           # Start to serve requests, typically the last entry
           DripstoneWeb.Endpoint
@@ -35,6 +36,11 @@ defmodule Dripstone.Application do
   end
 
   # Dev-only fake detection; see Dripstone.Tracker.Simulator.
+  # Live discovery's Bluesky stream consumer, when enabled (prod; DRIPSTONE_DISCOVERY=1).
+  defp discovery do
+    if Dripstone.Discovery.Jetstream.enabled?(), do: [Dripstone.Discovery.Jetstream], else: []
+  end
+
   # DRIPSTONE_SIMULATE=1 (dev) warms up Demo at boot; otherwise Demo and its
   # simulator start the first time someone switches to Demo.
   defp simulator do
