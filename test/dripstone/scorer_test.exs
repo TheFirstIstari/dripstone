@@ -188,6 +188,24 @@ defmodule Dripstone.ScorerTest do
     assert_received {:assess_result, %{source: :heuristics_only}}
   end
 
+  test "assess_group/2 with empty list skips the AI call (issue #151)" do
+    Req.Test.stub(@stub, fn _conn -> raise "decide must not be called for empty groups" end)
+
+    assert Dripstone.Scorer.assess_group([], plug: {Req.Test, @stub}) == %{
+             score: 0,
+             labels: [],
+             ai_answers: nil,
+             source: :heuristics_only
+           }
+
+    assert Dripstone.Scorer.assess_group([]) == %{
+             score: 0,
+             labels: [],
+             ai_answers: nil,
+             source: :heuristics_only
+           }
+  end
+
   test "assess_trend/2 asks increasing and trajectory with criteria" do
     Req.Test.stub(@stub, fn conn ->
       {:ok, raw, conn} = Plug.Conn.read_body(conn)
