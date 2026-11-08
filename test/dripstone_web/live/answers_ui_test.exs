@@ -1,5 +1,5 @@
 defmodule DripstoneWeb.AnswersUiTest do
-  # Scenarios from add-jev-intake's alert-inbox, network-views and account-views
+  # Scenarios from the alert-inbox, network-views and account-views specs
   # deltas: what the screens show of the decision model's answers. Reports findings
   # into the app-wide store, so not async.
   use DripstoneWeb.ConnCase, async: false

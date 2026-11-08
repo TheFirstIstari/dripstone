@@ -4,7 +4,7 @@ defmodule Dripstone.Tracker.AnswersTest do
   alias Dripstone.Tracker.Answers
 
   # The answers from the live check against jev-1.13-free on 2026-11-07
-  # (add-jev-intake task 1.3), verbatim.
+  # (add-jev-intake task 1.3, now archived), verbatim.
   @live %{
     "is_bot" => %{"type" => "noul", "noul" => 0.83},
     "topic" => %{
