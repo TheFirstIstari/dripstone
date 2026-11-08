@@ -127,6 +127,11 @@ defmodule Dripstone.ScorerTest do
     assert {:error, {:invalid_args, _}} = Dripstone.Scorer.assess(%{}, plug: {Req.Test, @stub})
   end
 
+  test "score/1 never raises on non-map posts (issue #136)" do
+    assert %{score: score} = Dripstone.Scorer.score([1, 2])
+    assert is_integer(score)
+  end
+
   test "holdout slice scores deterministically and is never tuned against" do
     posts = holdout_posts()
     assert length(posts) == 6
