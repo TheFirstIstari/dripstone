@@ -92,11 +92,13 @@ defmodule Dripstone.Tracker.Simulator do
   # Simulator mutations save straight to the rows (no broadcasts needed for a
   # feed refresh; canned findings broadcast through `report_finding`).
   defp apply_change(fun) do
-    with {:ok, loaded} <- Store.load(),
-         {:ok, reply, new_state, _messages} <- fun.(loaded) do
-      :ok = Store.save(new_state)
-      {:ok, reply}
-    end
+    Store.write(fn ->
+      with {:ok, loaded} <- Store.load(),
+           {:ok, reply, new_state, _messages} <- fun.(loaded) do
+        :ok = Store.save(new_state)
+        {:ok, reply}
+      end
+    end)
   end
 
   ## Canned findings
