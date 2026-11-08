@@ -9,6 +9,13 @@ defmodule Dripstone.Workers.AssessWorkerTest do
   alias Dripstone.Tracker.{State, Store}
   alias Dripstone.Workers.AssessWorker
 
+  defmodule PoisonAdapter do
+    @moduledoc false
+    @behaviour Dripstone.Adapters
+    @impl true
+    def fetch_posts(_handle, _opts \\ []), do: {:ok, "junk"}
+  end
+
   setup do
     {:ok, previous} = Store.load()
     :ok = Store.save(%State{})
@@ -42,6 +49,24 @@ defmodule Dripstone.Workers.AssessWorkerTest do
   test "reddit handles land on the Reddit feed" do
     assert :ok = perform_job(AssessWorker, %{"adapter" => "stub_reddit", "handle" => "bob"})
     assert [%{feed_id: "reddit", handle: "bob"}] = Map.values(elem(Store.load(), 1).accounts)
+  end
+
+  test "a poison adapter payload fails cleanly instead of crash-looping on .score" do
+    config = Application.get_env(:dripstone, AssessWorker, [])
+
+    Application.put_env(
+      :dripstone,
+      AssessWorker,
+      Keyword.put(config, :extra_adapters, %{"stub_poison" => {PoisonAdapter, "x"}})
+    )
+
+    on_exit(fn -> Application.put_env(:dripstone, AssessWorker, config) end)
+
+    assert {:error, _} =
+             perform_job(AssessWorker, %{"adapter" => "stub_poison", "handle" => "mallory"})
+
+    assert SampleStore.get_state().accounts == %{}
+    refute_received {:account_updated, _}
   end
 
   test "an unknown adapter cancels the job" do
