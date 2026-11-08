@@ -68,7 +68,11 @@ defmodule DripstoneWeb.AlertLive.Index do
         |> stream_insert(:alerts, entry, at: 0)
 
       matches ->
-        stream_insert(socket, :alerts, entry)
+        # A network_updated reload can make a raised alert visible just before
+        # its alert_raised arrives; still flag it new.
+        socket
+        |> update(:new_ids, &if(event == :alert_raised, do: MapSet.put(&1, id), else: &1))
+        |> stream_insert(:alerts, entry)
 
       not visible? ->
         socket
