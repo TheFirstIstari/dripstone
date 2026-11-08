@@ -663,7 +663,7 @@ defmodule DripstoneWeb.TrackerComponents do
   attr :empty_title, :string, default: "Nothing in this period"
 
   def sparkline(assigns) do
-    max = assigns.points |> Enum.map(& &1.count) |> Enum.max(fn -> 0 end)
+    max = Enum.max_by(assigns.points, & &1.count, fn -> %{count: 0} end).count
     count = length(assigns.points)
     assigns = assign(assigns, max: max, count: count)
 
@@ -769,16 +769,16 @@ defmodule DripstoneWeb.TrackerComponents do
   attr :selected, :string, default: nil
   attr :hidden_kinds, :any, default: MapSet.new()
   attr :labels, :map, default: %{}, doc: "account id => handle, for node titles"
+  attr :visible, :list, default: nil, doc: "pre-filtered edges; recomputed from graph when nil"
+  attr :connected, :any, default: nil, doc: "nodes with a visible edge; recomputed when nil"
 
   def network_graph(assigns) do
-    visible = Enum.reject(assigns.graph.edges, &(&1.kind in assigns.hidden_kinds))
-    connected = visible |> Enum.flat_map(&[&1.a, &1.b]) |> MapSet.new()
-    positions = Map.new(assigns.graph.nodes, &{&1.id, {&1.x, &1.y}})
+    visible =
+      assigns.visible || Enum.reject(assigns.graph.edges, &(&1.kind in assigns.hidden_kinds))
 
-    neighbours =
-      for edge <- visible, assigns.selected in [edge.a, edge.b], into: MapSet.new() do
-        if edge.a == assigns.selected, do: edge.b, else: edge.a
-      end
+    connected = assigns.connected || visible |> Enum.flat_map(&[&1.a, &1.b]) |> MapSet.new()
+    positions = graph_positions(assigns.graph)
+    neighbours = selected_neighbours(assigns.graph, assigns.selected, assigns.hidden_kinds)
 
     assigns =
       assign(assigns,
@@ -851,6 +851,35 @@ defmodule DripstoneWeb.TrackerComponents do
 
   @doc "All link kinds, in legend order."
   def link_kinds, do: Link.kinds()
+
+  defp graph_positions(%{positions: positions}), do: positions
+  defp graph_positions(%{nodes: nodes}), do: Map.new(nodes, &{&1.id, {&1.x, &1.y}})
+
+  # Neighbours of the selected node only -- derived from the precomputed adjacency
+  # instead of scanning every edge, and honoring the same hidden-kind filter.
+  defp selected_neighbours(_graph, nil, _hidden), do: MapSet.new()
+
+  defp selected_neighbours(%{adjacency: adjacency}, selected, hidden) do
+    case Map.fetch(adjacency, selected) do
+      {:ok, pairs} ->
+        pairs
+        |> Enum.reject(fn {_id, kind} -> kind in hidden end)
+        |> Enum.map(&elem(&1, 0))
+        |> MapSet.new()
+
+      :error ->
+        MapSet.new()
+    end
+  end
+
+  defp selected_neighbours(%{edges: edges}, selected, hidden) do
+    for edge <- edges,
+        selected in [edge.a, edge.b],
+        edge.kind not in hidden,
+        into: MapSet.new() do
+      if edge.a == selected, do: edge.b, else: edge.a
+    end
+  end
 
   defp x(positions, id), do: positions |> Map.fetch!(id) |> elem(0) |> Kernel.*(1000) |> round()
   defp y(positions, id), do: positions |> Map.fetch!(id) |> elem(1) |> Kernel.*(1000) |> round()

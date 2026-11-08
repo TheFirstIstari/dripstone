@@ -81,10 +81,38 @@ defmodule DripstoneWeb.NetworkLive.Show do
     end
   end
 
-  defp load_graph(%{assigns: %{view: :graph, network: %{retired_into: nil}}} = socket),
-    do: assign(socket, :graph, Tracker.network_graph(socket.assigns.network_id))
+  defp load_graph(%{assigns: %{view: :graph, network: %{retired_into: nil}}} = socket) do
+    graph = Tracker.network_graph(socket.assigns.network_id)
+    socket |> assign(:graph, graph) |> put_graph_derived(graph)
+  end
 
-  defp load_graph(socket), do: assign(socket, :graph, nil)
+  defp load_graph(socket),
+    do:
+      assign(socket,
+        graph: nil,
+        graph_visible: [],
+        graph_connected: MapSet.new(),
+        graph_labels: %{}
+      )
+
+  # Visible edges, connected nodes and labels only change with the graph or the
+  # hidden kinds -- selecting a node touches :selected_node alone, so the SVG
+  # keeps its derived assigns instead of rebuilding them per click.
+  defp put_graph_derived(socket, nil),
+    do: assign(socket, graph_visible: [], graph_connected: MapSet.new(), graph_labels: %{})
+
+  defp put_graph_derived(socket, graph) do
+    hidden = socket.assigns.hidden_kinds
+    visible = Enum.reject(graph.edges, &(&1.kind in hidden))
+    connected = visible |> Enum.flat_map(&[&1.a, &1.b]) |> MapSet.new()
+    labels = Map.new(graph.nodes, &{&1.id, handle(socket.assigns.member_accounts[&1.id])})
+
+    assign(socket,
+      graph_visible: visible,
+      graph_connected: connected,
+      graph_labels: labels
+    )
+  end
 
   @doc false
   # Called by DripstoneWeb.Nav for every tracker change.
@@ -220,7 +248,8 @@ defmodule DripstoneWeb.NetworkLive.Show do
         hidden =
           if kind in hidden, do: MapSet.delete(hidden, kind), else: MapSet.put(hidden, kind)
 
-        {:noreply, assign(socket, :hidden_kinds, hidden)}
+        {:noreply,
+         socket |> assign(:hidden_kinds, hidden) |> put_graph_derived(socket.assigns.graph)}
 
       :error ->
         {:noreply, socket}
@@ -870,7 +899,9 @@ defmodule DripstoneWeb.NetworkLive.Show do
                 graph={@graph}
                 selected={@selected_node}
                 hidden_kinds={@hidden_kinds}
-                labels={Map.new(@graph.nodes, &{&1.id, handle(@member_accounts[&1.id])})}
+                visible={@graph_visible}
+                connected={@graph_connected}
+                labels={@graph_labels}
               />
             </div>
             <p
@@ -1094,6 +1125,16 @@ defmodule DripstoneWeb.NetworkLive.Show do
   end
 
   defp sort_evidence(evidence), do: Enum.sort_by(evidence, &@strength_rank[&1.strength], :desc)
+
+  defp node_links(%{adjacency: adjacency}, id) do
+    case Map.fetch(adjacency, id) do
+      {:ok, pairs} ->
+        pairs |> Enum.frequencies_by(&elem(&1, 1)) |> Enum.sort_by(fn {_kind, n} -> -n end)
+
+      :error ->
+        []
+    end
+  end
 
   defp node_links(graph, id) do
     graph.edges
