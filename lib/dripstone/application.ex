@@ -14,6 +14,8 @@ defmodule Dripstone.Application do
         {Phoenix.PubSub, name: Dripstone.PubSub},
         {Oban, Application.fetch_env!(:dripstone, Oban)},
         Dripstone.Tracker.Writer,
+        # Owns the politeness layer's rate slots and robots.txt cache.
+        Dripstone.Adapters.Polite.Gate,
         # The Demo dataset (memory-only) and its simulator start here on demand.
         {DynamicSupervisor, name: Dripstone.Tracker.DemoSupervisor, strategy: :one_for_one},
         DripstoneWeb.LoginThrottle

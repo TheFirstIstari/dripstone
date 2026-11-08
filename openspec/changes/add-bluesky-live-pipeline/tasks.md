@@ -4,7 +4,7 @@
 
 - [x] 1.1 Revise this draft against the merged code: persistence (#111, #216), the corpus and refresh task (#201), the politeness layer (#220), the test harness (#224) and the seeding fix (#230). Proposal, design and tasks were updated on 2026-11-08 against `main` at `4151328`. Verified with `openspec validate add-bluesky-live-pipeline --strict`.
 - [ ] 1.2 Add the approved WebSocket dependency (`mint_web_socket` unless decided otherwise). Verify that `mix deps.get` succeeds and `mix precommit` passes, including the unused-deps check.
-- [ ] 1.3 Fix the politeness layer (design §5):
+- [x] 1.3 Fix the politeness layer (design §5):
   - a supervised `Polite.Gate` owns the ETS table;
   - rate slots are reserved atomically;
   - HTTP-date `Retry-After` is parsed;
