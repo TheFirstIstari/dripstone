@@ -156,10 +156,11 @@ defmodule DripstoneWeb.ShellTest do
     end
   end
 
-  test "the Sample data indicator is on every screen", %{conn: conn} do
+  test "the data source indicator (Live by default) is on every screen", %{conn: conn} do
     for {path, _key, _title} <- @sections do
       {:ok, view, _html} = live(conn, path)
-      assert has_element?(view, "#data-source", "Sample data")
+      assert has_element?(view, "#data-source[data-mode=live]", "Live")
+      assert has_element?(view, "#data-source-switch")
     end
   end
 
