@@ -16,6 +16,8 @@ defmodule Dripstone.Application do
         Dripstone.Tracker.Writer,
         # Owns the politeness layer's rate slots and robots.txt cache.
         Dripstone.Adapters.Polite.Gate,
+        # Live discovery's assessment caps (groups per hour, re-assessment interval).
+        Dripstone.Discovery.Caps,
         # The Demo dataset (memory-only) and its simulator start here on demand.
         {DynamicSupervisor, name: Dripstone.Tracker.DemoSupervisor, strategy: :one_for_one},
         DripstoneWeb.LoginThrottle
