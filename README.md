@@ -7,6 +7,12 @@ Botfarm social tracker. Phoenix 1.8, Postgres 17, Oban for background jobs.
 https://dripstone.dev. It runs on a CachyOS box and reaches the public
 internet through a Cloudflare Tunnel.
 
+## Login
+
+Username: analyst@dripstone.dev
+Password: passwordpassword
+
+
 ## Setup
 
 Prereqs: `mise`, Docker.
