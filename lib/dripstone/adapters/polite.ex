@@ -96,23 +96,25 @@ defmodule Dripstone.Adapters.Polite do
   defp fetch_robots(uri, opts) do
     robots_url = "#{uri.scheme}://#{uri.host}/robots.txt"
 
-    rules =
-      case Req.get(robots_url, req_opts(opts)) do
-        {:ok, %{status: 200, body: body}} when is_binary(body) -> parse_robots(body)
-        _ -> []
-      end
+    case Req.get(robots_url, req_opts(opts)) do
+      {:ok, %{status: 200, body: body}} when is_binary(body) ->
+        rules = parse_robots(body)
+        :ok = Dripstone.Adapters.Polite.Gate.put_robots(uri.host, rules)
+        allowed?(uri.path || "/", rules)
 
-    :ok = Dripstone.Adapters.Polite.Gate.put_robots(uri.host, rules)
-    allowed?(uri.path || "/", rules)
+      # Fetch failures refetch on the next call and fail open.
+      _ ->
+        true
+    end
   end
 
-  # Minimal parser: Disallow lines applying to `User-agent: *` (or all
-  # agents when no agent section matched — conservative enough for a guest).
+  # Minimal parser: Disallow lines applying to `User-agent: *`. Lines
+  # before any User-agent section apply to no group (RFC 9309).
   defp parse_robots(body) do
     {rules, _} =
       body
       |> String.split(~r/\r?\n/)
-      |> Enum.reduce({[], true}, fn line, {rules, relevant} ->
+      |> Enum.reduce({[], false}, fn line, {rules, relevant} ->
         line = line |> String.split("#", parts: 2) |> hd() |> String.trim()
 
         cond do

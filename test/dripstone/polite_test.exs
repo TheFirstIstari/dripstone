@@ -1,5 +1,5 @@
 defmodule Dripstone.Adapters.PoliteTest do
-  # async: false — Req.Test stubs are global and the ETS cache is shared.
+  # async: false — Req.Test stubs are global.
   use ExUnit.Case, async: false
 
   alias Dripstone.Adapters.Polite
@@ -112,6 +112,59 @@ defmodule Dripstone.Adapters.PoliteTest do
 
     assert {:error, {:http_error, 500}} =
              Polite.get("http://polite-500.test/items", opts(robots: false))
+  end
+
+  test "unparseable Retry-After falls back to 1s instead of hammering" do
+    Req.Test.stub(@stub, fn
+      %{request_path: "/robots.txt"} = conn ->
+        Req.Test.text(conn, "User-agent: *\nAllow: /")
+
+      conn ->
+        conn
+        |> Plug.Conn.put_resp_header("retry-after", "not-a-date")
+        |> Plug.Conn.put_status(429)
+        |> Req.Test.json(%{})
+    end)
+
+    assert {:error, {:rate_limited, 2}} =
+             Polite.get("http://polite-bad-retry.test/items", opts(max_retries: 1))
+
+    assert_received {:slept, 1_000}
+  end
+
+  test "Disallow before any User-agent section allows the path" do
+    Req.Test.stub(@stub, fn conn ->
+      send(self(), {:hit, conn.request_path})
+
+      case conn.request_path do
+        "/robots.txt" ->
+          Req.Test.text(conn, "Disallow: /items\nUser-agent: otherbot\nDisallow: /x")
+
+        _ ->
+          Req.Test.json(conn, %{})
+      end
+    end)
+
+    assert {:ok, %{status: 200}} = Polite.get("http://polite-preagent.test/items", opts())
+    assert_received {:hit, "/items"}
+  end
+
+  test "failed robots fetch is not cached; next call refetches" do
+    Req.Test.stub(@stub, fn conn ->
+      count = Process.get(:robots_hits, 0)
+      Process.put(:robots_hits, count + 1)
+
+      case conn.request_path do
+        "/robots.txt" when count == 0 -> conn |> Plug.Conn.put_status(500) |> Req.Test.text("")
+        "/robots.txt" -> Req.Test.text(conn, "User-agent: *\nDisallow: /items")
+        _ -> Req.Test.json(conn, %{})
+      end
+    end)
+
+    assert {:ok, %{status: 200}} = Polite.get("http://polite-flaky-robots.test/other", opts())
+
+    assert {:error, :disallowed_by_robots} =
+             Polite.get("http://polite-flaky-robots.test/items", opts())
   end
 
   test "relative url returns {:error, {:invalid_args, _}}" do
