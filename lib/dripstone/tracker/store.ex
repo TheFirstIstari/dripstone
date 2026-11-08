@@ -85,6 +85,10 @@ defmodule Dripstone.Tracker.Store do
   @doc "Writes the whole tracker state back."
   @spec save(State.t()) :: :ok
   def save(%State{} = state) do
+    # Same table order as persist_all/1 and reset!/0: every path deletes then
+    # reinserts the tracker tables in one order, so concurrent writers never
+    # deadlock waiting on each other's locks. Rows go in with one `insert_all`
+    # per table (not one round-trip per row) to hold the transaction briefly.
     Repo.transaction(fn ->
       write_accounts(state)
       write_networks(state)
@@ -112,18 +116,20 @@ defmodule Dripstone.Tracker.Store do
   @doc "Deletes every tracker row (used only by tests)."
   @spec reset!() :: :ok
   def reset! do
+    # Same table order as save/1 and persist_all/1 (accounts first, meta last),
+    # so the reset path never takes table locks in a conflicting order.
     for schema <- [
-          HistoryRow,
-          NoteRow,
-          DecisionRow,
-          AlertRow,
-          FindingRow,
-          MembershipRow,
-          LinkRow,
-          PostRow,
-          FeedRow,
-          NetworkRow,
           AccountRow,
+          NetworkRow,
+          MembershipRow,
+          AlertRow,
+          DecisionRow,
+          NoteRow,
+          HistoryRow,
+          PostRow,
+          LinkRow,
+          FeedRow,
+          FindingRow,
           MetaRow
         ] do
       Repo.delete_all(schema)
@@ -187,6 +193,7 @@ defmodule Dripstone.Tracker.Store do
       cache: %{},
       seq: seq()
     }
+    |> State.reindex()
   end
 
   defp seq do
@@ -486,7 +493,7 @@ defmodule Dripstone.Tracker.Store do
       id: row.id,
       name: row.name,
       detected_name: row.detected_name,
-      status: String.to_existing_atom(row.status),
+      status: to_atom(row.status, :suspected),
       confidence: row.confidence,
       member_ids: member_ids,
       joined_at: Map.new(memberships, &{&1.account_id, &1.joined_at}),
@@ -520,8 +527,8 @@ defmodule Dripstone.Tracker.Store do
   defp to_link(%LinkRow{} = row) do
     %Link{
       account_ids: {row.account_a_id, row.account_b_id},
-      kind: String.to_existing_atom(row.kind),
-      strength: String.to_existing_atom(row.strength),
+      kind: to_atom(row.kind, :shared_link),
+      strength: to_atom(row.strength, :weak),
       provenance: Enum.map(row.provenance, &to_provenance/1)
     }
   end
@@ -551,7 +558,7 @@ defmodule Dripstone.Tracker.Store do
   defp to_feed(%FeedRow{} = row) do
     %FeedHealth{
       feed_id: row.feed_id,
-      status: String.to_existing_atom(row.status),
+      status: to_atom(row.status, :not_connected),
       last_item_at: row.last_item_at,
       items_24h: row.items_24h,
       window_started_at: row.window_started_at,
@@ -565,8 +572,8 @@ defmodule Dripstone.Tracker.Store do
       id: row.id,
       trigger_id: row.trigger_id,
       network_id: row.network_id,
-      severity: String.to_existing_atom(row.severity),
-      status: String.to_existing_atom(row.status),
+      severity: to_atom(row.severity, :low),
+      status: to_atom(row.status, :open),
       title: row.title,
       raised_at: row.raised_at,
       observed_at: row.observed_at,
@@ -595,7 +602,7 @@ defmodule Dripstone.Tracker.Store do
   defp to_finding(%FindingRow{} = row) do
     %{
       id: row.id,
-      kind: String.to_existing_atom(row.kind),
+      kind: to_atom(row.kind, :other),
       observed_at: row.observed_at,
       model: row.model,
       network_id: row.network_id,
@@ -615,16 +622,13 @@ defmodule Dripstone.Tracker.Store do
       id: row.id,
       alert_id: row.alert_id,
       network_id: row.network_id,
-      action: String.to_existing_atom(row.action),
+      action: to_atom(row.action, :confirm),
       by: row.by,
       at: row.at,
       note: row.note,
-      previous_alert_status:
-        row.previous_alert_status && String.to_existing_atom(row.previous_alert_status),
-      previous_network_status:
-        row.previous_network_status && String.to_existing_atom(row.previous_network_status),
-      resulting_network_status:
-        row.resulting_network_status && String.to_existing_atom(row.resulting_network_status)
+      previous_alert_status: to_atom(row.previous_alert_status, nil),
+      previous_network_status: to_atom(row.previous_network_status, nil),
+      resulting_network_status: to_atom(row.resulting_network_status, nil)
     }
   end
 
@@ -636,7 +640,7 @@ defmodule Dripstone.Tracker.Store do
     %HistoryEntry{
       id: row.id,
       network_id: row.network_id,
-      actor: String.to_existing_atom(row.actor),
+      actor: to_atom(row.actor, :system),
       by: row.by,
       at: row.at,
       summary: row.summary

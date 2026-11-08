@@ -1,11 +1,17 @@
 defmodule Dripstone.Tracker.CurationTest do
   # Changes the app-wide store, so it must not run alongside other tests.
-  use ExUnit.Case, async: false
+  use Dripstone.DataCase, async: false
 
   alias Dripstone.Tracker
   alias Dripstone.Tracker.SampleStore
 
   setup do
+    Ecto.Adapters.SQL.Sandbox.allow(
+      Dripstone.Repo,
+      self(),
+      Process.whereis(Dripstone.Tracker.SampleStore)
+    )
+
     previous = SampleStore.get_state()
     on_exit(fn -> SampleStore.put_state(previous) end)
     Tracker.reset_sample_data!()
