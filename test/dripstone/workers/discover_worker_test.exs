@@ -195,4 +195,63 @@ defmodule Dripstone.Workers.DiscoverWorkerTest do
     assert Caps.fresh(group) == []
     assert Caps.skipped().accounts == 3
   end
+
+  test "a Mastodon candidate group is fetched from each home instance and assessed" do
+    Req.Test.stub(@stub, fn conn ->
+      case conn.request_path do
+        "/api/v1/accounts/lookup" ->
+          Req.Test.json(conn, %{"id" => URI.decode_query(conn.query_string)["acct"]})
+
+        "/api/v1/accounts/" <> _ ->
+          Req.Test.json(conn, [
+            %{
+              "id" => "s1",
+              "created_at" => "2026-11-08T10:00:00.000Z",
+              "content" => ~s(<p><a href="https://promo.example/x">x</a></p>)
+            }
+          ])
+
+        "/systemone" ->
+          {:ok, body, conn} = Plug.Conn.read_body(conn)
+
+          answers =
+            Map.new(Jason.decode!(body)["questions"], fn
+              {"coordinated", _} ->
+                {"coordinated", %{"type" => "noul", "noul" => 0.95}}
+
+              {name, %{"type" => "noul"}} ->
+                {name, %{"type" => "noul", "noul" => 0.9}}
+
+              {name, %{"type" => "choice"}} ->
+                {name, %{"type" => "choice", "choice" => "shared-link", "confidence" => 0.8}}
+
+              {name, %{"type" => "score"}} ->
+                {name,
+                 %{
+                   "type" => "score",
+                   "score" => 1,
+                   "legend" => %{"0" => "a", "1" => "b", "2" => "c"}
+                 }}
+            end)
+
+          Req.Test.json(conn, %{"answers" => answers})
+      end
+    end)
+
+    :ok = Tracker.subscribe()
+    accts = for n <- 1..3, do: "bot#{n}-#{System.unique_integer([:positive])}@spam.example"
+
+    assert :ok =
+             perform_job(DiscoverWorker, %{
+               "platform" => "mastodon",
+               "url" => "https://promo.example/x",
+               "dids" => accts
+             })
+
+    assert_receive {:alert_raised, %{trigger_id: "new_network", network_id: id}}
+    {:ok, state} = Store.load()
+    members = Enum.map(state.networks[id].member_ids, &state.accounts[&1])
+    assert Enum.all?(members, &(&1.feed_id == "mastodon"))
+    assert Enum.sort(Enum.map(members, & &1.handle)) == Enum.sort(accts)
+  end
 end

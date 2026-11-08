@@ -11,7 +11,7 @@ defmodule Dripstone.Adapters.BlueskyTest do
       [plug: {Req.Test, @stub}, min_interval_ms: 0, robots: false, sleep: fn _ -> :ok end] ++
         extra
 
-  defp item(rkey, text, record_extra \\ %{}, item_extra \\ %{}) do
+  defp item(rkey, text, record_extra, item_extra \\ %{}) do
     Map.merge(
       %{
         "post" => %{

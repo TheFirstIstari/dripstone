@@ -25,7 +25,7 @@ defmodule Dripstone.Discovery.Jetstream do
 
   alias Dripstone.Adapters.Bluesky
   alias Dripstone.Discovery.Bursts
-  alias Dripstone.Tracker.{FeedHealth, Store}
+  alias Dripstone.Tracker.FeedHealth
   alias Dripstone.Workers.DiscoverWorker
 
   @default_url "wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post"
@@ -120,17 +120,7 @@ defmodule Dripstone.Discovery.Jetstream do
   @doc "Writes the Bluesky feed health into Live, in one write."
   @spec flush_health(map()) :: :ok
   def flush_health(state) do
-    health = health(state, DateTime.utc_now())
-
-    {:ok, :ok} =
-      Store.write(fn ->
-        {:ok, tracker} = Store.load()
-        others = Enum.reject(tracker.feed_health, &(&1.feed_id == "bluesky"))
-        :ok = Store.save(%{tracker | feed_health: [health | others]})
-        {:ok, :ok}
-      end)
-
-    :ok
+    state |> health(DateTime.utc_now()) |> Dripstone.Discovery.Health.write()
   end
 
   ## Process

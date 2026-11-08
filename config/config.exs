@@ -134,12 +134,12 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
-# AI decision endpoint (OpenCode Console, TypeSafe AI). Key comes from the
-# environment only — never commit a key value here.
+# AI decision endpoint (OpenCode Console, TypeSafe AI). Static defaults only —
+# real values come from the environment at boot (see runtime.exs). Never
+# commit a key value here.
 config :dripstone, Dripstone.AIClient,
-  base_url: System.get_env("INTERNAL_AI_URL", "https://opencode.ai/inference/systemone/v1"),
-  model: System.get_env("INTERNAL_AI_MODEL", "jev-1.13-free"),
-  api_key: System.get_env("OPENCODE_API_KEY")
+  base_url: "https://opencode.ai/inference/systemone/v1",
+  model: "jev-1.13-free"
 
 # What an empty Live (database) dataset is seeded with on first boot: false
 # (nothing: Live fills from real detection), :showcase (hand-built corpus, dev
@@ -149,7 +149,10 @@ config :dripstone, :load_sample_data, false
 
 # Live discovery (Bluesky Jetstream -> bursts -> DiscoverWorker). Off by default;
 # prod.exs turns it on, dev turns it on with DRIPSTONE_DISCOVERY=1.
-config :dripstone, Dripstone.Discovery, enabled: false
+config :dripstone, Dripstone.Discovery,
+  enabled: false,
+  # Open instances whose public timelines (mostly federated posts) need no login.
+  mastodon_instances: ~w(mastodon.world mas.to universeodon.com mastodonapp.uk social.vivaldi.net)
 
 # Oban background jobs. Test env overrides with `testing: :manual`;
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.

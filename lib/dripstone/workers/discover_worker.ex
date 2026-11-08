@@ -2,7 +2,9 @@ defmodule Dripstone.Workers.DiscoverWorker do
   @moduledoc """
   Assesses one live-discovery candidate group: accounts that posted the same link
   within a short window (see `Dripstone.Discovery.Bursts`). Args:
-  `%{"url" => ..., "domain" => ..., "dids" => [...]}`.
+  `%{"platform" => "bluesky" | "mastodon", "url" => ..., "domain" => ..., "dids" => [...]}`.
+  `dids` are Bluesky DIDs or Mastodon `user@instance` handles; `platform` defaults
+  to Bluesky.
 
   1. Checks the caps (`Dripstone.Discovery.Caps`): groups per hour, and accounts
      already assessed recently are left out.
@@ -21,12 +23,12 @@ defmodule Dripstone.Workers.DiscoverWorker do
   use Oban.Worker,
     queue: :default,
     max_attempts: 1,
-    unique: [period: 6 * 60 * 60, keys: [:url]]
+    unique: [period: 6 * 60 * 60, keys: [:url, :platform]]
 
   require Logger
 
   alias Dripstone.{Scorer, Tracker}
-  alias Dripstone.Adapters.Bluesky
+  alias Dripstone.Adapters.{Bluesky, Mastodon}
   alias Dripstone.Discovery.{Bursts, Caps}
 
   @default_max_group_size 10
@@ -39,17 +41,22 @@ defmodule Dripstone.Workers.DiscoverWorker do
         :ok
 
       :ok ->
-        assess(args, dids)
+        assess(args, Map.get(args, "platform", "bluesky"), dids)
     end
   end
 
-  defp assess(args, dids) do
-    dids = dids |> Caps.fresh() |> Enum.take(config(:max_group_size, @default_max_group_size))
+  defp assess(args, platform, dids) do
+    dids =
+      dids
+      |> Enum.map(&"#{platform}:#{&1}")
+      |> Caps.fresh()
+      |> Enum.map(&String.replace_prefix(&1, "#{platform}:", ""))
+      |> Enum.take(config(:max_group_size, @default_max_group_size))
 
     with true <- dids != [] || :nothing_new,
-         {:ok, profiles} <- Bluesky.profiles(dids, http_opts()),
-         members when members != [] <- fetch_members(profiles) do
-      findings = Enum.map(members, &account_finding/1) ++ group_finding(members)
+         members when members != [] <- members(platform, dids) do
+      findings =
+        Enum.map(members, &account_finding(&1, platform)) ++ group_finding(members, platform)
 
       case Tracker.report_findings(findings) do
         {:ok, results} ->
@@ -67,9 +74,31 @@ defmodule Dripstone.Workers.DiscoverWorker do
     else
       :nothing_new -> :ok
       [] -> :ok
-      {:error, reason} -> {:error, reason}
     end
   end
+
+  # Bluesky ids are DIDs, resolved to handles in one call; Mastodon ids are
+  # already `user@instance` handles. Accounts that can't be fetched are left out.
+  defp members("bluesky", dids) do
+    case Bluesky.profiles(dids, http_opts()) do
+      {:ok, profiles} ->
+        fetch_members(profiles)
+
+      {:error, reason} ->
+        Logger.warning("Discovery profile lookup failed: #{inspect(reason)}") && []
+    end
+  end
+
+  defp members("mastodon", accts) do
+    Enum.flat_map(accts, fn acct ->
+      case Mastodon.fetch_posts(acct, http_opts()) do
+        {:ok, posts} -> [%{did: acct, handle: acct, posts: posts}]
+        {:error, _reason} -> []
+      end
+    end)
+  end
+
+  defp members(_platform, _ids), do: []
 
   defp fetch_members(profiles) do
     Enum.flat_map(profiles, fn %{did: did, handle: handle} ->
@@ -80,24 +109,24 @@ defmodule Dripstone.Workers.DiscoverWorker do
     end)
   end
 
-  defp account_finding(member) do
+  defp account_finding(member, platform) do
     assessment = Scorer.assess(member.posts, ai_opts())
 
     %{
       kind: "account",
       observed_at: DateTime.utc_now(),
       model: model(assessment),
-      account: ref(member),
+      account: ref(member, platform),
       posts: member.posts,
       heuristics: %{score: assessment.score, labels: assessment.labels},
       answers: assessment.ai_answers
     }
   end
 
-  defp group_finding(members) when length(members) < 2, do: []
+  defp group_finding(members, _platform) when length(members) < 2, do: []
 
-  defp group_finding(members) do
-    scorer_members = Enum.map(members, &%{feed_id: "bluesky", handle: &1.handle, posts: &1.posts})
+  defp group_finding(members, platform) do
+    scorer_members = Enum.map(members, &%{feed_id: platform, handle: &1.handle, posts: &1.posts})
     assessment = Scorer.assess_group(scorer_members, ai_opts())
 
     [
@@ -105,7 +134,7 @@ defmodule Dripstone.Workers.DiscoverWorker do
         kind: "group",
         observed_at: DateTime.utc_now(),
         model: model(assessment),
-        accounts: Enum.map(members, &ref/1),
+        accounts: Enum.map(members, &ref(&1, platform)),
         heuristics: %{domains: domains(members)},
         answers: assessment.ai_answers
       }
@@ -135,7 +164,8 @@ defmodule Dripstone.Workers.DiscoverWorker do
     |> Enum.map(fn {domain, n} -> %{domain: domain, share: n / total} end)
   end
 
-  defp ref(member), do: %{feed_id: "bluesky", handle: member.handle, external_id: member.did}
+  defp ref(member, platform),
+    do: %{feed_id: platform, handle: member.handle, external_id: member.did}
 
   defp model(%{ai_answers: nil}), do: nil
 

@@ -19,19 +19,23 @@ defmodule Mix.Tasks.Dripstone.Datasets.Refresh do
   @platforms %{
     "x" => Dripstone.Adapters.StubX,
     "reddit" => Dripstone.Adapters.StubReddit,
-    "bluesky" => Dripstone.Adapters.Bluesky
+    "bluesky" => Dripstone.Adapters.Bluesky,
+    "mastodon" => Dripstone.Adapters.Mastodon
   }
 
   @impl Mix.Task
   def run(args) do
-    # Real fetchers make HTTP requests, so the HTTP client must be running (the
-    # stubs never needed it).
+    # Real fetchers need :req running, and main added the positional-arg guard.
     {:ok, _} = Application.ensure_all_started(:req)
 
-    {opts, _, _} =
+    {opts, rest, _} =
       OptionParser.parse(args,
         strict: [platform: :string, handle: :string, all: :boolean, date: :string]
       )
+
+    if rest != [] do
+      Mix.raise("pass a platform via --platform or --all, not positionally")
+    end
 
     platforms =
       cond do
