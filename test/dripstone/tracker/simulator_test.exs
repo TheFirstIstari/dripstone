@@ -157,6 +157,5 @@ defmodule Dripstone.Tracker.SimulatorTest do
       tick([:trend])
       assert_receive {:alert_raised, %{trigger_id: "new_network"}}
     end
-
   end
 end
