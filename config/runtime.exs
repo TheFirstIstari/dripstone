@@ -24,6 +24,7 @@ end
 # the host environment. Never commit a key value.
 ai_base_url = System.get_env("INTERNAL_AI_URL", "https://opencode.ai/inference/systemone/v1")
 ai_model = System.get_env("INTERNAL_AI_MODEL", "jev-1.13-free")
+
 config :dripstone, Dripstone.AIClient,
   base_url: ai_base_url,
   model: ai_model,
@@ -68,8 +69,10 @@ if config_env() == :prod do
     # pool_count: 4,
     socket_options: maybe_ipv6
 
-   config :dripstone, Oban,
-     repo: Dripstone.Repo, queues: [default: 10], plugins: [Oban.Plugins.Pruner]
+  config :dripstone, Oban,
+    repo: Dripstone.Repo,
+    queues: [default: 10],
+    plugins: [Oban.Plugins.Pruner]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you

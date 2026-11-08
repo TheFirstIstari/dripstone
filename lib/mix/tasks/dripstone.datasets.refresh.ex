@@ -29,7 +29,6 @@ defmodule Mix.Tasks.Dripstone.Datasets.Refresh do
       Mix.raise("pass a platform via --platform or --all, not positionally")
     end
 
-
     platforms =
       cond do
         opts[:all] -> Map.keys(@platforms)
