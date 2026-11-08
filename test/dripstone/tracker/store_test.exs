@@ -2,9 +2,11 @@ defmodule Dripstone.Tracker.StoreTest do
   # Touches every tracker table, so it must not run alongside other DB tests.
   use Dripstone.DataCase, async: false
 
-  alias Dripstone.Tracker.Store
+  alias Dripstone.Tracker
+  alias Dripstone.Tracker.{SampleStore, Store}
 
   setup do
+    Ecto.Adapters.SQL.Sandbox.allow(Dripstone.Repo, self(), Process.whereis(SampleStore))
     Store.reset!()
     :ok
   end
@@ -83,5 +85,24 @@ defmodule Dripstone.Tracker.StoreTest do
     after
       File.rm_rf!(dir)
     end
+  end
+
+  test "write decisions and curation survive a simulated restart" do
+    {:ok, _} = Store.load()
+    Tracker.reset_sample_data!()
+    [%{alert: alert} | _] = Tracker.list_alerts()
+    {:ok, %{decision: decision}} = Tracker.confirm_alert(alert.id)
+    {:ok, renamed} = Tracker.rename_network(alert.network_id, %{"name" => "Restart Proof"})
+    {:ok, _} = Tracker.add_tag(alert.network_id, %{"tag" => "restart-proof"})
+
+    # Simulate a restart: drop the in-memory state, reload from the Repo.
+    {:ok, persisted} = Store.load()
+    :ok = SampleStore.put_state(persisted)
+    reloaded = SampleStore.get_state()
+
+    assert reloaded.decisions[decision.id].alert_id == alert.id
+    assert reloaded.alerts[alert.id].status == :confirmed
+    assert reloaded.networks[alert.network_id].name == renamed.name
+    assert "restart-proof" in reloaded.networks[alert.network_id].tags
   end
 end
