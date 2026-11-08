@@ -57,6 +57,8 @@ defmodule Dripstone.Tracker.StoreTest do
     assert map_size(loaded.networks) == map_size(seeded.networks)
     assert map_size(loaded.alerts) == map_size(seeded.alerts)
     assert length(loaded.links) == length(seeded.links)
+    assert map_size(loaded.posts) == map_size(seeded.posts)
+    assert loaded.posts == seeded.posts
     assert length(loaded.findings) == length(seeded.findings)
     assert length(loaded.history) == length(seeded.history)
     assert loaded.seq == seeded.seq

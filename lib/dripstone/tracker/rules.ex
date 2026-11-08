@@ -654,13 +654,25 @@ defmodule Dripstone.Tracker.Rules do
   # newest first; posts whose timestamp can't be read are kept at the end (never
   # dropped, never given an invented time) so evidence isn't lost. Capped.
   defp merge_posts(state, account_id, raw_posts, limit) do
-    # A post's id comes from its account and the platform's own post id: stable
-    # across re-assessments, and it can't collide with the sample data's
-    # independently numbered "post-N" ids (which shared ids with State.next_id).
+    existing =
+      state.posts |> Map.get(account_id, []) |> Map.new(&{&1.post_id, &1.id})
+
     {fresh, state} =
-      Enum.map_reduce(raw_posts, state, fn raw, state ->
+      raw_posts
+      |> Enum.uniq_by(& &1.id)
+      |> Enum.map_reduce(state, fn raw, state ->
+        # Reuse the stored id when the post was seen before (stable across
+        # re-assessments); otherwise derive it from account + platform post id
+        # so new ids can't collide with the sample data's "post-N" ids, which
+        # share State.next_id's namespace.
+        {id, state} =
+          case Map.fetch(existing, raw.id) do
+            {:ok, id} -> {id, state}
+            :error -> {"post-#{account_id}-#{raw.id}", state}
+          end
+
         post = %Post{
-          id: "post-#{account_id}-#{raw.id}",
+          id: id,
           account_id: account_id,
           post_id: raw.id,
           posted_at: posted_at(raw.published_at),

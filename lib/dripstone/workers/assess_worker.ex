@@ -35,7 +35,7 @@ defmodule Dripstone.Workers.AssessWorker do
 
   defp assess(%{"adapter" => adapter, "handle" => handle} = args) do
     with {:ok, module} <- adapter(adapter),
-         {:ok, posts} <- module.fetch_posts(handle) do
+         {:ok, posts} <- module.fetch_posts(handle, fetch_opts(args)) do
       opts = scorer_opts(args)
       assessment = Scorer.assess(posts, opts)
 
@@ -61,6 +61,17 @@ defmodule Dripstone.Workers.AssessWorker do
       module when is_map_key(@feeds, module) -> {:ok, module}
       _ -> {:cancel, "unknown adapter #{inspect(name)}"}
     end
+  end
+
+  # Fetch tuning live adapters honor (plus :fixture_path for tests), threaded
+  # from the job so queued fetches tune like any direct call.
+  @fetch_opt_keys [
+    fixture_path: "fixture_path",
+    min_interval_ms: "min_interval_ms",
+    max_retries: "max_retries"
+  ]
+  defp fetch_opts(args) do
+    for {atom, key} <- @fetch_opt_keys, args[key] != nil, do: {atom, args[key]}
   end
 
   defp scorer_opts(%{"model" => model}) when is_binary(model), do: [model: model]

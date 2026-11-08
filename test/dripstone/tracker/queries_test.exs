@@ -152,6 +152,15 @@ defmodule Dripstone.Tracker.QueriesTest do
       assert telegram != [] and Enum.all?(telegram, &("telegram" in &1.network.platforms))
     end
 
+    test "platform filter skips alerts pointing at a missing network", %{state: state} do
+      [{id, alert}] = Enum.take(state.alerts, 1)
+      state = %{state | alerts: Map.put(state.alerts, id, %{alert | network_id: "net-missing"})}
+
+      entries = Queries.list_alerts(state, %{platform: "telegram", status: :all})
+      assert Enum.all?(entries, &(&1.alert.id != id))
+      assert Queries.count_alerts(state, %{platform: "telegram", status: :all}) == length(entries)
+    end
+
     test "alert detail sorts evidence strongest first and resolves the trigger type", %{
       state: state
     } do

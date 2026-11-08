@@ -20,7 +20,6 @@ defmodule Dripstone.Tracker.Account do
     :display_name,
     :instance,
     :external_id,
-    :created_at,
     :first_seen_at,
     :last_seen_at,
     :assessment,
@@ -36,7 +35,6 @@ defmodule Dripstone.Tracker.Account do
           display_name: String.t() | nil,
           instance: String.t() | nil,
           external_id: String.t() | nil,
-          created_at: DateTime.t() | nil,
           first_seen_at: DateTime.t() | nil,
           last_seen_at: DateTime.t() | nil,
           assessment:

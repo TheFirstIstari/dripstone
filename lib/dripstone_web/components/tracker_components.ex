@@ -781,7 +781,8 @@ defmodule DripstoneWeb.TrackerComponents do
   @doc """
   SVG graph of linked accounts from `Dripstone.Tracker.network_graph/1`. Edges are
   colored by link kind; `hidden_kinds` are not drawn and nodes left with no visible
-  edge are dimmed. Clicking a node sends `select_node` with its id.
+  edge are dimmed. Nodes are focusable `button` controls: clicking or pressing
+  Enter/Space sends `select_node` with its id.
   """
   attr :id, :string, required: true
   attr :graph, :map, required: true
@@ -812,7 +813,7 @@ defmodule DripstoneWeb.TrackerComponents do
       id={@id}
       viewBox="0 0 1000 1000"
       class="h-auto w-full select-none"
-      role="img"
+      role="group"
       aria-label={"Graph of #{length(@graph.nodes)} linked accounts and #{length(@visible)} links"}
     >
       <line
@@ -831,7 +832,11 @@ defmodule DripstoneWeb.TrackerComponents do
         id={"#{@id}-node-#{node.id}"}
         phx-click="select_node"
         phx-value-id={node.id}
-        class="cursor-pointer"
+        phx-keydown="select_node_key"
+        tabindex="0"
+        role="button"
+        aria-label={"#{Map.get(@labels, node.id, node.id)} · #{node.degree} links"}
+        class="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         data-selected={node.id == @selected}
       >
         <circle

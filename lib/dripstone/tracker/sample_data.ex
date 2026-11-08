@@ -299,7 +299,6 @@ defmodule Dripstone.Tracker.SampleData do
       handle: handle,
       instance: instance,
       display_name: String.capitalize(adjective) <> " " <> String.capitalize(noun),
-      created_at: created_at(role, now),
       first_seen_at: first_seen,
       last_seen_at: Enum.max(posted, DateTime, fn -> first_seen end),
       risk_score: score,
@@ -315,10 +314,6 @@ defmodule Dripstone.Tracker.SampleData do
     do: {String.capitalize(a) <> String.capitalize(n) <> "#{i}", nil}
 
   defp handle(_feed, a, n, i), do: {"#{a}_#{n}#{i}", nil}
-
-  defp created_at(nil, now), do: ago(now, rand(365, 3000))
-  defp created_at({_plan, :extra}, now), do: ago(now, rand(6, 10))
-  defp created_at({plan, :member}, now), do: ago(now, plan.days + rand(3, 9))
 
   defp risk_score(nil), do: if(chance(0.03), do: rand(70, 84), else: rand(3, 62))
   defp risk_score({%{confidence: c}, _role}) when c < 70, do: rand(52, 82)
