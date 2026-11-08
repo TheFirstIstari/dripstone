@@ -22,6 +22,9 @@ defmodule Dripstone.DatasetsTest do
 
   setup do
     dir = Path.join(System.tmp_dir!(), "datasets-#{System.unique_integer([:positive])}")
+    # Stale dirs can survive on shared runners across reboots (counter resets).
+    File.rm_rf!(dir)
+    on_exit(fn -> File.rm_rf!(dir) end)
     {:ok, dir: dir}
   end
 
