@@ -144,6 +144,25 @@ defmodule Dripstone.Tracker.RulesTest do
       assert Enum.map(posts, &{&1.post_id, &1.text}) == [{"x3", "c"}, {"x2", "b2"}, {"x1", "a"}]
     end
 
+    test "re-reporting the same posts keeps stable ids and seq" do
+      post = fn id, minute ->
+        %{"id" => id, "published_at" => DateTime.to_iso8601(later(minute)), "text" => id}
+      end
+
+      posts = [post.("x1", 1), post.("x2", 2)]
+      {_, state} = run(%State{}, account("p", %{"posts" => posts}))
+      [before] = Map.values(state.posts)
+      ids = Enum.map(before, &{&1.post_id, &1.id})
+      seq = state.seq
+
+      {_, state} = run(state, account("p", %{"posts" => posts}))
+      [after_posts] = Map.values(state.posts)
+
+      assert Enum.map(after_posts, &{&1.post_id, &1.id}) == ids
+      # Finding id still minted once per report; no post ids burned.
+      assert state.seq == seq + 1
+    end
+
     test "posts with unparseable timestamps are kept at the end, never dropped" do
       posts = [
         %{"id" => "x1", "published_at" => DateTime.to_iso8601(later(1))},

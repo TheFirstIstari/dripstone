@@ -658,7 +658,9 @@ defmodule Dripstone.Tracker.Rules do
     # across re-assessments, and it can't collide with the sample data's
     # independently numbered "post-N" ids (which shared ids with State.next_id).
     {fresh, state} =
-      Enum.map_reduce(raw_posts, state, fn raw, state ->
+      raw_posts
+      |> Enum.uniq_by(& &1.id)
+      |> Enum.map_reduce(state, fn raw, state ->
         post = %Post{
           id: "post-#{account_id}-#{raw.id}",
           account_id: account_id,

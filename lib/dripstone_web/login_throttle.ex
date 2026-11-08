@@ -1,8 +1,9 @@
 defmodule DripstoneWeb.LoginThrottle do
   @moduledoc """
-  Per-account login attempt throttle backed by a stdlib Agent (no new deps).
+  Per-{IP, account} login attempt throttle backed by a stdlib Agent (no new deps).
 
-  Allows 5 attempts per minute per account; a success resets the count.
+  Allows 5 attempts per minute per IP + account pair, so one source cannot
+  burn another person's budget; a success resets the count.
   Password login and magic-link requests both count as attempts.
 
   shortcut: single-node memory only, lost on restart; move to a shared
@@ -18,19 +19,17 @@ defmodule DripstoneWeb.LoginThrottle do
 
   def start_link(_opts), do: Agent.start_link(fn -> %{} end, name: __MODULE__)
 
-  def key(email) when is_binary(email), do: email |> String.trim() |> String.downcase()
+  # Normalizes to an {ip, email} pair; non-binary email maps to a shared
+  # bucket so malformed input still counts without creating atoms/keys.
+  def key(ip, email) when is_binary(email), do: {normalize_ip(ip), normalize_email(email)}
+  def key(ip, _email), do: {normalize_ip(ip), ""}
 
-  def allowed?(key) do
-    Agent.get_and_update(__MODULE__, fn attempts ->
-      case recent(Map.get(attempts, key, [])) do
-        [] -> {true, Map.delete(attempts, key)}
-        timestamps -> {length(timestamps) < @max_attempts, Map.put(attempts, key, timestamps)}
-      end
-    end)
-  end
+  def key(email) when is_binary(email), do: {nil, normalize_email(email)}
+  def key(_email), do: {nil, ""}
 
   # Atomic check-and-record: avoids the allowed? -> record race where N
-  # concurrent requests at count 4 would all pass.
+  # concurrent requests at count 4 would all pass. Writes also sweep
+  # expired keys once the map exceeds @sweep_threshold.
   def check_and_record(key) do
     now = System.monotonic_time(:millisecond)
 
@@ -40,17 +39,9 @@ defmodule DripstoneWeb.LoginThrottle do
           {:throttled, Map.put(attempts, key, timestamps)}
 
         timestamps ->
-          {:ok, Map.put(attempts, key, [now | timestamps])}
+          attempts = Map.put(attempts, key, [now | timestamps])
+          {:ok, maybe_sweep(attempts)}
       end
-    end)
-  end
-
-  def record(key) do
-    now = System.monotonic_time(:millisecond)
-
-    Agent.update(__MODULE__, fn attempts ->
-      attempts = Map.put(attempts, key, [now | recent(Map.get(attempts, key, []))])
-      if map_size(attempts) > @sweep_threshold, do: sweep(attempts), else: attempts
     end)
   end
 
@@ -58,6 +49,16 @@ defmodule DripstoneWeb.LoginThrottle do
 
   # Test/support helper: clear all counters.
   def reset_all, do: Agent.update(__MODULE__, fn _ -> %{} end)
+
+  defp normalize_email(email), do: email |> String.trim() |> String.downcase()
+
+  defp normalize_ip({_, _, _, _} = ip), do: ip
+  defp normalize_ip({_, _, _, _, _, _, _, _} = ip), do: ip
+  defp normalize_ip(_), do: nil
+
+  defp maybe_sweep(attempts) do
+    if map_size(attempts) > @sweep_threshold, do: sweep(attempts), else: attempts
+  end
 
   defp recent(timestamps) do
     cutoff = System.monotonic_time(:millisecond) - @window_ms
