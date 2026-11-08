@@ -97,6 +97,18 @@ defmodule Dripstone.DatasetsTest do
     assert {:error, _} = Datasets.refresh(Dripstone.Adapters.StubX, "x", "h", opts)
   end
 
+  test "read_corpus skips one corrupt line and reads the rest", %{dir: dir} do
+    File.mkdir_p!(Path.join(dir, "x"))
+
+    File.write!(
+      Path.join([dir, "x", "2026-11-07.jsonl"]),
+      ~s({"id":"x1"}\nnot json\n{"id":"x2"}\n)
+    )
+
+    assert {:ok, lines} = Datasets.read_corpus("x", datasets_dir: dir)
+    assert [%{"id" => "x1"}, %{"id" => "x2"}] = lines
+  end
+
   test "write_corpus rejects date traversal and corpus_path raises", %{dir: dir} do
     evil = Path.join(dir, "evil.jsonl")
     File.rm(evil)
