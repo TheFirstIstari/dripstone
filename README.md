@@ -47,11 +47,14 @@ restart):
 - **Demo**: the sample data plus a simulator raising alerts every ~45 s, kept in
   memory only and never stored. A "Demo data" banner shows while it's on.
 
-## Live discovery (Bluesky)
+## Live discovery (Bluesky and Mastodon)
 
-The first real feed. Bluesky's public Jetstream is read without credentials; a link
-posted by 5+ distinct accounts within 10 minutes becomes a candidate group, whose
-accounts are fetched and assessed by Jev into Live. On in production; locally:
+Two real feeds, no credentials. Bluesky's public Jetstream is streamed, and the public
+timelines of a few open Mastodon instances (mostly federated posts; list in config
+`Dripstone.Discovery, mastodon_instances`) are polled every 30 s. A link posted by 5+
+distinct accounts within 10 minutes becomes a candidate group, whose accounts are
+fetched from their home server and assessed by Jev into Live. On in production;
+locally:
 
 ```sh
 DRIPSTONE_DISCOVERY=1 mise run dev

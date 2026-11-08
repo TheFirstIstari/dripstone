@@ -10,8 +10,9 @@ Built in: X, Reddit, Bluesky, Mastodon, Telegram, Facebook (`lib/dripstone/feeds
 > Feeds describe platforms only. Fetching posts is a separate **adapter** behind
 > `Dripstone.Adapters` (`fetch_posts(handle, opts) :: {:ok, posts} | {:error, reason}`),
 > which must go through `Dripstone.Adapters.Polite` for rate limits, robots.txt and 429
-> back-off. **Bluesky has a real fetcher** (`Dripstone.Adapters.Bluesky`, public AppView,
-> no authentication); X and Reddit are still stubs. To give a platform a real fetcher:
+> back-off. **Bluesky and Mastodon have real fetchers** (`Dripstone.Adapters.Bluesky`,
+> public AppView; `Dripstone.Adapters.Mastodon`, the account's home instance public
+> API; no authentication for either); X and Reddit are still stubs. To give a platform a real fetcher:
 > write the adapter, register it in `Dripstone.Adapters`, in `AssessWorker`'s feed map
 > and in the refresh task's platforms, and record a seed corpus with
 > `mix dripstone.refresh <platform> --handle <handle>` for fixture-first tests.

@@ -19,7 +19,8 @@ defmodule Mix.Tasks.Dripstone.Datasets.Refresh do
   @platforms %{
     "x" => Dripstone.Adapters.StubX,
     "reddit" => Dripstone.Adapters.StubReddit,
-    "bluesky" => Dripstone.Adapters.Bluesky
+    "bluesky" => Dripstone.Adapters.Bluesky,
+    "mastodon" => Dripstone.Adapters.Mastodon
   }
 
   @impl Mix.Task

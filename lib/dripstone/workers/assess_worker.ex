@@ -22,7 +22,8 @@ defmodule Dripstone.Workers.AssessWorker do
   @feeds %{
     Dripstone.Adapters.StubX => "x",
     Dripstone.Adapters.StubReddit => "reddit",
-    Dripstone.Adapters.Bluesky => "bluesky"
+    Dripstone.Adapters.Bluesky => "bluesky",
+    Dripstone.Adapters.Mastodon => "mastodon"
   }
 
   @impl Oban.Worker

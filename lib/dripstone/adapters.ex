@@ -12,7 +12,8 @@ defmodule Dripstone.Adapters do
   @registry %{
     stub_x: Dripstone.Adapters.StubX,
     stub_reddit: Dripstone.Adapters.StubReddit,
-    bluesky: Dripstone.Adapters.Bluesky
+    bluesky: Dripstone.Adapters.Bluesky,
+    mastodon: Dripstone.Adapters.Mastodon
   }
 
   @doc """

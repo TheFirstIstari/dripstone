@@ -149,7 +149,10 @@ config :dripstone, :load_sample_data, false
 
 # Live discovery (Bluesky Jetstream -> bursts -> DiscoverWorker). Off by default;
 # prod.exs turns it on, dev turns it on with DRIPSTONE_DISCOVERY=1.
-config :dripstone, Dripstone.Discovery, enabled: false
+config :dripstone, Dripstone.Discovery,
+  enabled: false,
+  # Open instances whose public timelines (mostly federated posts) need no login.
+  mastodon_instances: ~w(mastodon.world mas.to universeodon.com mastodonapp.uk social.vivaldi.net)
 
 # Oban background jobs. Test env overrides with `testing: :manual`;
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.
