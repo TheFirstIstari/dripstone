@@ -69,22 +69,30 @@ defmodule DripstoneWeb.Router do
 
   # The root is public so deploy checks see a 200: logged-out visitors get a
   # landing page, logged-in analysts get the overview dashboard (see
+<<<<<<< Updated upstream
   # OverviewLive). Everything else an analyst uses still requires login.
+=======
+  # OverviewLive). Everything else an analyst uses still requires login
+  # (project spec, "Analyst login").
+>>>>>>> Stashed changes
   scope "/", DripstoneWeb do
     pipe_through [:browser]
 
     live_session :root,
       on_mount: [{DripstoneWeb.UserAuth, :mount_current_scope}, DripstoneWeb.Nav] do
       live "/", OverviewLive
+<<<<<<< Updated upstream
     end
 
     live_session :current_user,
       on_mount: [{DripstoneWeb.UserAuth, :mount_current_scope}] do
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
+=======
+>>>>>>> Stashed changes
     end
 
-    post "/users/log-in", UserSessionController, :create
-    delete "/users/log-out", UserSessionController, :delete
+    post "/users/update-password", UserSessionController, :update_password
   end
+
 end

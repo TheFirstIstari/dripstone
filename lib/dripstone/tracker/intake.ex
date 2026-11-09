@@ -19,8 +19,9 @@ defmodule Dripstone.Tracker.Intake do
 
   alias Dripstone.Tracker.{Alert, Curation, Finding, Network, State}
 
-  @detection "Detection"
-  @severity_rank %{low: 1, medium: 2, high: 3}
+  # Repeat findings on the same open alert would grow `evidence` without bound
+  # (simulator revisits the same handles every few minutes), so keep newest 100.
+  @max_evidence 100
 
   # Repeat findings on the same open alert would grow `evidence` without bound,
   # so the merge below keeps only the newest entries.
@@ -205,7 +206,6 @@ defmodule Dripstone.Tracker.Intake do
   defp upsert_alert(state, network, finding, dismissal, now) do
     case open_alert(state, network.id, finding.trigger_id) do
       %Alert{} = alert ->
-        merged = %{
           alert
           | title: finding.title,
             severity: max_severity(alert.severity, finding.severity),

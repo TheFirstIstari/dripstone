@@ -1,15 +1,23 @@
 defmodule DripstoneWeb.OverviewLive do
   @moduledoc """
+<<<<<<< Updated upstream
   The root screen. Logged-in analysts get the overview dashboard: headline counts,
   the 30-day alert trend, newest open alerts, recently active networks and feed
   health (refreshes live on tracker changes). Logged-out visitors get a public
   landing page, so deploy checks see a 200.
+=======
+  The root screen: a public landing page for logged-out visitors, and the
+  overview dashboard (headline counts, the 30-day alert trend, newest open
+  alerts, recently active networks and feed health) for logged-in analysts.
+  Refreshes live on tracker changes.
+>>>>>>> Stashed changes
   """
   use DripstoneWeb, :live_view
 
   alias Dripstone.Tracker
 
   @impl true
+<<<<<<< Updated upstream
   def mount(
         _params,
         _session,
@@ -22,6 +30,20 @@ defmodule DripstoneWeb.OverviewLive do
      |> stream_configure(:networks, dom_id: &"overview-network-#{&1.network.id}")
      |> stream_configure(:feeds, dom_id: &"feed-strip-#{&1.feed.id()}")
      |> load()}
+=======
+  def mount(_params, _session, socket) do
+    if socket.assigns.current_scope do
+      {:ok,
+       socket
+       |> assign(:page_title, "Overview")
+       |> stream_configure(:alerts, dom_id: &"overview-alert-#{&1.alert.id}")
+       |> stream_configure(:networks, dom_id: &"overview-network-#{&1.network.id}")
+       |> stream_configure(:feeds, dom_id: &"feed-strip-#{&1.feed.id()}")
+       |> load()}
+    else
+      {:ok, assign(socket, :page_title, "Dripstone")}
+    end
+>>>>>>> Stashed changes
   end
 
   def mount(_params, _session, socket) do
@@ -53,9 +75,36 @@ defmodule DripstoneWeb.OverviewLive do
   defp feed_border(_status), do: "border-line"
 
   @impl true
+<<<<<<< Updated upstream
   # Logged-out visitors see a public landing page (200 for deploy checks);
   # analysts see the dashboard below.
   def render(%{current_scope: %{user: %Dripstone.Accounts.User{}}} = assigns) do
+=======
+  def render(%{current_scope: nil} = assigns) do
+    ~H"""
+    <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
+      <div id="landing" class="mx-auto max-w-2xl py-12 text-center sm:py-16">
+        <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          Dripstone
+        </h1>
+        <p class="mt-3 text-base text-ink-muted sm:text-lg">
+          Botfarm social tracker: detection raises alerts, analysts review
+          networks, accounts and feeds.
+        </p>
+        <.link
+          href={~p"/users/log-in"}
+          id="landing-log-in"
+          class="mt-6 inline-block rounded-lg bg-accent px-5 py-2.5 font-medium text-accent-ink hover:bg-accent-strong"
+        >
+          Log in
+        </.link>
+      </div>
+    </Layouts.app>
+    """
+  end
+
+  def render(assigns) do
+>>>>>>> Stashed changes
     ~H"""
     <Layouts.app flash={@flash} nav={@nav} current_scope={@current_scope}>
       <.page_header title="Overview">

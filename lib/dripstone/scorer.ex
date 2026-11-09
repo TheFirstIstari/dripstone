@@ -62,13 +62,22 @@ defmodule Dripstone.Scorer do
     run_decision(summarize(posts), account_questions(), %{score: s, labels: l}, opts)
   end
 
+  def score(_posts), do: {:error, {:invalid_args, "posts must be a list"}}
+
   @doc """
   Heuristics plus `AIClient.decide/3` with the group question set (`coordinated`
   noul, `relation` choice, one `member:<feed>:<handle>` noul per member).
   Each member is `%{feed_id:, handle:, posts:}` (atom or string keys).
   On `{:error, _}` returns heuristics-only.
   """
+<<<<<<< Updated upstream
   def assess_group(members, opts \\ [])
+=======
+  def assess(posts, opts \\ [])
+  def assess(posts, _opts) when not is_list(posts),
+    do: {:error, {:invalid_args, "posts must be a list"}}
+    %{score: s, labels: l} = score(posts)
+>>>>>>> Stashed changes
 
   def assess_group([], _opts),
     do: %{score: 0, labels: [], ai_answers: nil, source: :heuristics_only}
