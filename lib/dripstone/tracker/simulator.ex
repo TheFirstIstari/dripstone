@@ -57,7 +57,13 @@ defmodule Dripstone.Tracker.Simulator do
 
   @impl true
   def init(opts) do
+    # The simulator only ever feeds the dataset it was started for: Demo when
+    # started by DemoStore, Live by default (tests).
+    dataset = Keyword.get(opts, :dataset, :live)
+    :ok = Dripstone.Tracker.put_dataset(dataset)
+
     state = %{
+      dataset: dataset,
       interval: Keyword.get(opts, :interval, @default_interval),
       assess_interval: Keyword.get(opts, :assess_interval, @default_assess_interval),
       enqueue: Keyword.get(opts, :enqueue, &Oban.insert/1),
@@ -80,7 +86,9 @@ defmodule Dripstone.Tracker.Simulator do
   def handle_info(:assess, state) do
     {adapter, handle} = Enum.random(@handles)
 
-    case state.enqueue.(AssessWorker.new(%{"adapter" => adapter, "handle" => handle})) do
+    args = %{"adapter" => adapter, "handle" => handle, "dataset" => to_string(state.dataset)}
+
+    case state.enqueue.(AssessWorker.new(args)) do
       {:ok, _job} -> Logger.debug("Simulator queued an assessment of #{handle} (#{adapter})")
       {:error, reason} -> Logger.warning("Simulator could not queue a job: #{inspect(reason)}")
     end
@@ -92,11 +100,13 @@ defmodule Dripstone.Tracker.Simulator do
   # Simulator mutations save straight to the rows (no broadcasts needed for a
   # feed refresh; canned findings broadcast through `report_finding`).
   defp apply_change(fun) do
-    with {:ok, loaded} <- Store.load(),
-         {:ok, reply, new_state, _messages} <- fun.(loaded) do
-      :ok = Store.save(new_state)
-      {:ok, reply}
-    end
+    Store.write(fn ->
+      with {:ok, loaded} <- Store.load(),
+           {:ok, reply, new_state, _messages} <- fun.(loaded) do
+        :ok = Store.save(new_state)
+        {:ok, reply}
+      end
+    end)
   end
 
   ## Canned findings

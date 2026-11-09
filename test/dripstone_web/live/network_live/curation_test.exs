@@ -231,6 +231,19 @@ defmodule DripstoneWeb.NetworkLive.CurationTest do
     assert [%{id: "net-c0421"}] = Tracker.get_network("net-c0425").related
   end
 
+  test "removing a relation unlinks both networks", %{conn: conn} do
+    {:ok, _} = Tracker.relate_networks("net-c0421", "net-c0425")
+    {:ok, view, _html} = live(conn, "/networks/net-c0421")
+
+    assert has_element?(view, "#related-net-c0425")
+
+    view |> element("#unrelate-net-c0425") |> render_click()
+
+    refute has_element?(view, "#related-net-c0425")
+    assert Tracker.get_network("net-c0421").related == []
+    assert Tracker.get_network("net-c0425").related == []
+  end
+
   test "the History tab marks analyst and detection changes", %{conn: conn} do
     {:ok, _} = Tracker.rename_network("net-c0421", %{"name" => "Rally Ticket Bots"})
     {:ok, view, _html} = live(conn, "/networks/net-c0421?view=history")

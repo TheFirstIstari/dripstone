@@ -65,10 +65,14 @@ defmodule DripstoneWeb.AlertLive.Index do
         |> assign(:count, socket.assigns.count + 1)
         |> assign(:visible_ids, MapSet.put(socket.assigns.visible_ids, id))
         |> update(:new_ids, &if(event == :alert_raised, do: MapSet.put(&1, id), else: &1))
-        |> stream_insert(:alerts, entry, at: 0)
+        |> stream_insert(:alerts, entry, at: insert_at(event, filters, id))
 
       matches ->
-        stream_insert(socket, :alerts, entry)
+        # A network_updated reload can make a raised alert visible just before
+        # its alert_raised arrives; still flag it new.
+        socket
+        |> update(:new_ids, &if(event == :alert_raised, do: MapSet.put(&1, id), else: &1))
+        |> stream_insert(:alerts, entry)
 
       not visible? ->
         socket
@@ -81,7 +85,22 @@ defmodule DripstoneWeb.AlertLive.Index do
     end
   end
 
+  # Rows hold network snapshots (name, platforms), so a rename/merge/tag change
+  # leaves them stale until reload. Re-run the query like the network index does.
+  def handle_tracker_event({:network_updated, _network_id}, socket), do: load(socket)
+
   def handle_tracker_event(_message, socket), do: socket
+
+  # New alerts land on top; an existing alert reappearing (severity raised,
+  # undo) keeps the inbox's newest-first order instead of jumping to the top.
+  defp insert_at(:alert_raised, _filters, _id), do: 0
+
+  defp insert_at(:alert_updated, filters, id) do
+    sorted_ids = filters |> Tracker.list_alerts() |> Enum.map(& &1.alert.id)
+    # The sorted position doubles as the stream index: the i entries ahead of
+    # it are already visible in order.
+    Enum.find_index(sorted_ids, &(&1 == id)) || 0
+  end
 
   defp matches_filters?(entry, alert, filters) do
     status = Map.get(filters, :status, :open)

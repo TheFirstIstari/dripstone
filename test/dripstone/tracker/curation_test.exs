@@ -177,6 +177,24 @@ defmodule Dripstone.Tracker.CurationTest do
       assert latest_history("net-c0425").summary == "Received 3 members from Cluster #0421"
       assert {:error, :same_network} = Tracker.move_members("net-c0421", "net-c0421", moving)
     end
+
+    test "membership edits reindex platforms so filters and badges stay correct" do
+      before = network("net-c0421")
+      by_feed = Enum.group_by(before.member_ids, &Tracker.get_account(&1).account.feed_id)
+
+      {feed, ids} =
+        Enum.find(by_feed, fn {_feed, ids} -> length(ids) < length(before.member_ids) end) ||
+          hd(Map.to_list(by_feed))
+
+      {:ok, removed} = Tracker.remove_members("net-c0421", ids)
+      refute feed in removed.platforms
+      assert Enum.sort(removed.platforms) == Enum.sort(before.platforms -- [feed])
+      refute Enum.any?(Tracker.list_networks(%{platform: feed}), &(&1.network.id == "net-c0421"))
+
+      {:ok, added} = Tracker.add_members("net-c0421", ids)
+      assert Enum.sort(added.platforms) == Enum.sort(before.platforms)
+      assert Enum.any?(Tracker.list_networks(%{platform: feed}), &(&1.network.id == "net-c0421"))
+    end
   end
 
   describe "merge" do
@@ -209,6 +227,36 @@ defmodule Dripstone.Tracker.CurationTest do
 
     test "a network can't be merged into itself" do
       assert {:error, :same_network} = Tracker.merge_networks("net-c0421", "net-c0421")
+    end
+
+    test "a merge that would exceed the tag limit is refused" do
+      for n <- 1..15, do: {:ok, _} = Tracker.add_tag("net-c0421", %{"tag" => "a#{n}"})
+      for n <- 1..15, do: {:ok, _} = Tracker.add_tag("net-c0425", %{"tag" => "b#{n}"})
+
+      assert {:error, :too_many_tags} = Tracker.merge_networks("net-c0425", "net-c0421")
+      assert network("net-c0421").tags |> length() == 15
+      assert network("net-c0425").retired_into == nil
+
+      {:ok, _} = Tracker.add_tag("net-c0421", %{"tag" => "a1"})
+      for n <- 1..10, do: {:ok, _} = Tracker.remove_tag("net-c0425", "b#{n}")
+      assert {:ok, %{tags: tags}} = Tracker.merge_networks("net-c0425", "net-c0421")
+      assert length(tags) == 20
+    end
+
+    test "merge rewires back-references pointing at the retired source" do
+      {:ok, _} = Tracker.relate_networks("net-c0425", "net-c0422", "Shared infra")
+      assert "net-c0425" in network("net-c0422").related_ids
+      assert_received {:network_updated, "net-c0425"}
+      assert_received {:network_updated, "net-c0422"}
+
+      {:ok, _} = Tracker.merge_networks("net-c0425", "net-c0421")
+
+      assert network("net-c0422").related_ids == ["net-c0421"]
+      assert network("net-c0421").related_ids == ["net-c0422"]
+      refute "net-c0425" in network("net-c0421").related_ids
+      assert_received {:network_updated, "net-c0425"}
+      assert_received {:network_updated, "net-c0421"}
+      assert_received {:network_updated, "net-c0422"}
     end
   end
 

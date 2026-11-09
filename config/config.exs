@@ -134,18 +134,33 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
-# AI decision endpoint (OpenCode Console, TypeSafe AI). Key comes from the
-# environment only — never commit a key value here.
+# AI decision endpoint (OpenCode Console, TypeSafe AI). Static defaults only —
+# real values come from the environment at boot (see runtime.exs). Never
+# commit a key value here.
 config :dripstone, Dripstone.AIClient,
-  base_url: System.get_env("INTERNAL_AI_URL", "https://opencode.ai/inference/systemone/v1"),
-  model: System.get_env("INTERNAL_AI_MODEL", "jev-1.13-free"),
-  api_key: System.get_env("OPENCODE_API_KEY")
+  base_url: "https://opencode.ai/inference/systemone/v1",
+  model: "jev-1.13-free"
+
+# What an empty Live (database) dataset is seeded with on first boot: false
+# (nothing: Live fills from real detection), :showcase (hand-built corpus, dev
+# opt-in) or true (generated sample rows, used by tests). The sample data lives in
+# the memory-only Demo dataset instead (DemoStore); prod.exs pins false (#50).
+config :dripstone, :load_sample_data, false
+
+# Live discovery (Bluesky Jetstream -> bursts -> DiscoverWorker). Off by default;
+# prod.exs turns it on, dev turns it on with DRIPSTONE_DISCOVERY=1.
+config :dripstone, Dripstone.Discovery, enabled: false
 
 # Oban background jobs. Test env overrides with `testing: :manual`;
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.
 config :dripstone, Oban,
   repo: Dripstone.Repo,
-  queues: [default: 10]
+  queues: [default: 10],
+  plugins: [
+    # Live networks get a trend re-check every 6 hours (add-bluesky-live-pipeline).
+    {Oban.Plugins.Cron, crontab: [{"0 */6 * * *", Dripstone.Workers.TrendWorker}]},
+    Oban.Plugins.Pruner
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

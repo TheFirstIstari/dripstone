@@ -1,5 +1,22 @@
 This is a web application written using the Phoenix web framework.
 
+## In-flight change: read before touching discovery, Bluesky or data modes
+
+`openspec/changes/add-bluesky-live-pipeline` is being implemented by the frontend owner.
+It covers:
+- Bluesky Jetstream discovery and a Bluesky fetcher;
+- fixes to `Dripstone.Adapters.Polite` (its ETS table dies with the calling process,
+  and the rate gate isn't atomic);
+- `Tracker.report_findings/1` batching;
+- per-session Demo/Live data modes, with `Store` dispatching by dataset;
+- Bluesky trend scheduling via Oban Cron.
+
+Don't implement these separately; coordinate first. Generic per-platform refresh
+scheduling (issue 188) and the X and Reddit fetchers (issues 186 and 187) stay with the
+detection owner.
+
+Remove this section once the change is archived.
+
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues

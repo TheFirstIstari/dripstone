@@ -13,7 +13,7 @@ defmodule Dripstone.DatasetsTest do
       Process.put(:flaky_attempts, n + 1)
 
       if n < Keyword.get(opts, :fail_times, 0) do
-        {:error, {:http_status, 429}}
+        {:error, {:http_error, 429}}
       else
         {:ok, [%{id: "1", handle: handle, text: "hi", urls: [], published_at: nil}]}
       end
@@ -87,7 +87,7 @@ defmodule Dripstone.DatasetsTest do
   test "refresh gives up after max retries", %{dir: dir} do
     opts = [datasets_dir: dir, fail_times: 9, max_retries: 2, retry_sleep_ms: 0]
 
-    assert {:error, {:http_status, 429}} = Datasets.refresh(FlakyAdapter, "x", "h", opts)
+    assert {:error, {:http_error, 429}} = Datasets.refresh(FlakyAdapter, "x", "h", opts)
     assert Process.get(:flaky_attempts) == 3
   end
 
@@ -126,5 +126,24 @@ defmodule Dripstone.DatasetsTest do
 
     assert_raise ArgumentError, fn -> Datasets.corpus_path("x", "../../evil") end
     refute File.exists?(evil)
+  end
+
+  test "latest_corpus ignores stray non-dated jsonl files", %{dir: dir} do
+    Datasets.write_corpus("x", "h", [], datasets_dir: dir, date: "2026-11-01")
+    File.write!(Path.join([dir, "x", "notes.jsonl"]), ~s({"id":"stray"}\n))
+
+    assert {:ok, path} = Datasets.latest_corpus("x", datasets_dir: dir)
+    assert Path.basename(path) == "2026-11-01.jsonl"
+    assert {:ok, []} = Datasets.read_corpus("x", datasets_dir: dir)
+  end
+
+  test "platform traversal is rejected", %{dir: dir} do
+    assert_raise ArgumentError, fn -> Datasets.corpus_path("../../evil", "2026-11-07") end
+    assert_raise ArgumentError, fn -> Datasets.latest_corpus("*", datasets_dir: dir) end
+
+    assert {:error, :invalid_platform} =
+             Datasets.write_corpus("../../evil", "h", [], datasets_dir: dir, date: "2026-11-07")
+
+    refute File.exists?(Path.join(dir, "evil.jsonl"))
   end
 end

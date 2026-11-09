@@ -40,10 +40,23 @@ defmodule DripstoneWeb.Nav do
     DripstoneWeb.FeedLive.Index => :feeds
   }
 
-  def on_mount(:default, _params, _session, socket) do
+  def on_mount(:default, _params, session, socket) do
+    # Live or Demo for this session (set by POST /mode). Everything this LiveView
+    # reads, writes and subscribes to follows it.
+    mode = if session["data_mode"] == "demo", do: :demo, else: :live
+    :ok = Tracker.put_dataset(mode)
+    if mode == :demo, do: :ok = Dripstone.Tracker.DemoStore.ensure_started()
+
     if connected?(socket), do: Tracker.subscribe()
 
-    nav = %{active: Map.get(@sections, socket.view), open_alerts: open_alerts(), toasts: []}
+    user = socket.assigns[:current_scope] && socket.assigns.current_scope.user
+    # Anonymous visitors never see the badge, so skip the per-mount count.
+    nav = %{
+      active: Map.get(@sections, socket.view),
+      open_alerts: open_alerts(user),
+      toasts: [],
+      mode: mode
+    }
 
     {:cont,
      socket
@@ -92,7 +105,10 @@ defmodule DripstoneWeb.Nav do
     {:halt, socket}
   end
 
-  defp recount(socket), do: update(socket, :nav, &%{&1 | open_alerts: open_alerts()})
+  defp recount(socket) do
+    user = socket.assigns[:current_scope] && socket.assigns.current_scope.user
+    update(socket, :nav, &%{&1 | open_alerts: open_alerts(user)})
+  end
 
   defp toast(socket, %{severity: :high, status: :open} = alert) do
     entry = %{id: alert.id, alert_id: alert.id, title: alert.title, severity: alert.severity}
@@ -108,5 +124,6 @@ defmodule DripstoneWeb.Nav do
 
   defp toast(socket, _alert), do: socket
 
-  defp open_alerts, do: Tracker.count_alerts(%{status: :open})
+  defp open_alerts(nil), do: 0
+  defp open_alerts(_user), do: Tracker.count_alerts(%{status: :open})
 end

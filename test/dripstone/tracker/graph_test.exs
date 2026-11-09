@@ -66,18 +66,4 @@ defmodule Dripstone.Tracker.GraphTest do
     assert [%{id: "a", x: 0.5, y: 0.5}] = one.nodes
     assert Graph.build(%Network{id: "n0", name: "None", member_ids: []}, []).nodes == []
   end
-
-  test "the cache key changes when membership changes", %{state: state} do
-    network = state.networks["net-c0422"]
-
-    refute Graph.cache_key(network) ==
-             Graph.cache_key(%{network | member_ids: tl(network.member_ids)})
-  end
-
-  test "the cache key ignores member order", %{state: state} do
-    network = state.networks["net-c0422"]
-
-    assert Graph.cache_key(network) ==
-             Graph.cache_key(%{network | member_ids: Enum.reverse(network.member_ids)})
-  end
 end

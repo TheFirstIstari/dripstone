@@ -21,20 +21,25 @@ defmodule Dripstone.Workers.AssessWorker do
   # Which tracker feed each fetch adapter's accounts belong to.
   @feeds %{
     Dripstone.Adapters.StubX => "x",
-    Dripstone.Adapters.StubReddit => "reddit"
+    Dripstone.Adapters.StubReddit => "reddit",
+    Dripstone.Adapters.Bluesky => "bluesky"
   }
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"adapter" => adapter, "handle" => handle} = args}) do
-    with {:ok, module} <- adapter(adapter),
-         {:ok, posts} <- module.fetch_posts(handle) do
-      opts = scorer_opts(args)
-      assessment = Scorer.assess(posts, opts)
+  def perform(%Oban.Job{args: %{"adapter" => _, "handle" => _} = args}) do
+    # Jobs queued by the Demo simulator report into Demo; everything else is Live.
+    dataset = if args["dataset"] == "demo", do: :demo, else: :live
+    Dripstone.Tracker.with_dataset(dataset, fn -> assess(args) end)
+  end
 
+  defp assess(%{"adapter" => adapter, "handle" => handle} = args) do
+    with {:ok, module} <- adapter(adapter),
+         {:ok, posts} <- module.fetch_posts(handle, fetch_opts(args)),
+         {:ok, assessment} <- assess(posts, args) do
       finding = %{
         kind: "account",
         observed_at: DateTime.utc_now(),
-        model: if(assessment.ai_answers, do: model(opts)),
+        model: if(assessment.ai_answers, do: model(scorer_opts(args))),
         account: %{feed_id: Map.fetch!(@feeds, module), handle: handle},
         posts: posts,
         heuristics: %{score: assessment.score, labels: assessment.labels},
@@ -48,11 +53,32 @@ defmodule Dripstone.Workers.AssessWorker do
     end
   end
 
+  # Scorer.assess/2 returns {:error, _} for non-list posts and Job callers need
+  # a clean failure, not a BadMapError crash-loop on `.score` (#137).
+  defp assess(posts, args) do
+    case Scorer.assess(posts, scorer_opts(args)) do
+      %{score: _, labels: _, ai_answers: _} = assessment -> {:ok, assessment}
+      {:error, _} = error -> error
+      other -> {:error, {:invalid_assessment, other}}
+    end
+  end
+
   defp adapter(name) do
     case Adapters.get(name) do
       module when is_map_key(@feeds, module) -> {:ok, module}
       _ -> {:cancel, "unknown adapter #{inspect(name)}"}
     end
+  end
+
+  # Fetch tuning live adapters honor (plus :fixture_path for tests), threaded
+  # from the job so queued fetches tune like any direct call.
+  @fetch_opt_keys [
+    fixture_path: "fixture_path",
+    min_interval_ms: "min_interval_ms",
+    max_retries: "max_retries"
+  ]
+  defp fetch_opts(args) do
+    for {atom, key} <- @fetch_opt_keys, args[key] != nil, do: {atom, args[key]}
   end
 
   defp scorer_opts(%{"model" => model}) when is_binary(model), do: [model: model]

@@ -77,6 +77,17 @@ defmodule Dripstone.Tracker.DecisionsTest do
     assert %{alert: %{status: :confirmed}} = Tracker.get_alert(second.id)
   end
 
+  test "undo of a confirm is refused when a later confirm kept the network confirmed" do
+    [%{alert: first}, %{alert: second}] =
+      Tracker.list_alerts(%{}) |> Enum.filter(&(&1.network.id == "net-sunrise"))
+
+    {:ok, %{decision: older}} = Tracker.confirm_alert(first.id)
+    {:ok, %{decision: _newer}} = Tracker.confirm_alert(second.id)
+
+    assert {:error, :superseded} = Tracker.undo_decision(older.id)
+    assert %{network: %{status: :confirmed}} = Tracker.get_alert(second.id)
+  end
+
   test "an undone or unknown decision can't be undone again" do
     alert = lone_alert("net-c0425")
     {:ok, %{decision: decision}} = Tracker.confirm_alert(alert.id)

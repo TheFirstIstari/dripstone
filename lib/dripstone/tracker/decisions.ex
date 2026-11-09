@@ -106,30 +106,50 @@ defmodule Dripstone.Tracker.Decisions do
 
   # The network may have changed since the decision (a newer decision on another
   # alert of the same network). Undoing then would clobber that newer outcome.
+  # A status comparison alone is not enough: two confirms in a row leave the
+  # network Confirmed, yet undoing the first would still wipe the second's
+  # decision. Any newer decision on the same network therefore blocks the undo.
   defp network_unchanged(state, decision) do
     current = state.networks[decision.network_id] && state.networks[decision.network_id].status
 
-    if current == decision.resulting_network_status or
-         (is_nil(decision.resulting_network_status) and
-            current == decision.previous_network_status),
-       do: :ok,
-       else: {:error, :superseded}
+    if superseded_by_newer?(state, decision) or current != decision.resulting_network_status,
+      do: {:error, :superseded},
+      else: :ok
   end
+
+  defp superseded_by_newer?(state, decision) do
+    Enum.any?(state.decisions, fn {id, other} ->
+      id != decision.id and other.network_id == decision.network_id and newer?(other, decision)
+    end)
+  end
+
+  # `at` is second-truncated so ties fall back to the id sequence from next_id/2.
+  defp newer?(%Decision{at: this_at, id: this_id}, %Decision{at: other_at, id: other_id}) do
+    case DateTime.compare(this_at, other_at) do
+      :gt -> true
+      :lt -> false
+      :eq -> seq(this_id) > seq(other_id)
+    end
+  end
+
+  defp seq("dec-" <> rest) do
+    case Integer.parse(rest) do
+      {n, ""} -> n
+      _ -> 0
+    end
+  end
+
+  defp seq(_), do: 0
 
   defp alert_status(:confirm), do: :confirmed
   defp alert_status(:dismiss), do: :dismissed
 
   defp network_status(_state, _network, _alert, :confirm), do: :confirmed
 
-  defp network_status(state, network, alert, :dismiss) do
-    other_confirmed? =
-      case state.confirmed_by_network[network.id] do
-        nil -> false
-        count when alert.status == :confirmed -> count > 1
-        count -> count > 0
-      end
-
-    if other_confirmed?, do: network.status, else: :dismissed
+  defp network_status(state, network, _alert, :dismiss) do
+    # `decide` only runs on :open alerts, so any confirmed alert in the count is
+    # a different alert on the same network.
+    if (state.confirmed_by_network[network.id] || 0) > 0, do: network.status, else: :dismissed
   end
 
   defp past(:confirm), do: "confirmed"

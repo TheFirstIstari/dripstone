@@ -249,8 +249,11 @@ so they always match the code.
 
 ## Not covered yet
 
-- **Choosing which accounts form a group (prescreening)** is detection's job and isn't
-  built yet. Until it is, live detection only sends account findings, and network
-  alerts come from the sample data and the dev simulator.
+- **Prescreening exists for Bluesky only.** `Dripstone.Discovery.Jetstream` reads
+  Bluesky's public stream, and `Dripstone.Discovery.Bursts` turns a link posted by 5+
+  distinct accounts within 10 minutes into a candidate group. `DiscoverWorker` then
+  reports the account and group findings in one batch (`Tracker.report_findings/1`),
+  and `TrendWorker` sends trend findings for active networks every 6 hours. Other
+  platforms still send account findings only (via `AssessWorker`).
 - **The other contract.** The app's internal finding format (`Dripstone.Tracker.Finding`)
   is what the rules produce and what the sample data replays. Detection doesn't send it.

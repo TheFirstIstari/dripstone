@@ -59,6 +59,16 @@ config :dripstone, dev_routes: true
 # Off unless started with DRIPSTONE_SIMULATE=1 (see Dripstone.Tracker.Simulator).
 config :dripstone, simulate_alerts: System.get_env("DRIPSTONE_SIMULATE") == "1"
 
+# DRIPSTONE_SAMPLE=showcase seeds an empty dev database from the hand-built
+# showcase corpus instead of the generated sample rows.
+if System.get_env("DRIPSTONE_DISCOVERY") == "1" do
+  config :dripstone, Dripstone.Discovery, enabled: true
+end
+
+if System.get_env("DRIPSTONE_SAMPLE") == "showcase" do
+  config :dripstone, :load_sample_data, :showcase
+end
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 

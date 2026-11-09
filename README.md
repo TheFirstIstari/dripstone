@@ -1,11 +1,17 @@
 # Dripstone
 
-Botfarm social tracker. Phoenix 1.8, Postgres 17, Oban planned for background jobs.
+Botfarm social tracker. Phoenix 1.8, Postgres 17, Oban for background jobs.
 
 ## Live
 
 https://dripstone.dev. It runs on a CachyOS box and reaches the public
 internet through a Cloudflare Tunnel.
+
+## Login
+
+Username: analyst@dripstone.dev
+Password: passwordpassword
+
 
 ## Setup
 
@@ -22,6 +28,8 @@ mise run dev
 Before `db-setup`, put a password (min 12 chars) in `.env` for the seed analyst:
 
 ```sh
+# Generate one (macOS/Linux), or pick any 12+ char dev-only password:
+openssl rand -base64 18
 ANALYST_PASSWORD=<dev-only-password>
 ```
 
@@ -33,6 +41,32 @@ No key needed for a green suite: with `OPENCODE_API_KEY` unset, AI calls fail to
 
 `docs/CACHYOS.md` has workstation and runner notes. The old desktop GPU
 setup is archived at `docs/archive/desktop.md` and no longer used.
+
+## Data: Live and Demo
+
+Every analyst switches between two datasets from the sidebar (per session, no
+restart):
+
+- **Live**: the database, filled only by real detection. In production it starts
+  empty. Locally it does too; if your dev database was seeded with sample rows
+  before this, run `mix ecto.reset` once (then re-run `mise run db-setup`).
+- **Demo**: the sample data plus a simulator raising alerts every ~45 s, kept in
+  memory only and never stored. A "Demo data" banner shows while it's on.
+
+## Live discovery (Bluesky)
+
+The first real feed. Bluesky's public Jetstream is read without credentials; a link
+posted by 5+ distinct accounts within 10 minutes becomes a candidate group, whose
+accounts are fetched and assessed by Jev into Live. On in production; locally:
+
+```sh
+DRIPSTONE_DISCOVERY=1 mise run dev
+```
+
+Caps (config `Dripstone.Discovery.Caps`): 20 groups an hour, an account at most once
+a day, groups trimmed to 10 accounts (`Dripstone.Workers.DiscoverWorker`,
+`max_group_size`). Burst settings live in `Dripstone.Discovery.Bursts`. Active live
+networks get a trend re-check every 6 hours (Oban Cron).
 
 ## AI key
 
@@ -68,6 +102,7 @@ Read the project and deploy specs before changing either.
 
 ## Deploy
 
-Prod is three containers on the CachyOS host: app, Postgres 17, tunnel.
-Redeploys are pull, rebuild, migrate, restart. Full layout, env file
-handling, and checks live in `openspec/specs/deploy/spec.md`.
+Prod is two containers on the CachyOS host (app, Postgres 17) plus the
+`cloudflared` tunnel binary. Redeploys are pull, rebuild, migrate, restart.
+Full layout, env file handling, and checks live in
+`openspec/specs/deploy/spec.md`.

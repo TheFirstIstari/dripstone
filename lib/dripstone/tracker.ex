@@ -35,12 +35,57 @@ defmodule Dripstone.Tracker do
   """
   @spec report_finding(map()) :: {:ok, map()} | {:error, %{atom() => [String.t()]}}
   def report_finding(attrs) do
-    with {:ok, state} <- Store.load(),
-         {:ok, report} <- Report.cast(attrs, state),
-         {:ok, result, new_state} <- Rules.run(state, report, now()) do
-      :ok = Store.save(new_state)
-      Enum.each(report_messages(result), &broadcast/1)
-      {:ok, result}
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, report} <- Report.cast(attrs, state),
+           {:ok, result, new_state} <- Rules.run(state, report, now()) do
+        :ok = Store.save(new_state)
+        Enum.each(report_messages(result), &broadcast/1)
+        {:ok, result}
+      end
+    end)
+  end
+
+  @doc """
+  Reports several findings in **one** write: loads once, runs each through `Report`
+  and `Rules` in order (later findings see earlier ones' effects), saves once, then
+  broadcasts. Every write rewrites the whole Live database, so live discovery
+  reports a candidate group's account and group findings together.
+
+  Returns `{:ok, results}` (one per finding, in order). If any finding is rejected,
+  the whole batch is: `{:error, {index, errors}}`, with nothing changed.
+  """
+  @spec report_findings([map()]) :: {:ok, [map()]} | {:error, {non_neg_integer(), map()}}
+  def report_findings(findings) when is_list(findings) do
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, results, new_state} <- run_findings(state, findings) do
+        :ok = Store.save(new_state)
+
+        results
+        |> Enum.flat_map(&report_messages/1)
+        |> Enum.uniq()
+        |> Enum.each(&broadcast/1)
+
+        {:ok, results}
+      end
+    end)
+  end
+
+  defp run_findings(state, findings) do
+    findings
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, [], state}, fn {attrs, index}, {:ok, acc, state} ->
+      with {:ok, report} <- Report.cast(attrs, state),
+           {:ok, result, state} <- Rules.run(state, report, now()) do
+        {:cont, {:ok, [result | acc], state}}
+      else
+        {:error, errors} -> {:halt, {:error, {index, errors}}}
+      end
+    end)
+    |> case do
+      {:ok, results, state} -> {:ok, Enum.reverse(results), state}
+      error -> error
     end
   end
 
@@ -48,12 +93,14 @@ defmodule Dripstone.Tracker do
   # Runs one *internal* finding straight through the intake. Detection never
   # calls this; it exists for tests that need a specific alert.
   def apply_finding(attrs) do
-    with {:ok, state} <- Store.load(),
-         {:ok, result, new_state} <- Intake.run(state, attrs, now()) do
-      :ok = Store.save(new_state)
-      Enum.each(messages(result), &broadcast/1)
-      {:ok, result}
-    end
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, result, new_state} <- Intake.run(state, attrs, now()) do
+        :ok = Store.save(new_state)
+        Enum.each(messages(result), &broadcast/1)
+        {:ok, result}
+      end
+    end)
   end
 
   ## Reads
@@ -151,14 +198,49 @@ defmodule Dripstone.Tracker do
     :ok
   end
 
+  ## Datasets (Live / Demo)
+
+  @dataset_key :dripstone_dataset
+
+  @doc """
+  The dataset the calling process reads and writes: `:live` (the database, the
+  default) or `:demo` (memory-only `DemoStore`). LiveViews get theirs from the
+  session (`DripstoneWeb.Nav`); background code uses Live unless it says otherwise.
+  """
+  @spec dataset() :: :live | :demo
+  def dataset, do: Process.get(@dataset_key, :live)
+
+  @doc "Sets the calling process's dataset."
+  @spec put_dataset(:live | :demo) :: :ok
+  def put_dataset(dataset) when dataset in [:live, :demo] do
+    Process.put(@dataset_key, dataset)
+    :ok
+  end
+
+  @doc "Runs `fun` with the calling process's dataset set to `dataset`, then restores it."
+  @spec with_dataset(:live | :demo, (-> result)) :: result when result: var
+  def with_dataset(dataset, fun) when dataset in [:live, :demo] do
+    previous = Process.get(@dataset_key)
+    Process.put(@dataset_key, dataset)
+
+    try do
+      fun.()
+    after
+      if previous, do: Process.put(@dataset_key, previous), else: Process.delete(@dataset_key)
+    end
+  end
+
   ## PubSub
 
-  @doc "Subscribes the calling process to tracker changes."
+  @doc "Subscribes the calling process to changes in its dataset."
   @spec subscribe() :: :ok | {:error, term()}
-  def subscribe, do: Phoenix.PubSub.subscribe(Dripstone.PubSub, @topic)
+  def subscribe, do: Phoenix.PubSub.subscribe(Dripstone.PubSub, topic())
 
   @doc false
-  def broadcast(message), do: Phoenix.PubSub.broadcast(Dripstone.PubSub, @topic, message)
+  def broadcast(message), do: Phoenix.PubSub.broadcast(Dripstone.PubSub, topic(), message)
+
+  # Each dataset has its own topic, so Demo changes never reach Live screens.
+  defp topic, do: if(dataset() == :demo, do: @topic <> ":demo", else: @topic)
 
   defp read(fun) do
     {:ok, state} = Store.load()
@@ -168,12 +250,14 @@ defmodule Dripstone.Tracker do
   # Writes load the persisted state, apply `fun`, save the result and broadcast
   # its messages. A rejected change saves nothing.
   defp change(fun) do
-    with {:ok, state} <- Store.load(),
-         {:ok, reply, %Dripstone.Tracker.State{} = new_state, messages} <- fun.(state) do
-      :ok = Store.save(%{new_state | cache: %{}})
-      Enum.each(messages, &broadcast/1)
-      {:ok, reply}
-    end
+    Store.write(fn ->
+      with {:ok, state} <- Store.load(),
+           {:ok, reply, %Dripstone.Tracker.State{} = new_state, messages} <- fun.(state) do
+        :ok = Store.save(new_state)
+        Enum.each(messages, &broadcast/1)
+        {:ok, reply}
+      end
+    end)
   end
 
   defp report_messages(result) do
