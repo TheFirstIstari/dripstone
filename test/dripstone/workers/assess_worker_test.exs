@@ -44,8 +44,36 @@ defmodule Dripstone.Workers.AssessWorkerTest do
     assert [%{feed_id: "reddit", handle: "bob"}] = Map.values(SampleStore.get_state().accounts)
   end
 
+  defmodule PoisonAdapter do
+    @moduledoc false
+    @behaviour Dripstone.Adapters
+
+    @impl true
+    def fetch_posts(_handle, _opts \\ []), do: {:ok, "junk"}
+  end
+
   test "an unknown adapter cancels the job" do
     assert {:cancel, _} =
              perform_job(AssessWorker, %{"adapter" => "stub_myspace", "handle" => "carol"})
+  end
+
+  test "poison posts return a clean error instead of crashing (issue #137)" do
+    config = Application.get_env(:dripstone, AssessWorker, [])
+
+    Application.put_env(
+      :dripstone,
+      AssessWorker,
+      Keyword.merge(config,
+        adapters: %{"stub_poison" => PoisonAdapter},
+        feed_overrides: %{PoisonAdapter => "x"}
+      )
+    )
+
+    on_exit(fn -> Application.put_env(:dripstone, AssessWorker, config) end)
+
+    assert {:error, _} =
+             perform_job(AssessWorker, %{"adapter" => "stub_poison", "handle" => "mallory"})
+
+    assert SampleStore.get_state().accounts == %{}
   end
 end

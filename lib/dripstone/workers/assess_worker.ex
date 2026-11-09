@@ -29,30 +29,57 @@ defmodule Dripstone.Workers.AssessWorker do
     with {:ok, module} <- adapter(adapter),
          {:ok, posts} <- module.fetch_posts(handle) do
       opts = scorer_opts(args)
-      assessment = Scorer.assess(posts, opts)
 
-      finding = %{
-        kind: "account",
-        observed_at: DateTime.utc_now(),
-        model: if(assessment.ai_answers, do: model(opts)),
-        account: %{feed_id: Map.fetch!(@feeds, module), handle: handle},
-        posts: posts,
-        heuristics: %{score: assessment.score, labels: assessment.labels},
-        answers: assessment.ai_answers
-      }
+      case Scorer.assess(posts, opts) do
+        %{score: score, labels: labels, ai_answers: answers} ->
+          finding = %{
+            kind: "account",
+            observed_at: DateTime.utc_now(),
+            model: if(answers, do: model(opts)),
+            account: %{feed_id: feed_id(module), handle: handle},
+            posts: posts,
+            heuristics: %{score: score, labels: labels},
+            answers: answers
+          }
 
-      case Tracker.report_finding(finding) do
-        {:ok, _result} -> :ok
-        {:error, reason} -> {:error, reason}
+          case Tracker.report_finding(finding) do
+            {:ok, _result} -> :ok
+            {:error, reason} -> {:error, reason}
+          end
+
+        {:error, reason} ->
+          {:error, reason}
+
+        other ->
+          {:error, {:invalid_assessment, other}}
       end
     end
   end
 
+  # Test-only adapter override (`Application.put_env(:dripstone, AssessWorker,
+  # adapters: %{"name" => Module})`): lets regression tests feed poison payloads
+  # through the worker without changing the fixed adapter registry.
   defp adapter(name) do
-    case Adapters.get(name) do
-      module when is_map_key(@feeds, module) -> {:ok, module}
-      _ -> {:cancel, "unknown adapter #{inspect(name)}"}
+    test_adapters = Application.get_env(:dripstone, __MODULE__, []) |> Keyword.get(:adapters, %{})
+
+    case Map.fetch(test_adapters, name) do
+      {:ok, module} ->
+        {:ok, module}
+
+      :error ->
+        case Adapters.get(name) do
+          module when is_map_key(@feeds, module) -> {:ok, module}
+          _ -> {:cancel, "unknown adapter #{inspect(name)}"}
+        end
     end
+  end
+
+  # Feed for an adapter (real or test-only override).
+  defp feed_id(module) do
+    overrides =
+      Application.get_env(:dripstone, __MODULE__, []) |> Keyword.get(:feed_overrides, %{})
+
+    Map.get_lazy(overrides, module, fn -> Map.fetch!(@feeds, module) end)
   end
 
   defp scorer_opts(%{"model" => model}) when is_binary(model), do: [model: model]
