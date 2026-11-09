@@ -112,4 +112,13 @@ defmodule Dripstone.Discovery.JetstreamTest do
     {:ok, after_} = Store.load()
     assert after_.feed_health == before.feed_health
   end
+
+  test "a connected stream that goes quiet is idle; a disconnected one never is" do
+    connected = %{conn: :a_conn, last_data_ms: 1_000, idle_ms: 90_000}
+
+    refute Jetstream.idle?(connected, 1_000 + 90_000)
+    assert Jetstream.idle?(connected, 1_000 + 90_001)
+    refute Jetstream.idle?(%{connected | conn: nil}, 1_000_000)
+    refute Jetstream.idle?(%{connected | last_data_ms: nil}, 1_000_000)
+  end
 end

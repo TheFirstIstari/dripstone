@@ -30,6 +30,8 @@ defmodule Dripstone.Discovery.Jetstream do
 
   @default_url "wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post"
   @flush_ms 60_000
+  @watchdog_ms 30_000
+  @idle_ms 90_000
   @max_backoff_ms 60_000
   @cursor_rewind_us 5_000_000
   @day_s 24 * 60 * 60
@@ -149,11 +151,14 @@ defmodule Dripstone.Discovery.Jetstream do
         conn: nil,
         ref: nil,
         websocket: nil,
-        backoff_ms: 1_000
+        backoff_ms: 1_000,
+        idle_ms: Keyword.get(opts, :idle_ms, @idle_ms),
+        last_data_ms: nil
       })
 
     send(self(), :connect)
     Process.send_after(self(), :flush, @flush_ms)
+    Process.send_after(self(), :watchdog, @watchdog_ms)
     {:ok, state}
   end
 
@@ -162,7 +167,7 @@ defmodule Dripstone.Discovery.Jetstream do
     case connect(state) do
       {:ok, state} ->
         Logger.info("Jetstream connected")
-        {:noreply, %{state | backoff_ms: 1_000}}
+        {:noreply, %{state | backoff_ms: 1_000, last_data_ms: now_ms()}}
 
       {:error, reason, state} ->
         {:noreply, disconnected(state, reason)}
@@ -180,10 +185,24 @@ defmodule Dripstone.Discovery.Jetstream do
     {:noreply, state}
   end
 
+  # A connection can go quiet without ever closing (a half-open TCP connection,
+  # or a stalled server). Jetstream sends hundreds of events a second, so a long
+  # silence means the stream is dead: drop it and reconnect from the cursor.
+  def handle_info(:watchdog, state) do
+    state =
+      if idle?(state, now_ms()),
+        do: disconnected(state, {:idle_timeout, state.idle_ms}),
+        else: state
+
+    Process.send_after(self(), :watchdog, @watchdog_ms)
+    {:noreply, state}
+  end
+
   def handle_info(message, %{conn: conn} = state) when not is_nil(conn) do
     case Mint.WebSocket.stream(conn, message) do
       {:ok, conn, responses} ->
-        {:noreply, Enum.reduce(responses, %{state | conn: conn}, &handle_response/2)}
+        state = %{state | conn: conn, last_data_ms: now_ms()}
+        {:noreply, Enum.reduce(responses, state, &handle_response/2)}
 
       {:error, conn, reason, _responses} ->
         {:noreply, disconnected(%{state | conn: conn}, reason)}
@@ -194,6 +213,19 @@ defmodule Dripstone.Discovery.Jetstream do
   end
 
   def handle_info(_message, state), do: {:noreply, state}
+
+  @doc """
+  Whether a connected stream has gone quiet for longer than `idle_ms` (default
+  90 s) as of `now_ms` (monotonic milliseconds). Never true while disconnected,
+  since reconnecting is already under way then.
+  """
+  @spec idle?(map(), integer()) :: boolean()
+  def idle?(%{conn: nil}, _now_ms), do: false
+  def idle?(%{last_data_ms: nil}, _now_ms), do: false
+
+  def idle?(%{last_data_ms: last, idle_ms: idle_ms}, now_ms), do: now_ms - last > idle_ms
+
+  defp now_ms, do: System.monotonic_time(:millisecond)
 
   defp handle_response({:data, ref, data}, %{ref: ref, websocket: ws} = state)
        when not is_nil(ws) do
