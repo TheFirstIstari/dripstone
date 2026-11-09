@@ -145,7 +145,12 @@ config :dripstone, Dripstone.AIClient,
 # prod re-asserts at runtime (see runtime.exs) so releases pick it up.
 config :dripstone, Oban,
   repo: Dripstone.Repo,
-  queues: [default: 10]
+  queues: [default: 10],
+  cron: [
+    crontab: [
+      {"0 * * * *", Dripstone.Workers.RefreshScheduler}
+    ]
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

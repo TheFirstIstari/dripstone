@@ -71,7 +71,14 @@ if config_env() == :prod do
     # pool_count: 4,
     socket_options: maybe_ipv6
 
-  config :dripstone, Oban, repo: Dripstone.Repo, queues: [default: 10]
+  config :dripstone, Oban,
+    repo: Dripstone.Repo,
+    queues: [default: 10],
+    cron: [
+      crontab: [
+        {"0 * * * *", Dripstone.Workers.RefreshScheduler}
+      ]
+    ]
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
